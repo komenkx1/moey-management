@@ -147,7 +147,9 @@ export function parseQuickAdd(
   }
 
   const normalizedForAdditionDetection = normalized.replace(/(k|rb|jt)\b/gi, "");
-  const hasAdditionOperator = /\d\s*\+\s*\d/.test(normalizedForAdditionDetection);
+  const hasStandalonePlusOperator = /\s\+\s/.test(normalized);
+  const hasPlusAdjacentToNumber = /(?:\d\s*\+|\+\s*\d)/.test(normalizedForAdditionDetection);
+  const hasAdditionOperator = hasStandalonePlusOperator || hasPlusAdjacentToNumber;
   const tokens = hasAdditionOperator
     ? normalized.replace(/\+/g, " + ").trim().split(/\s+/).filter((token) => token.length > 0)
     : normalized.split(/\s+/);

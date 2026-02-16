@@ -97,6 +97,44 @@ describe("parseQuickAdd", () => {
     }
   });
 
+  it("sums amounts separated by words when plus operator is present", () => {
+    const result = parseQuickAdd("mie 25 + nasi 7");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.amount).toBe(32_000);
+      expect(result.warnings?.some((warning) => warning.code === "AMOUNT_SUMMED")).toBe(true);
+    }
+  });
+
+  it("sums amounts when plus has no spaces", () => {
+    const result = parseQuickAdd("nasi 30k+kopi 15");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.amount).toBe(45_000);
+      expect(result.warnings?.some((warning) => warning.code === "AMOUNT_SUMMED")).toBe(true);
+    }
+  });
+
+  it("sums chained plus tokens with words and no spaces", () => {
+    const result = parseQuickAdd("30k+kopi+5k");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.text).toBe("kopi");
+      expect(result.value.amount).toBe(35_000);
+      expect(result.warnings?.some((warning) => warning.code === "AMOUNT_SUMMED")).toBe(true);
+    }
+  });
+
+  it("sums chained plus tokens and keeps split token", () => {
+    const result = parseQuickAdd("30k+kopi+5k 3p");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.amount).toBe(35_000);
+      expect(result.value.splitCount).toBe(3);
+      expect(result.warnings?.some((warning) => warning.code === "AMOUNT_SUMMED")).toBe(true);
+    }
+  });
+
   it("keeps legacy split behavior without summed warning", () => {
     const result = parseQuickAdd("dinner 120 3p");
     expect(result.ok).toBe(true);
