@@ -529,7 +529,6 @@ function EntryRow({
     entry.split?.shares.map((share) => share.person).join(", ") || "Kamu, Budi"
   );
   const [customDraft, setCustomDraft] = useState<Record<string, string>>({});
-  const [splitError, setSplitError] = useState<string | null>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -554,6 +553,31 @@ function EntryRow({
     () => (displayText.subtitle ? splitSubtitleItems(displayText.subtitle) : null),
     [displayText.subtitle]
   );
+  const splitStatus = useMemo(() => {
+    const customTotal = people.reduce(
+      (sum, person) => sum + (Number.parseInt((customDraft[person] ?? "0").replace(/[^\d]/g, ""), 10) || 0),
+      0
+    );
+    const diff = customTotal - entry.amount;
+
+    if (diff < 0) {
+      return { type: "less" as const, diff };
+    }
+    if (diff > 0) {
+      return { type: "more" as const, diff };
+    }
+    return { type: "ok" as const, diff: 0 };
+  }, [customDraft, entry.amount, people]);
+  const splitSummary = useMemo(() => {
+    if (!entry.split || entry.split.shares.length <= 1) {
+      return "";
+    }
+
+    return entry.split.shares
+      .filter((share) => share.person !== entry.split?.payer && share.amount > 0)
+      .map((share) => `${share.person} → ${entry.split?.payer} Rp${formatAmountCompact(share.amount)}`)
+      .join(" · ");
+  }, [entry.split]);
 
   function saveInlineEdit() {
     const numericAmount = Number.parseInt(amountDraft.replace(/[^\d]/g, ""), 10);
@@ -571,7 +595,6 @@ function EntryRow({
 
   function applyEqualSplit() {
     if (people.length < 2) {
-      setSplitError("Minimal 2 orang untuk split.");
       return;
     }
 
@@ -584,12 +607,10 @@ function EntryRow({
         shares
       }
     }));
-    setSplitError(null);
   }
 
   function applyCustomSplit() {
-    if (people.length < 2) {
-      setSplitError("Minimal 2 orang untuk split.");
+    if (splitStatus.diff !== 0) {
       return;
     }
 
@@ -600,7 +621,6 @@ function EntryRow({
 
     const validated = buildCustomSplit(entry.amount, shares);
     if (!validated) {
-      setSplitError("Total split harus sama dengan nominal.");
       return;
     }
 
@@ -612,7 +632,6 @@ function EntryRow({
         shares: validated
       }
     }));
-    setSplitError(null);
   }
 
   return (
@@ -731,24 +750,33 @@ function EntryRow({
               </div>
 
               {splitMode === "custom" ? (
-                <div className="inline-grid">
-                  {people.map((person) => (
-                    <div key={person}>
-                      <div className="hint">{person}</div>
-                      <input
-                        className="input"
-                        value={customDraft[person] ?? ""}
-                        onChange={(event) =>
-                          setCustomDraft((prev) => ({
-                            ...prev,
-                            [person]: event.target.value
-                          }))
-                        }
-                        placeholder="Nominal"
-                      />
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <div className="inline-grid">
+                    {people.map((person) => (
+                      <div key={person}>
+                        <div className="hint">{person}</div>
+                        <input
+                          className="input"
+                          value={customDraft[person] ?? ""}
+                          onChange={(event) =>
+                            setCustomDraft((prev) => ({
+                              ...prev,
+                              [person]: event.target.value
+                            }))
+                          }
+                          placeholder="Nominal"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div className={`split-status ${splitStatus.type}`}>
+                    {splitStatus.type === "less"
+                      ? `Kurang Rp${formatAmountIDR(Math.abs(splitStatus.diff))}`
+                      : splitStatus.type === "more"
+                        ? `Lebih Rp${formatAmountIDR(splitStatus.diff)}`
+                        : "Sudah pas"}
+                  </div>
+                </>
               ) : null}
 
               <div className="row-actions compact">
@@ -757,23 +785,15 @@ function EntryRow({
                     Terapkan Equal
                   </button>
                 ) : (
-                  <button className="btn btn-sm" type="button" onClick={applyCustomSplit}>
+                  <button className="btn btn-sm" type="button" onClick={applyCustomSplit} disabled={splitStatus.diff !== 0}>
                     Terapkan Custom
                   </button>
                 )}
               </div>
-              {splitError ? <div className="error subtle">{splitError}</div> : null}
             </div>
           ) : null}
 
-          {entry.split && entry.split.shares.length > 1 ? (
-            <div className="summary">
-              {entry.split.shares
-                .filter((share) => share.person !== entry.split?.payer && share.amount > 0)
-                .map((share) => `${share.person} owes ${entry.split?.payer} ${formatAmountCompact(share.amount)}`)
-                .join(" · ")}
-            </div>
-          ) : null}
+          {splitSummary ? <div className="summary">{splitSummary}</div> : null}
         </div>
       ) : null}
     </article>

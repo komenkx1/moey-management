@@ -303,6 +303,33 @@ select {
   background: #fbfbf8;
 }
 
+.split-status {
+  margin-top: 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.split-status.less {
+  background: #fff3f3;
+  border-color: #efc6c6;
+  color: #9b2f2f;
+}
+
+.split-status.more {
+  background: #fff7ee;
+  border-color: #f1d3aa;
+  color: #8a5621;
+}
+
+.split-status.ok {
+  background: #eff9f0;
+  border-color: #bfe2c2;
+  color: #226c30;
+}
+
 .summary {
   margin-top: 8px;
   font-size: 12px;
