@@ -14,7 +14,8 @@ export type EntrySource = "quick_add" | "bulk_paste" | "scan_receipt";
 export type ParseWarningCode =
   | "ASSUMED_THOUSANDS"
   | "AMOUNT_TOKEN_CLEANED"
-  | "SPLIT_COUNT_IGNORED";
+  | "SPLIT_COUNT_IGNORED"
+  | "AMOUNT_SUMMED";
 export type RuleMatch = "contains" | "equals";
 
 export interface SplitShare {

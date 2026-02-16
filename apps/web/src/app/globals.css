@@ -145,6 +145,29 @@ select {
   color: #656562;
 }
 
+.preview-sum {
+  font-size: 11px;
+  line-height: 1.2;
+  color: #214a50;
+}
+
+.preview-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mode-pill {
+  border: 1px solid #9bc1c7;
+  border-radius: 999px;
+  background: #edf7f8;
+  color: #1c4d53;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
 .error {
   font-size: 13px;
   color: #c82121;

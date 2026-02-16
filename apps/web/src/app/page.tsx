@@ -95,6 +95,8 @@ export default function HomePage() {
     return parseQuickAdd(debouncedQuickInput);
   }, [debouncedQuickInput]);
   const quickPreviewTextParts = quickPreview?.ok ? splitDisplayText(quickPreview.value.text) : null;
+  const isSummationInput = quickInput.includes("+");
+  const summedAmountMeta = quickPreview?.ok ? extractSummedAmountMeta(quickPreview.warnings) : null;
 
   const bulkPreview = useMemo(() => {
     const lines = bulkInput
@@ -259,7 +261,7 @@ export default function HomePage() {
               setQuickInput(event.target.value);
               setShowQuickWarningDetails(false);
             }}
-            placeholder="contoh: kopi 18 | Gacoan - Mang Wahyu 32k | dinner 120 3p"
+            placeholder="contoh: kopi 18 | Gacoan - mie 25 + es 10 + pajak 5 | dinner 120 3p"
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();
@@ -271,7 +273,7 @@ export default function HomePage() {
             Tambah
           </button>
         </div>
-        <div className="hint subtle">Tip: pakai &quot;Merchant - Note&quot; biar rapi</div>
+        <div className="hint subtle">Tip: bisa jumlahkan pakai + (contoh: 25 + 10 + 5)</div>
 
         {quickPreview?.ok && (
           <div className="hint preview-row">
@@ -280,27 +282,42 @@ export default function HomePage() {
                 <>
                   <div className="preview-title">{quickPreviewTextParts.title}</div>
                   <div className="preview-subtitle">{quickPreviewTextParts.subtitle}</div>
+                  {summedAmountMeta ? (
+                    <div className="preview-sum">
+                      Total dari {summedAmountMeta.parts} item: Rp{formatAmountIDR(summedAmountMeta.total)}
+                    </div>
+                  ) : null}
                   <div className="preview-meta">
                     Rp{formatAmountIDR(quickPreview.value.amount)} • {quickPreview.value.date}
                     {quickPreview.value.splitCount ? ` • ${quickPreview.value.splitCount}p` : ""}
                   </div>
                 </>
               ) : (
-                <span>
-                  {quickPreview.value.text} • Rp{formatAmountIDR(quickPreview.value.amount)} • {quickPreview.value.date}
-                  {quickPreview.value.splitCount ? ` • ${quickPreview.value.splitCount}p` : ""}
-                </span>
+                <>
+                  <span>
+                    {quickPreview.value.text} • Rp{formatAmountIDR(quickPreview.value.amount)} • {quickPreview.value.date}
+                    {quickPreview.value.splitCount ? ` • ${quickPreview.value.splitCount}p` : ""}
+                  </span>
+                  {summedAmountMeta ? (
+                    <div className="preview-sum">
+                      Total dari {summedAmountMeta.parts} item: Rp{formatAmountIDR(summedAmountMeta.total)}
+                    </div>
+                  ) : null}
+                </>
               )}
             </div>
-            {quickPreview.warnings?.length ? (
-              <button
-                className="warning-pill"
-                type="button"
-                onClick={() => setShowQuickWarningDetails((prev) => !prev)}
-              >
-                !
-              </button>
-            ) : null}
+            <div className="preview-badges">
+              {isSummationInput ? <span className="mode-pill">Mode jumlah</span> : null}
+              {quickPreview.warnings?.length ? (
+                <button
+                  className="warning-pill"
+                  type="button"
+                  onClick={() => setShowQuickWarningDetails((prev) => !prev)}
+                >
+                  !
+                </button>
+              ) : null}
+            </div>
           </div>
         )}
         {quickPreview && !quickPreview.ok && <div className="error subtle">{quickPreview.reason}</div>}
@@ -398,6 +415,8 @@ function warningShortText(warning: ParseWarning): string {
       return "Format nominal dibersihkan otomatis";
     case "SPLIT_COUNT_IGNORED":
       return "Split 1p diabaikan";
+    case "AMOUNT_SUMMED":
+      return "Nominal dijumlahkan otomatis";
     default:
       return warning.message;
   }
@@ -411,9 +430,28 @@ function warningDetail(warning: ParseWarning): string {
       return "Token nominal dibersihkan otomatis.";
     case "SPLIT_COUNT_IGNORED":
       return "Split 1p diabaikan karena tidak perlu pembagian.";
+    case "AMOUNT_SUMMED":
+      return "Nominal dijumlahkan otomatis.";
     default:
       return warning.message;
   }
+}
+
+function extractSummedAmountMeta(
+  warnings?: ParseWarning[]
+): { parts: number; total: number } | null {
+  const sumWarning = warnings?.find((warning) => warning.code === "AMOUNT_SUMMED");
+  if (!sumWarning?.meta) {
+    return null;
+  }
+
+  const parts = Number(sumWarning.meta.parts);
+  const total = Number(sumWarning.meta.total);
+  if (!Number.isFinite(parts) || !Number.isFinite(total) || parts < 2 || total <= 0) {
+    return null;
+  }
+
+  return { parts, total };
 }
 
 function splitDisplayText(text: string): { title: string; subtitle?: string } {

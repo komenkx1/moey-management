@@ -62,4 +62,36 @@ describe("parseQuickAdd", () => {
     const result = parseQuickAdd("dinner 120 99p");
     expect(result.ok).toBe(false);
   });
+
+  it("sums multiple inline amounts with warning", () => {
+    const result = parseQuickAdd("gacoan 25 + 10 + 5");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.amount).toBe(40_000);
+      const sumWarning = result.warnings?.find((warning) => warning.code === "AMOUNT_SUMMED");
+      expect(sumWarning).toBeDefined();
+      expect(sumWarning?.message).toBe("Nominal dijumlahkan otomatis");
+      expect(sumWarning?.meta?.parts).toBe(3);
+      expect(sumWarning?.meta?.total).toBe(40_000);
+    }
+  });
+
+  it("sums k suffix amounts", () => {
+    const result = parseQuickAdd("mie 2k + 3k");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.amount).toBe(5_000);
+      expect(result.warnings?.some((warning) => warning.code === "AMOUNT_SUMMED")).toBe(true);
+    }
+  });
+
+  it("keeps legacy split behavior without summed warning", () => {
+    const result = parseQuickAdd("dinner 120 3p");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.amount).toBe(120_000);
+      expect(result.value.splitCount).toBe(3);
+      expect(result.warnings?.some((warning) => warning.code === "AMOUNT_SUMMED")).not.toBe(true);
+    }
+  });
 });

@@ -4,6 +4,20 @@ const SPLIT_TOKEN_REGEX = /^(\d+)p$/i;
 const AMOUNT_TOKEN_REGEX = /^(\d+(?:[.,]\d+)?)(k|rb|jt)?$/i;
 const MAX_SPLIT_COUNT = 20;
 
+interface SplitTokenParseSuccess {
+  ok: true;
+  splitCount?: number;
+  splitTokenIndex: number;
+  warnings: ParseWarning[];
+}
+
+interface SplitTokenParseError {
+  ok: false;
+  reason: string;
+}
+
+type SplitTokenParseResult = SplitTokenParseSuccess | SplitTokenParseError;
+
 export function toISODate(date: Date): string {
   const year = date.getFullYear();
   const month = `${date.getMonth() + 1}`.padStart(2, "0");
@@ -82,23 +96,13 @@ function parseAmountToken(rawToken: string): { amount: number; warnings: ParseWa
   };
 }
 
-export function parseQuickAdd(
-  input: string,
-  now: Date = new Date(),
-  source: EntrySource = "quick_add"
-): ParseQuickAddResult {
-  const normalized = input.trim();
-  if (!normalized) {
-    return { ok: false, reason: "Input kosong." };
-  }
-
-  const tokens = normalized.split(/\s+/);
+function parseSplitToken(tokens: string[]): SplitTokenParseResult {
   let splitCount: number | undefined;
   let splitTokenIndex = -1;
-  const parserWarnings: ParseWarning[] = [];
+  const warnings: ParseWarning[] = [];
+
   const lastToken = tokens[tokens.length - 1];
   const splitMatch = lastToken.match(SPLIT_TOKEN_REGEX);
-
   if (splitMatch) {
     const parsedSplitCount = Number.parseInt(splitMatch[1], 10);
     splitTokenIndex = tokens.length - 1;
@@ -112,8 +116,7 @@ export function parseQuickAdd(
     }
 
     if (parsedSplitCount === 1) {
-      splitCount = undefined;
-      parserWarnings.push({
+      warnings.push({
         code: "SPLIT_COUNT_IGNORED",
         message: "Split 1p diabaikan",
         meta: {
@@ -122,6 +125,93 @@ export function parseQuickAdd(
       });
     } else {
       splitCount = parsedSplitCount;
+    }
+  }
+
+  return {
+    ok: true,
+    splitCount,
+    splitTokenIndex,
+    warnings
+  };
+}
+
+export function parseQuickAdd(
+  input: string,
+  now: Date = new Date(),
+  source: EntrySource = "quick_add"
+): ParseQuickAddResult {
+  const normalized = input.trim();
+  if (!normalized) {
+    return { ok: false, reason: "Input kosong." };
+  }
+
+  const hasAdditionOperator = normalized.includes("+");
+  const tokens = hasAdditionOperator
+    ? normalized.replace(/\+/g, " + ").trim().split(/\s+/).filter((token) => token.length > 0)
+    : normalized.split(/\s+/);
+
+  const splitTokenResult = parseSplitToken(tokens);
+  if (!splitTokenResult.ok) {
+    return { ok: false, reason: splitTokenResult.reason };
+  }
+
+  const { splitCount, splitTokenIndex } = splitTokenResult;
+
+  if (hasAdditionOperator) {
+    const additionWarnings: ParseWarning[] = [];
+    const amountIndices: number[] = [];
+    let summedAmount = 0;
+    const searchLimit = splitTokenIndex === -1 ? tokens.length : splitTokenIndex;
+
+    for (let index = 0; index < searchLimit; index += 1) {
+      if (tokens[index] === "+") {
+        continue;
+      }
+
+      const parsed = parseAmountToken(tokens[index]);
+      if (parsed) {
+        amountIndices.push(index);
+        summedAmount += parsed.amount;
+        additionWarnings.push(...parsed.warnings);
+      }
+    }
+
+    if (amountIndices.length >= 2) {
+      if (summedAmount <= 0) {
+        return { ok: false, reason: "Nominal harus lebih dari 0." };
+      }
+
+      const amountIndexSet = new Set(amountIndices);
+      const textTokens = tokens.filter(
+        (token, index) => token !== "+" && index !== splitTokenIndex && !amountIndexSet.has(index)
+      );
+      const text = textTokens.join(" ").trim() || "Pengeluaran";
+      const warnings: ParseWarning[] = [
+        ...splitTokenResult.warnings,
+        ...additionWarnings,
+        {
+          code: "AMOUNT_SUMMED",
+          message: "Nominal dijumlahkan otomatis",
+          meta: {
+            parts: amountIndices.length,
+            total: summedAmount
+          }
+        }
+      ];
+
+      return {
+        ok: true,
+        value: {
+          rawInput: normalized,
+          text,
+          amount: summedAmount,
+          splitCount,
+          date: toISODate(now),
+          source
+        },
+        warnings: warnings.length > 0 ? warnings : undefined
+      };
     }
   }
 
@@ -162,8 +252,8 @@ export function parseQuickAdd(
       source
     },
     warnings:
-      parserWarnings.length + amountWarnings.length > 0
-        ? [...parserWarnings, ...amountWarnings]
+      splitTokenResult.warnings.length + amountWarnings.length > 0
+        ? [...splitTokenResult.warnings, ...amountWarnings]
         : undefined
   };
 }
