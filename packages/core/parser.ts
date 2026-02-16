@@ -146,7 +146,8 @@ export function parseQuickAdd(
     return { ok: false, reason: "Input kosong." };
   }
 
-  const hasAdditionOperator = normalized.includes("+");
+  const normalizedForAdditionDetection = normalized.replace(/(k|rb|jt)\b/gi, "");
+  const hasAdditionOperator = /\d\s*\+\s*\d/.test(normalizedForAdditionDetection);
   const tokens = hasAdditionOperator
     ? normalized.replace(/\+/g, " + ").trim().split(/\s+/).filter((token) => token.length > 0)
     : normalized.split(/\s+/);

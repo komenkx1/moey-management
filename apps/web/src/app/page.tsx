@@ -95,8 +95,10 @@ export default function HomePage() {
     return parseQuickAdd(debouncedQuickInput);
   }, [debouncedQuickInput]);
   const quickPreviewTextParts = quickPreview?.ok ? splitDisplayText(quickPreview.value.text) : null;
-  const isSummationInput = quickInput.includes("+");
   const summedAmountMeta = quickPreview?.ok ? extractSummedAmountMeta(quickPreview.warnings) : null;
+  const isSummationInput = summedAmountMeta !== null;
+  const quickPreviewSubtitleItems =
+    quickPreviewTextParts?.subtitle ? splitSubtitleItems(quickPreviewTextParts.subtitle) : null;
 
   const bulkPreview = useMemo(() => {
     const lines = bulkInput
@@ -281,7 +283,20 @@ export default function HomePage() {
               {quickPreviewTextParts?.subtitle ? (
                 <>
                   <div className="preview-title">{quickPreviewTextParts.title}</div>
-                  <div className="preview-subtitle">{quickPreviewTextParts.subtitle}</div>
+                  {quickPreviewSubtitleItems ? (
+                    <div className="subtitle-items">
+                      {quickPreviewSubtitleItems.slice(0, 3).map((item, index) => (
+                        <span key={`${item}-${index}`} className="item-pill">
+                          {item}
+                        </span>
+                      ))}
+                      {quickPreviewSubtitleItems.length > 3 ? (
+                        <span className="item-pill more">+{quickPreviewSubtitleItems.length - 3}</span>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="preview-subtitle">{quickPreviewTextParts.subtitle}</div>
+                  )}
                   {summedAmountMeta ? (
                     <div className="preview-sum">
                       Total dari {summedAmountMeta.parts} item: Rp{formatAmountIDR(summedAmountMeta.total)}
@@ -481,6 +496,19 @@ function splitDisplayText(text: string): { title: string; subtitle?: string } {
   return { title, subtitle };
 }
 
+function splitSubtitleItems(subtitle: string): string[] | null {
+  if (!/[,+;•]/.test(subtitle)) {
+    return null;
+  }
+
+  const items = subtitle
+    .split(/[,+;•]/)
+    .map((item) => item.replace(/\s+/g, " ").trim())
+    .filter((item) => item.length > 0);
+
+  return items.length > 0 ? items : null;
+}
+
 function EntryRow({
   entry,
   onDelete,
@@ -522,6 +550,10 @@ function EntryRow({
   const warningCount = entry.parseWarnings?.length ?? 0;
   const expandedPanelId = `row-expanded-${entry.id}`;
   const displayText = useMemo(() => splitDisplayText(entry.text), [entry.text]);
+  const subtitleItems = useMemo(
+    () => (displayText.subtitle ? splitSubtitleItems(displayText.subtitle) : null),
+    [displayText.subtitle]
+  );
 
   function saveInlineEdit() {
     const numericAmount = Number.parseInt(amountDraft.replace(/[^\d]/g, ""), 10);
@@ -595,7 +627,20 @@ function EntryRow({
         <div className="row-top">
           <div>
             <div className="row-text">{displayText.title}</div>
-            {displayText.subtitle ? <div className="row-subtext">{displayText.subtitle}</div> : null}
+            {displayText.subtitle ? (
+              subtitleItems ? (
+                <div className="subtitle-items">
+                  {subtitleItems.slice(0, 3).map((item, index) => (
+                    <span key={`${item}-${index}`} className="item-pill">
+                      {item}
+                    </span>
+                  ))}
+                  {subtitleItems.length > 3 ? <span className="item-pill more">+{subtitleItems.length - 3}</span> : null}
+                </div>
+              ) : (
+                <div className="row-subtext">{displayText.subtitle}</div>
+              )
+            ) : null}
             <div className="row-meta">
               {entry.date} • {entry.category}
               {splitCount && splitCount > 1 ? ` • ${splitCount}p` : ""}

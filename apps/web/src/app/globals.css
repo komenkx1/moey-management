@@ -139,6 +139,30 @@ select {
   color: #777773;
 }
 
+.subtitle-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.item-pill {
+  font-size: 12px;
+  line-height: 1.2;
+  padding: 2px 8px;
+  border: 1px solid #e3e3de;
+  border-radius: 999px;
+  background: #fbfbf8;
+  color: #555555;
+}
+
+.item-pill.more {
+  background: #edf7f8;
+  border-color: #9bc1c7;
+  color: #1c4d53;
+  font-weight: 600;
+}
+
 .preview-meta {
   font-size: 11px;
   line-height: 1.2;
