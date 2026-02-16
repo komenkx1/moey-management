@@ -94,6 +94,7 @@ export default function HomePage() {
     }
     return parseQuickAdd(debouncedQuickInput);
   }, [debouncedQuickInput]);
+  const quickPreviewTextParts = quickPreview?.ok ? splitDisplayText(quickPreview.value.text) : null;
 
   const bulkPreview = useMemo(() => {
     const lines = bulkInput
@@ -258,7 +259,7 @@ export default function HomePage() {
               setQuickInput(event.target.value);
               setShowQuickWarningDetails(false);
             }}
-            placeholder="contoh: kopi 18, parkir 2k, dinner 120 3p"
+            placeholder="contoh: kopi 18 | Gacoan - Mang Wahyu 32k | dinner 120 3p"
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();
@@ -270,13 +271,27 @@ export default function HomePage() {
             Tambah
           </button>
         </div>
+        <div className="hint subtle">Tip: pakai &quot;Merchant - Note&quot; biar rapi</div>
 
         {quickPreview?.ok && (
           <div className="hint preview-row">
-            <span>
-              {quickPreview.value.text} • Rp{formatAmountIDR(quickPreview.value.amount)} • {quickPreview.value.date}
-              {quickPreview.value.splitCount ? ` • ${quickPreview.value.splitCount}p` : ""}
-            </span>
+            <div className="preview-content">
+              {quickPreviewTextParts?.subtitle ? (
+                <>
+                  <div className="preview-title">{quickPreviewTextParts.title}</div>
+                  <div className="preview-subtitle">{quickPreviewTextParts.subtitle}</div>
+                  <div className="preview-meta">
+                    Rp{formatAmountIDR(quickPreview.value.amount)} • {quickPreview.value.date}
+                    {quickPreview.value.splitCount ? ` • ${quickPreview.value.splitCount}p` : ""}
+                  </div>
+                </>
+              ) : (
+                <span>
+                  {quickPreview.value.text} • Rp{formatAmountIDR(quickPreview.value.amount)} • {quickPreview.value.date}
+                  {quickPreview.value.splitCount ? ` • ${quickPreview.value.splitCount}p` : ""}
+                </span>
+              )}
+            </div>
             {quickPreview.warnings?.length ? (
               <button
                 className="warning-pill"
@@ -401,6 +416,33 @@ function warningDetail(warning: ParseWarning): string {
   }
 }
 
+function splitDisplayText(text: string): { title: string; subtitle?: string } {
+  const delimiters = [" - ", " — "];
+  let matchedDelimiter: string | null = null;
+  let delimiterIndex = -1;
+
+  for (const delimiter of delimiters) {
+    const index = text.indexOf(delimiter);
+    if (index > 0 && (delimiterIndex === -1 || index < delimiterIndex)) {
+      delimiterIndex = index;
+      matchedDelimiter = delimiter;
+    }
+  }
+
+  if (!matchedDelimiter || delimiterIndex < 0) {
+    return { title: text };
+  }
+
+  const title = text.slice(0, delimiterIndex).trim();
+  const subtitle = text.slice(delimiterIndex + matchedDelimiter.length).trim();
+
+  if (!title || !subtitle) {
+    return { title: text };
+  }
+
+  return { title, subtitle };
+}
+
 function EntryRow({
   entry,
   onDelete,
@@ -441,6 +483,7 @@ function EntryRow({
   const splitCount = entry.split?.shares?.length ?? null;
   const warningCount = entry.parseWarnings?.length ?? 0;
   const expandedPanelId = `row-expanded-${entry.id}`;
+  const displayText = useMemo(() => splitDisplayText(entry.text), [entry.text]);
 
   function saveInlineEdit() {
     const numericAmount = Number.parseInt(amountDraft.replace(/[^\d]/g, ""), 10);
@@ -513,7 +556,8 @@ function EntryRow({
       >
         <div className="row-top">
           <div>
-            <div className="row-text">{entry.text}</div>
+            <div className="row-text">{displayText.title}</div>
+            {displayText.subtitle ? <div className="row-subtext">{displayText.subtitle}</div> : null}
             <div className="row-meta">
               {entry.date} • {entry.category}
               {splitCount && splitCount > 1 ? ` • ${splitCount}p` : ""}
