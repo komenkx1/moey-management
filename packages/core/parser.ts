@@ -186,10 +186,51 @@ export function parseQuickAdd(
       }
 
       const amountIndexSet = new Set(amountIndices);
-      const textTokens = tokens.filter(
-        (token, index) => token !== "+" && index !== splitTokenIndex && !amountIndexSet.has(index)
-      );
-      const text = textTokens.join(" ").trim() || "Pengeluaran";
+      const textParts: string[] = [];
+
+      for (let index = 0; index < searchLimit; index += 1) {
+        if (index === splitTokenIndex || amountIndexSet.has(index)) {
+          continue;
+        }
+
+        const token = tokens[index];
+        if (token !== "+") {
+          textParts.push(token);
+          continue;
+        }
+
+        let hasTextBefore = false;
+        for (let probe = index - 1; probe >= 0; probe -= 1) {
+          if (probe === splitTokenIndex || tokens[probe] === "+" || amountIndexSet.has(probe)) {
+            continue;
+          }
+          hasTextBefore = true;
+          break;
+        }
+
+        let hasTextAfter = false;
+        for (let probe = index + 1; probe < searchLimit; probe += 1) {
+          if (probe === splitTokenIndex || tokens[probe] === "+" || amountIndexSet.has(probe)) {
+            continue;
+          }
+          hasTextAfter = true;
+          break;
+        }
+
+        if (!hasTextBefore || !hasTextAfter) {
+          continue;
+        }
+
+        textParts.push(",");
+      }
+
+      const text =
+        textParts
+          .join(" ")
+          .replace(/\s+,/g, ",")
+          .replace(/,\s+/g, ", ")
+          .replace(/,\s*,+/g, ", ")
+          .trim() || "Pengeluaran";
       const warnings: ParseWarning[] = [
         ...splitTokenResult.warnings,
         ...additionWarnings,

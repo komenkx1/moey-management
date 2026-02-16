@@ -110,7 +110,18 @@ describe("parseQuickAdd", () => {
     const result = parseQuickAdd("nasi 30k+kopi 15");
     expect(result.ok).toBe(true);
     if (result.ok) {
+      expect(result.value.text).toBe("nasi, kopi");
       expect(result.value.amount).toBe(45_000);
+      expect(result.warnings?.some((warning) => warning.code === "AMOUNT_SUMMED")).toBe(true);
+    }
+  });
+
+  it("keeps item separator readable in summed text", () => {
+    const result = parseQuickAdd("happy - nasi goreng + nasi 25 + 25");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.text).toBe("happy - nasi goreng, nasi");
+      expect(result.value.amount).toBe(50_000);
       expect(result.warnings?.some((warning) => warning.code === "AMOUNT_SUMMED")).toBe(true);
     }
   });
