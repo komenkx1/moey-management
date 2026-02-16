@@ -275,7 +275,7 @@ export default function HomePage() {
             Tambah
           </button>
         </div>
-        <div className="hint subtle">Tip: bisa jumlahkan pakai + (contoh: 25 + 10 + 5)</div>
+        <div className="hint subtle">Tip: bisa jumlahkan pakai + :  (contoh: nasi 25 + kopi 10 + garam 5)</div>
 
         {quickPreview?.ok && (
           <div className="hint preview-row">
