@@ -330,6 +330,12 @@ select {
   color: #226c30;
 }
 
+.split-status.pending {
+  background: #f6f6f3;
+  border-color: #d7d7d2;
+  color: #5f5f5b;
+}
+
 .summary {
   margin-top: 8px;
   font-size: 12px;

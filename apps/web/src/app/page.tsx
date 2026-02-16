@@ -529,12 +529,52 @@ function EntryRow({
     entry.split?.shares.map((share) => share.person).join(", ") || "Kamu, Budi"
   );
   const [customDraft, setCustomDraft] = useState<Record<string, string>>({});
+  const [isCustomDirty, setIsCustomDirty] = useState(false);
+  const [customSubmitStatus, setCustomSubmitStatus] = useState<{
+    type: "less" | "more" | "ok";
+    diff: number;
+  } | null>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
+  const prevSplitOpenRef = useRef(splitOpen);
+  const prevSplitModeRef = useRef(splitMode);
 
   useEffect(() => {
     setTextDraft(entry.text);
     setAmountDraft(String(entry.amount));
   }, [entry.text, entry.amount]);
+
+  useEffect(() => {
+    const wasSplitOpen = prevSplitOpenRef.current;
+    const wasSplitMode = prevSplitModeRef.current;
+    const openedNow = !wasSplitOpen && splitOpen;
+    const switchedToCustom = wasSplitMode !== "custom" && splitMode === "custom";
+    const shouldHydrateCustomDraft = splitMode === "custom" && (openedNow || switchedToCustom);
+
+    if (shouldHydrateCustomDraft) {
+      const nextDraft: Record<string, string> = {};
+      const appliedShares = entry.split?.shares ?? [];
+      for (const share of appliedShares) {
+        nextDraft[share.person] = share.amount > 0 ? String(share.amount) : "";
+      }
+      for (const person of peopleInput.split(",").map((item) => item.trim()).filter(Boolean)) {
+        if (!(person in nextDraft)) {
+          nextDraft[person] = "";
+        }
+      }
+
+      setCustomDraft(nextDraft);
+      setIsCustomDirty(false);
+      setCustomSubmitStatus(entry.split ? { type: "ok", diff: 0 } : null);
+    }
+
+    if (!splitOpen && wasSplitOpen) {
+      setIsCustomDirty(false);
+      setCustomSubmitStatus(null);
+    }
+
+    prevSplitOpenRef.current = splitOpen;
+    prevSplitModeRef.current = splitMode;
+  }, [entry.split, peopleInput, splitMode, splitOpen]);
 
   const people = useMemo(
     () =>
@@ -553,30 +593,19 @@ function EntryRow({
     () => (displayText.subtitle ? splitSubtitleItems(displayText.subtitle) : null),
     [displayText.subtitle]
   );
-  const splitStatus = useMemo(() => {
-    const customTotal = people.reduce(
-      (sum, person) => sum + (Number.parseInt((customDraft[person] ?? "0").replace(/[^\d]/g, ""), 10) || 0),
-      0
-    );
-    const diff = customTotal - entry.amount;
-
-    if (diff < 0) {
-      return { type: "less" as const, diff };
-    }
-    if (diff > 0) {
-      return { type: "more" as const, diff };
-    }
-    return { type: "ok" as const, diff: 0 };
-  }, [customDraft, entry.amount, people]);
   const splitSummary = useMemo(() => {
     if (!entry.split || entry.split.shares.length <= 1) {
-      return "";
+      return null;
     }
 
-    return entry.split.shares
-      .filter((share) => share.person !== entry.split?.payer && share.amount > 0)
-      .map((share) => `${share.person} → ${entry.split?.payer} Rp${formatAmountCompact(share.amount)}`)
-      .join(" · ");
+    return {
+      paymentLines: entry.split.shares.map(
+        (share) => `${share.person} bayar Rp${formatAmountCompact(share.amount)}`
+      ),
+      settlementLines: entry.split.shares
+        .filter((share) => share.person !== entry.split?.payer && share.amount > 0)
+        .map((share) => `${share.person} ganti ke ${entry.split?.payer} Rp${formatAmountCompact(share.amount)}`)
+    };
   }, [entry.split]);
 
   function saveInlineEdit() {
@@ -607,17 +636,27 @@ function EntryRow({
         shares
       }
     }));
+    setIsCustomDirty(false);
+    setCustomSubmitStatus(null);
   }
 
   function applyCustomSplit() {
-    if (splitStatus.diff !== 0) {
-      return;
-    }
-
     const shares = people.map((person) => ({
       person,
       amount: Number.parseInt((customDraft[person] ?? "0").replace(/[^\d]/g, ""), 10) || 0
     }));
+    const customTotal = shares.reduce((sum, share) => sum + share.amount, 0);
+    const diff = customTotal - entry.amount;
+
+    if (diff < 0) {
+      setCustomSubmitStatus({ type: "less", diff });
+      return;
+    }
+
+    if (diff > 0) {
+      setCustomSubmitStatus({ type: "more", diff });
+      return;
+    }
 
     const validated = buildCustomSplit(entry.amount, shares);
     if (!validated) {
@@ -632,6 +671,8 @@ function EntryRow({
         shares: validated
       }
     }));
+    setIsCustomDirty(false);
+    setCustomSubmitStatus({ type: "ok", diff: 0 });
   }
 
   return (
@@ -736,7 +777,11 @@ function EntryRow({
                 <button
                   className={`btn btn-sm ${splitMode === "equal" ? "" : "secondary"}`}
                   type="button"
-                  onClick={() => setSplitMode("equal")}
+                  onClick={() => {
+                    setSplitMode("equal");
+                    setIsCustomDirty(false);
+                    setCustomSubmitStatus(null);
+                  }}
                 >
                   Equal
                 </button>
@@ -758,24 +803,29 @@ function EntryRow({
                         <input
                           className="input"
                           value={customDraft[person] ?? ""}
-                          onChange={(event) =>
+                          onChange={(event) => {
+                            setIsCustomDirty(true);
+                            setCustomSubmitStatus(null);
                             setCustomDraft((prev) => ({
                               ...prev,
                               [person]: event.target.value
-                            }))
-                          }
+                            }));
+                          }}
                           placeholder="Nominal"
                         />
                       </div>
                     ))}
                   </div>
-                  <div className={`split-status ${splitStatus.type}`}>
-                    {splitStatus.type === "less"
-                      ? `Kurang Rp${formatAmountIDR(Math.abs(splitStatus.diff))}`
-                      : splitStatus.type === "more"
-                        ? `Lebih Rp${formatAmountIDR(splitStatus.diff)}`
-                        : "Sudah pas"}
+                  <div className={`split-status ${customSubmitStatus?.type ?? "pending"}`}>
+                    {customSubmitStatus
+                      ? customSubmitStatus.type === "less"
+                        ? `Kurang Rp${formatAmountIDR(Math.abs(customSubmitStatus.diff))}`
+                        : customSubmitStatus.type === "more"
+                          ? `Lebih Rp${formatAmountIDR(customSubmitStatus.diff)}`
+                          : "Sudah pas"
+                      : "Draft belum diterapkan"}
                   </div>
+                  {isCustomDirty ? <div className="hint subtle">Klik Terapkan Custom untuk lihat hasil</div> : null}
                 </>
               ) : null}
 
@@ -785,7 +835,7 @@ function EntryRow({
                     Terapkan Equal
                   </button>
                 ) : (
-                  <button className="btn btn-sm" type="button" onClick={applyCustomSplit} disabled={splitStatus.diff !== 0}>
+                  <button className="btn btn-sm" type="button" onClick={applyCustomSplit}>
                     Terapkan Custom
                   </button>
                 )}
@@ -793,7 +843,21 @@ function EntryRow({
             </div>
           ) : null}
 
-          {splitSummary ? <div className="summary">{splitSummary}</div> : null}
+          {splitSummary && (splitMode !== "custom" || !isCustomDirty) ? (
+            <div className="summary">
+              <div>Pembagian</div>
+              {splitSummary.paymentLines.map((line, index) => (
+                <div key={`${line}-${index}`}>{line}</div>
+              ))}
+              {splitSummary.settlementLines.length > 0
+                ? splitSummary.settlementLines.map((line, index) => (
+                    <div key={`settlement-${index}`} className="hint subtle">
+                      {line}
+                    </div>
+                  ))
+                : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </article>
