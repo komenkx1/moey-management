@@ -497,12 +497,12 @@ function splitDisplayText(text: string): { title: string; subtitle?: string } {
 }
 
 function splitSubtitleItems(subtitle: string): string[] | null {
-  if (!/[,+;•]/.test(subtitle)) {
+  if (!/[,;•]|\s\+\s/.test(subtitle)) {
     return null;
   }
 
   const items = subtitle
-    .split(/[,+;•]/)
+    .split(/[,;•]|\s\+\s/)
     .map((item) => item.replace(/\s+/g, " ").trim())
     .filter((item) => item.length > 0);
 
