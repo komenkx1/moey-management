@@ -347,7 +347,7 @@ export default function HomePage() {
         ) : null}
 
         <button className="btn secondary" type="button" onClick={() => setBulkOpen((prev) => !prev)}>
-          {bulkOpen ? "Tutup Tempel Banyak" : "Tempel Banyak"}
+          {bulkOpen ? "Tutup masukan banyak item" : "masukan banyak item"}
         </button>
 
         {bulkOpen && (
