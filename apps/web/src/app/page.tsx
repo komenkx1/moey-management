@@ -149,8 +149,23 @@ function normalizeDateInput(value: string): string | null {
   return toDateKey(parsed);
 }
 
+function getEntryReportAmount(entry: Entry): number {
+  if (!entry.split || !entry.split.shares.length) {
+    return entry.amount;
+  }
+
+  const ownShare = entry.split.shares.find(
+    (share) => share.person.trim().toLowerCase() === "kamu"
+  );
+  if (!ownShare || !Number.isFinite(ownShare.amount)) {
+    return entry.amount;
+  }
+
+  return Math.max(0, Math.round(ownShare.amount));
+}
+
 function sumAmount(items: Entry[]): number {
-  return items.reduce((sum, entry) => sum + entry.amount, 0);
+  return items.reduce((sum, entry) => sum + getEntryReportAmount(entry), 0);
 }
 
 function toDayStartTimestamp(date: Date): number {
@@ -361,7 +376,10 @@ function getTopCategory(entries: Entry[]): TopCategorySummary | null {
 
   const perCategory = new Map<Category, number>();
   for (const entry of entries) {
-    perCategory.set(entry.category, (perCategory.get(entry.category) ?? 0) + entry.amount);
+    perCategory.set(
+      entry.category,
+      (perCategory.get(entry.category) ?? 0) + getEntryReportAmount(entry)
+    );
   }
 
   let top: TopCategorySummary | null = null;
@@ -375,14 +393,17 @@ function getTopCategory(entries: Entry[]): TopCategorySummary | null {
 }
 
 function getTopCategoryBreakdown(entries: Entry[]): CategoryBreakdown[] {
-  const totalAmount = entries.reduce((sum, entry) => sum + entry.amount, 0);
+  const totalAmount = entries.reduce((sum, entry) => sum + getEntryReportAmount(entry), 0);
   if (entries.length === 0 || totalAmount <= 0) {
     return [];
   }
 
   const perCategory = new Map<Category, number>();
   for (const entry of entries) {
-    perCategory.set(entry.category, (perCategory.get(entry.category) ?? 0) + entry.amount);
+    perCategory.set(
+      entry.category,
+      (perCategory.get(entry.category) ?? 0) + getEntryReportAmount(entry)
+    );
   }
 
   return Array.from(perCategory.entries())
@@ -447,12 +468,18 @@ function getSummaryStats(params: {
   now?: Date;
 }): TodaySummaryStats {
   const { allEntries, filteredEntries, preset, now = new Date() } = params;
-  const totalAmount = filteredEntries.reduce((sum, entry) => sum + entry.amount, 0);
+  const totalAmount = filteredEntries.reduce(
+    (sum, entry) => sum + getEntryReportAmount(entry),
+    0
+  );
   const trackedDays = new Set(allEntries.map((entry) => entry.date)).size;
   const last7Keys = Array.from({ length: 7 }, (_, index) => toDateKey(offsetDate(now, -(index + 1))));
   const dailyTotals = new Map<string, number>();
   for (const entry of allEntries) {
-    dailyTotals.set(entry.date, (dailyTotals.get(entry.date) ?? 0) + entry.amount);
+    dailyTotals.set(
+      entry.date,
+      (dailyTotals.get(entry.date) ?? 0) + getEntryReportAmount(entry)
+    );
   }
   const sevenDayTotal = last7Keys.reduce((sum, dateKey) => sum + (dailyTotals.get(dateKey) ?? 0), 0);
   const sevenDayAverage = sevenDayTotal / 7;

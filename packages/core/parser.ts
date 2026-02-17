@@ -18,6 +18,13 @@ interface SplitTokenParseError {
 
 type SplitTokenParseResult = SplitTokenParseSuccess | SplitTokenParseError;
 
+interface AmountTokenParseResult {
+  amount: number;
+  warnings: ParseWarning[];
+  consumedIndices: number[];
+  qtySuffixIndex?: number;
+}
+
 export function toISODate(date: Date): string {
   const year = date.getFullYear();
   const month = `${date.getMonth() + 1}`.padStart(2, "0");
@@ -96,6 +103,152 @@ function parseAmountToken(rawToken: string): { amount: number; warnings: ParseWa
   };
 }
 
+function parsePlainIntegerToken(rawToken: string): number | null {
+  const token = rawToken.trim();
+  if (!/^\d+$/.test(token)) {
+    return null;
+  }
+  const value = Number.parseInt(token, 10);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function parseStandaloneQtyToken(rawToken: string): number | null {
+  const token = rawToken.trim().toLowerCase();
+  if (!token || token === "+") {
+    return null;
+  }
+
+  const suffixMatch = token.match(/^(\d+)\s*[x×]$/i);
+  if (suffixMatch) {
+    const qty = Number.parseInt(suffixMatch[1], 10);
+    return Number.isFinite(qty) && qty > 0 ? qty : null;
+  }
+
+  const prefixMatch = token.match(/^[x×]\s*(\d+)$/i);
+  if (prefixMatch) {
+    const qty = Number.parseInt(prefixMatch[1], 10);
+    return Number.isFinite(qty) && qty > 0 ? qty : null;
+  }
+
+  return null;
+}
+
+function parseAmountTokenWithQuantity(
+  tokens: string[],
+  index: number,
+  searchLimit: number
+): AmountTokenParseResult | null {
+  const rawToken = tokens[index];
+  const operatorTokenRegex = /^[x×]$/i;
+
+  // Guard: token angka yang diikuti operator x/× + amount adalah qty, bukan nominal.
+  const plainInteger = parsePlainIntegerToken(rawToken);
+  if (plainInteger !== null && index + 1 < searchLimit) {
+    const nextToken = tokens[index + 1].trim();
+
+    if (
+      operatorTokenRegex.test(nextToken) &&
+      index + 2 < searchLimit &&
+      parseAmountToken(tokens[index + 2])
+    ) {
+      return null;
+    }
+
+    const nextXPrefixedAmount = nextToken.match(/^[x×]\s*(.+)$/i);
+    if (nextXPrefixedAmount && parseAmountToken(nextXPrefixedAmount[1])) {
+      return null;
+    }
+  }
+
+  // Guard: token operator tunggal tidak boleh dianggap nominal.
+  if (operatorTokenRegex.test(rawToken.trim())) {
+    return null;
+  }
+
+  const qtyBeforeCombined = rawToken.match(/^(\d+)\s*[x×]\s*(.+)$/i);
+  if (qtyBeforeCombined) {
+    const qty = Number.parseInt(qtyBeforeCombined[1], 10);
+    const parsedAmount = parseAmountToken(qtyBeforeCombined[2]);
+    if (parsedAmount && Number.isFinite(qty) && qty > 0) {
+      return {
+        amount: parsedAmount.amount * qty,
+        warnings: parsedAmount.warnings,
+        consumedIndices: [index]
+      };
+    }
+  }
+
+  const qtyAfterCombined = rawToken.match(/^(.+)\s*[x×]\s*(\d+)$/i);
+  if (qtyAfterCombined) {
+    const qty = Number.parseInt(qtyAfterCombined[2], 10);
+    const parsedAmount = parseAmountToken(qtyAfterCombined[1]);
+    if (parsedAmount && Number.isFinite(qty) && qty > 0) {
+      return {
+        amount: parsedAmount.amount * qty,
+        warnings: parsedAmount.warnings,
+        consumedIndices: [index]
+      };
+    }
+  }
+
+  const xPrefixedAmount = rawToken.match(/^[x×]\s*(.+)$/i);
+  if (xPrefixedAmount) {
+    const parsedAmount = parseAmountToken(xPrefixedAmount[1]);
+    const qtyBefore = index - 1 >= 0 ? parsePlainIntegerToken(tokens[index - 1]) : null;
+    if (parsedAmount && qtyBefore !== null) {
+      return {
+        amount: parsedAmount.amount * qtyBefore,
+        warnings: parsedAmount.warnings,
+        consumedIndices: [index],
+        qtySuffixIndex: index - 1
+      };
+    }
+  }
+
+  const parsedAmount = parseAmountToken(rawToken);
+  if (!parsedAmount) {
+    return null;
+  }
+
+  let quantity = 1;
+
+  if (index - 1 >= 0) {
+    const previousQty = parseStandaloneQtyToken(tokens[index - 1]);
+    if (previousQty !== null) {
+      quantity = previousQty;
+    } else if (
+      index - 2 >= 0 &&
+      operatorTokenRegex.test(tokens[index - 1].trim())
+    ) {
+      const previousPlainQty = parsePlainIntegerToken(tokens[index - 2]);
+      if (previousPlainQty !== null) {
+        quantity = previousPlainQty;
+      }
+    }
+  }
+
+  if (quantity === 1 && index + 1 < searchLimit) {
+    const nextQty = parseStandaloneQtyToken(tokens[index + 1]);
+    if (nextQty !== null) {
+      quantity = nextQty;
+    } else if (
+      index + 2 < searchLimit &&
+      operatorTokenRegex.test(tokens[index + 1].trim())
+    ) {
+      const nextPlainQty = parsePlainIntegerToken(tokens[index + 2]);
+      if (nextPlainQty !== null) {
+        quantity = nextPlainQty;
+      }
+    }
+  }
+
+  return {
+    amount: parsedAmount.amount * quantity,
+    warnings: parsedAmount.warnings,
+    consumedIndices: [index]
+  };
+}
+
 function parseSplitToken(tokens: string[]): SplitTokenParseResult {
   let splitCount: number | undefined;
   let splitTokenIndex = -1;
@@ -163,7 +316,9 @@ export function parseQuickAdd(
 
   if (hasAdditionOperator) {
     const additionWarnings: ParseWarning[] = [];
-    const amountIndices: number[] = [];
+    const excludedIndices = new Set<number>();
+    const qtySuffixIndices = new Set<number>();
+    let amountParts = 0;
     let summedAmount = 0;
     const searchLimit = splitTokenIndex === -1 ? tokens.length : splitTokenIndex;
 
@@ -172,28 +327,36 @@ export function parseQuickAdd(
         continue;
       }
 
-      const parsed = parseAmountToken(tokens[index]);
+      const parsed = parseAmountTokenWithQuantity(tokens, index, searchLimit);
       if (parsed) {
-        amountIndices.push(index);
+        for (const consumedIndex of parsed.consumedIndices) {
+          excludedIndices.add(consumedIndex);
+        }
+        if (typeof parsed.qtySuffixIndex === "number") {
+          qtySuffixIndices.add(parsed.qtySuffixIndex);
+        }
+        amountParts += 1;
         summedAmount += parsed.amount;
         additionWarnings.push(...parsed.warnings);
       }
     }
 
-    if (amountIndices.length >= 2) {
+    if (amountParts >= 2) {
       if (summedAmount <= 0) {
         return { ok: false, reason: "Nominal harus lebih dari 0." };
       }
 
-      const amountIndexSet = new Set(amountIndices);
       const textParts: string[] = [];
 
       for (let index = 0; index < searchLimit; index += 1) {
-        if (index === splitTokenIndex || amountIndexSet.has(index)) {
+        if (index === splitTokenIndex || excludedIndices.has(index)) {
           continue;
         }
 
-        const token = tokens[index];
+        let token = tokens[index];
+        if (qtySuffixIndices.has(index) && !/[x×]$/i.test(token)) {
+          token = `${token}x`;
+        }
         if (token !== "+") {
           textParts.push(token);
           continue;
@@ -201,7 +364,7 @@ export function parseQuickAdd(
 
         let hasTextBefore = false;
         for (let probe = index - 1; probe >= 0; probe -= 1) {
-          if (probe === splitTokenIndex || tokens[probe] === "+" || amountIndexSet.has(probe)) {
+          if (probe === splitTokenIndex || tokens[probe] === "+" || excludedIndices.has(probe)) {
             continue;
           }
           hasTextBefore = true;
@@ -210,7 +373,7 @@ export function parseQuickAdd(
 
         let hasTextAfter = false;
         for (let probe = index + 1; probe < searchLimit; probe += 1) {
-          if (probe === splitTokenIndex || tokens[probe] === "+" || amountIndexSet.has(probe)) {
+          if (probe === splitTokenIndex || tokens[probe] === "+" || excludedIndices.has(probe)) {
             continue;
           }
           hasTextAfter = true;
@@ -230,6 +393,8 @@ export function parseQuickAdd(
           .replace(/\s+,/g, ",")
           .replace(/,\s+/g, ", ")
           .replace(/,\s*,+/g, ", ")
+          .replace(/\b(\d+)\s+[x×]\b/gi, "$1x")
+          .replace(/\b[x×]\s+(\d+)\b/gi, "x$1")
           .trim() || "Pengeluaran";
       const warnings: ParseWarning[] = [
         ...splitTokenResult.warnings,
@@ -238,7 +403,7 @@ export function parseQuickAdd(
           code: "AMOUNT_SUMMED",
           message: "Nominal dijumlahkan otomatis",
           meta: {
-            parts: amountIndices.length,
+            parts: amountParts,
             total: summedAmount
           }
         }
@@ -260,21 +425,23 @@ export function parseQuickAdd(
   }
 
   const searchLimit = splitTokenIndex === -1 ? tokens.length : splitTokenIndex;
-  let amountIndex = -1;
+  let amountIndices: number[] = [];
+  let qtySuffixIndices: number[] = [];
   let amountValue: number | null = null;
   let amountWarnings: ParseWarning[] = [];
 
   for (let index = searchLimit - 1; index >= 0; index -= 1) {
-    const parsed = parseAmountToken(tokens[index]);
+    const parsed = parseAmountTokenWithQuantity(tokens, index, searchLimit);
     if (parsed !== null) {
       amountValue = parsed.amount;
-      amountIndex = index;
+      amountIndices = parsed.consumedIndices;
+      qtySuffixIndices = typeof parsed.qtySuffixIndex === "number" ? [parsed.qtySuffixIndex] : [];
       amountWarnings = parsed.warnings;
       break;
     }
   }
 
-  if (amountIndex === -1 || amountValue === null) {
+  if (amountIndices.length === 0 || amountValue === null) {
     return { ok: false, reason: "Nominal tidak ditemukan." };
   }
 
@@ -282,8 +449,25 @@ export function parseQuickAdd(
     return { ok: false, reason: "Nominal harus lebih dari 0." };
   }
 
-  const textTokens = tokens.filter((_, index) => index !== amountIndex && index !== splitTokenIndex);
-  const text = textTokens.join(" ").trim() || "Pengeluaran";
+  const amountIndexSet = new Set(amountIndices);
+  const qtySuffixSet = new Set(qtySuffixIndices);
+  const textTokens = tokens
+    .map((token, index) => {
+      if (amountIndexSet.has(index) || index === splitTokenIndex) {
+        return null;
+      }
+      if (qtySuffixSet.has(index) && !/[x×]$/i.test(token)) {
+        return `${token}x`;
+      }
+      return token;
+    })
+    .filter((token): token is string => token !== null);
+  const text =
+    textTokens
+      .join(" ")
+      .replace(/\b(\d+)\s+[x×]\b/gi, "$1x")
+      .replace(/\b[x×]\s+(\d+)\b/gi, "x$1")
+      .trim() || "Pengeluaran";
 
   return {
     ok: true,

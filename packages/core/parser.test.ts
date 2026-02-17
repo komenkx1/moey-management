@@ -25,6 +25,60 @@ describe("parseQuickAdd", () => {
     }
   });
 
+  it("parses quantity format 3x 15k", () => {
+    const result = parseQuickAdd("makan 3x 15k");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.text).toBe("makan 3x");
+      expect(result.value.amount).toBe(45_000);
+    }
+  });
+
+  it("parses quantity format x3 15k", () => {
+    const result = parseQuickAdd("makan x3 15k");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.text).toBe("makan x3");
+      expect(result.value.amount).toBe(45_000);
+    }
+  });
+
+  it("parses quantity format 15k x3", () => {
+    const result = parseQuickAdd("makan 15k x3");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.text).toBe("makan x3");
+      expect(result.value.amount).toBe(45_000);
+    }
+  });
+
+  it("parses combined quantity token 2x5000", () => {
+    const result = parseQuickAdd("aqua 2x5000");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.text).toBe("aqua");
+      expect(result.value.amount).toBe(10_000);
+    }
+  });
+
+  it("parses quantity format with spaced operator 3 x 15k", () => {
+    const result = parseQuickAdd("makan 3 x 15k");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.text).toBe("makan 3x");
+      expect(result.value.amount).toBe(45_000);
+    }
+  });
+
+  it("parses quantity format with partial spacing 3 x15k", () => {
+    const result = parseQuickAdd("makan 3 x15k");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.text).toBe("makan 3x");
+      expect(result.value.amount).toBe(45_000);
+    }
+  });
+
   it("parses cleaned amount token", () => {
     const result = parseQuickAdd("kopi Rp18k,");
     expect(result.ok).toBe(true);
@@ -142,6 +196,16 @@ describe("parseQuickAdd", () => {
     if (result.ok) {
       expect(result.value.amount).toBe(35_000);
       expect(result.value.splitCount).toBe(3);
+      expect(result.warnings?.some((warning) => warning.code === "AMOUNT_SUMMED")).toBe(true);
+    }
+  });
+
+  it("sums quantity formats in addition mode", () => {
+    const result = parseQuickAdd("Gacoan - mie x2 25k + es x1 10k + pajak 5k");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.amount).toBe(65_000);
+      expect(result.value.text).toBe("Gacoan - mie x2, es x1, pajak");
       expect(result.warnings?.some((warning) => warning.code === "AMOUNT_SUMMED")).toBe(true);
     }
   });
