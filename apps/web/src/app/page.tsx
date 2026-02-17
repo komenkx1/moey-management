@@ -303,13 +303,43 @@ function getFilterLabel(preset: DateFilterPreset): string {
   }
 }
 
-function getSpendingStatus(todayTotal: number, sevenDayAverage: number): SpendingStatus {
+function getSpendingStatus(params: {
+  todayTotal: number;
+  sevenDayAverage: number;
+  trackedDays: number;
+}): SpendingStatus {
+  const { todayTotal, sevenDayAverage, trackedDays } = params;
+
   if (todayTotal === 0) {
     return { label: "Hemat 🎉", tone: "hemat" };
   }
 
+  // Data masih sangat sedikit: kasih observasi, bukan judgement.
+  if (trackedDays < 3) {
+    return { label: "Lagi ngumpulin pola dulu", tone: "normal" };
+  }
+
+  // Data belum stabil: tetap supportif.
+  if (trackedDays < 7) {
+    return { label: "Masih belajar pola pengeluaranmu", tone: "normal" };
+  }
+
   if (sevenDayAverage <= 0) {
     return { label: "Normal 🙂", tone: "normal" };
+  }
+
+  // Sudah bisa dibandingkan, tapi belum cukup lama untuk label keras.
+  if (trackedDays < 21) {
+    if (todayTotal < sevenDayAverage * 0.6) {
+      return { label: "Lebih ringan dari biasanya", tone: "aman" };
+    }
+    if (todayTotal < sevenDayAverage * 1.2) {
+      return { label: "Masih di kisaran biasa", tone: "normal" };
+    }
+    if (todayTotal < sevenDayAverage * 1.8) {
+      return { label: "Hari ini agak banyak", tone: "lumayan" };
+    }
+    return { label: "Lebih besar dari biasanya hari ini", tone: "lumayan" };
   }
 
   if (todayTotal < sevenDayAverage * 0.6) {
@@ -418,6 +448,7 @@ function getSummaryStats(params: {
 }): TodaySummaryStats {
   const { allEntries, filteredEntries, preset, now = new Date() } = params;
   const totalAmount = filteredEntries.reduce((sum, entry) => sum + entry.amount, 0);
+  const trackedDays = new Set(allEntries.map((entry) => entry.date)).size;
   const last7Keys = Array.from({ length: 7 }, (_, index) => toDateKey(offsetDate(now, -(index + 1))));
   const dailyTotals = new Map<string, number>();
   for (const entry of allEntries) {
@@ -429,8 +460,18 @@ function getSummaryStats(params: {
   const topCategories = getTopCategoryBreakdown(filteredEntries);
 
   if (preset === "today") {
-    const status = getSpendingStatus(totalAmount, sevenDayAverage);
+    const status = getSpendingStatus({
+      todayTotal: totalAmount,
+      sevenDayAverage,
+      trackedDays
+    });
     const emptyState = filteredEntries.length === 0 ? getSmartEmptyState(allEntries, now) : null;
+    const compareText =
+      trackedDays < 3
+        ? `Baru ${trackedDays} hari data, insight masih awal.`
+        : trackedDays < 7
+          ? `Masih belajar dari ${trackedDays} hari catatan.`
+          : `Rata-rata 7 hari: Rp${formatAmountIDR(Math.round(sevenDayAverage))}`;
 
     return {
       periodLabel: getFilterLabel(preset),
@@ -439,7 +480,7 @@ function getSummaryStats(params: {
       topCategory,
       topCategories,
       sevenDayAverage,
-      compareText: `Rata-rata 7 hari: Rp${formatAmountIDR(Math.round(sevenDayAverage))}`,
+      compareText,
       status,
       emptyState
     };
