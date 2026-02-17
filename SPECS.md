@@ -1,5 +1,18 @@
 # KeMana MVP Specs
 
+## 0. Status Implementasi (Per 17 Februari 2026)
+- [x] Quick Add parser + warning system terstruktur.
+- [x] Quick Add inline addition (`+`) dengan total otomatis.
+- [x] Dense list + expand row + inline edit.
+- [x] Split equal/custom + validasi selisih.
+- [x] Bulk paste multi-line + preview.
+- [x] Category rule sederhana (remember dari koreksi kategori).
+- [x] Local persistence single-device (localStorage).
+- [x] PWA minimal + offline badge + safe update banner.
+- [x] Parser regression tests aktif (`19` test lulus).
+- [ ] Dexie migration (target berikutnya, belum aktif).
+- [ ] Backend/auth/sync/RLS (tetap Phase 2, belum implementasi).
+
 ## 1. Acceptance Criteria per Fitur
 
 ## 1.1 Quick Add
@@ -48,6 +61,11 @@ Given user ingin ubah kategori atau nominal
 When user melakukan aksi dari entry row/expand  
 Then perubahan selesai maksimal 2 interaksi utama.
 
+### QA-10 Inline Addition Nominal
+Given user memasukkan `gacoan 25 + 10 + 5`  
+When parser berjalan  
+Then amount tersimpan `40000` dan sistem memberi warning non-blocking bahwa nominal dijumlahkan otomatis.
+
 ## 1.2 Split Bill
 ### SB-01 Equal Split
 Given entry amount 100000 dengan 3 orang (termasuk kamu)  
@@ -72,7 +90,9 @@ Then remainder dibagikan dengan urutan orang stabil sehingga hasil konsisten.
 ### SB-05 Ringkasan Owes
 Given split tersimpan  
 When user kembali ke entry detail  
-Then ringkasan menampilkan format `Nama owes kamu X` untuk setiap debtor.
+Then ringkasan menampilkan:
+- daftar `Pembagian` (`Nama bayar RpX`)
+- daftar settlement sekunder (`Nama ganti ke Payer RpX`).
 
 ## 1.3 People Minimal
 ### PP-01 Buat People Saat Split
@@ -116,6 +136,7 @@ Then semua fitur inti tetap berfungsi tanpa ketergantungan backend.
 Given user sudah menyimpan data di aplikasi  
 When user menutup dan membuka ulang tab/app pada device yang sama  
 Then data tetap ada selama storage browser tidak dihapus oleh user/OS.
+And state hydration tidak menimpa data lokal saat refresh development mode.
 
 ### SD-03 Fast Interaction Guarantee
 Given user menekan `Tambah` pada Quick Add  

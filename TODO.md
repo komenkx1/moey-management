@@ -1,5 +1,12 @@
 # TODO Eksekusi MVP KeMana (Single-Device First)
 
+## 0. Progress Update (Per 17 Februari 2026)
+- Phase 1 core UX sudah usable untuk dogfooding single-device.
+- Parser + split + rules sudah dipisah ke `packages/core`.
+- Storage adapter local-first aktif di `packages/storage` (localStorage).
+- PWA minimal + offline/update flow sudah aktif.
+- Fokus sisa Phase 1: validasi metrik latency/habit dan migrasi storage ke Dexie (tanpa ubah domain contract).
+
 ## 1. Prinsip Eksekusi
 - Fokus pengiriman 7 hari: Quick Add -> List -> Edit -> Split -> Bulk Paste.
 - Jangan keluar scope MVP.
@@ -15,63 +22,70 @@ Status:
 - Fokus 48 jam pertama: pengalaman add cepat dan list padat sudah terasa "lebih cepat dari notes/excel".
 
 ## 2.0 No-thinking Rule (Wajib Selama Phase 1)
-- [ ] Tidak boleh ada modal blocking atau route change saat add entry.
-- [ ] Add harus acknowledgement instan (`< 100ms`) tanpa spinner.
-- [ ] Semua edit utama harus inline dari list/detail expand.
+- [x] Tidak boleh ada modal blocking atau route change saat add entry.
+- [x] Add harus acknowledgement instan (`< 100ms`) tanpa spinner.
+- [x] Semua edit utama harus inline dari list/detail expand.
 
 ## 2.1 Hari 1 - Thin Slice Start (`/apps/web` only)
-- [ ] Setup minimal `apps/web` untuk jalankan composer + list secepat mungkin.
-- [ ] Buat model entry sederhana + local repository berbasis localStorage.
-- [ ] Implement flow add instan: ketik -> enter/tap -> entry langsung muncul di list.
-- [ ] Render dense list dasar yang usable di mobile.
+- [x] Setup minimal `apps/web` untuk jalankan composer + list secepat mungkin.
+- [x] Buat model entry sederhana + local repository berbasis localStorage.
+- [x] Implement flow add instan: ketik -> enter/tap -> entry langsung muncul di list.
+- [x] Render dense list dasar yang usable di mobile.
 
 ## 2.2 Hari 2 - Parser Pure TS (masih dekat app)
-- [ ] Tulis parser/split logic sebagai pure TypeScript di `/apps/web/src/core/*` (sementara).
-- [ ] Definisikan entity/value object: Entry, Person, Split, Rule.
-- [ ] Definisikan kontrak parser input single-line.
-- [ ] Implement normalisasi amount (k/rb/jt, separator, heuristik ribuan).
-- [ ] Implement parser split token (`np`) + validasi dasar.
-- [ ] Implement formatter amount compact (`k`, `jt`) untuk tampilan.
-- [ ] Unit test parser: happy path + edge cases dari `PLANS.md`.
+- [x] Tulis parser/split logic sebagai pure TypeScript di `/apps/web/src/core/*` (sementara).
+- [x] Definisikan entity/value object: Entry, Person, Split, Rule.
+- [x] Definisikan kontrak parser input single-line.
+- [x] Implement normalisasi amount (k/rb/jt, separator, heuristik ribuan).
+- [x] Implement parser split token (`np`) + validasi dasar.
+- [x] Implement formatter amount compact (`k`, `jt`) untuk tampilan.
+- [x] Unit test parser: happy path + edge cases dari `PLANS.md`.
 
 ## 2.3 Hari 3 - Quick Add + Dense List Harus Usable
-- [ ] Build home shell mobile-first (composer + dense list).
-- [ ] Integrasi Quick Add stream dengan parse preview debounced.
-- [ ] Implement aksi `Tambah` dengan save lokal instan.
-- [ ] Implement inline edit dasar (text/amount/category) dari list.
-- [ ] Seed kategori default + fallback `Lainnya`.
-- [ ] Implement category remember sederhana berbasis keyword/merchant lokal.
-- [ ] Tampilkan warning parse ambigu secara inline (tanpa modal blocking).
+- [x] Build home shell mobile-first (composer + dense list).
+- [x] Integrasi Quick Add stream dengan parse preview debounced.
+- [x] Implement aksi `Tambah` dengan save lokal instan.
+- [x] Implement inline edit dasar (text/amount/category) dari list.
+- [x] Seed kategori default + fallback `Lainnya`.
+- [x] Implement category remember sederhana berbasis keyword/merchant lokal.
+- [x] Tampilkan warning parse ambigu secara inline (tanpa modal blocking).
 
 ## 2.4 Hari 4 - Rapikan Arsitektur (Fake Monorepo -> Target)
 - [ ] Buat struktur target monorepo (`/apps/web`, `/apps/mobile`, `/packages/core`, `/packages/infra`).
-- [ ] Pindahkan pure core logic dari `/apps/web/src/core/*` ke `/packages/core` tanpa ubah perilaku.
-- [ ] Setup TypeScript references/workspace seperlunya setelah UX baseline terbukti.
+- [x] Pindahkan pure core logic dari `/apps/web/src/core/*` ke `/packages/core` tanpa ubah perilaku.
+- [x] Setup TypeScript references/workspace seperlunya setelah UX baseline terbukti.
 - [ ] Migrasi storage dari localStorage ke Dexie dengan one-time migration lokal.
 
 ## 2.5 Hari 5 - Split Equal + Custom
-- [ ] Implement equal split calculator (integer, deterministic remainder).
-- [ ] Implement custom split validator (sum harus sama).
-- [ ] Build split editor UI (equal/custom).
-- [ ] Build people quick-create (name only).
-- [ ] Simpan dan tampilkan ringkasan owes pada entry.
+- [x] Implement equal split calculator (integer, deterministic remainder).
+- [x] Implement custom split validator (sum harus sama).
+- [x] Build split editor UI (equal/custom).
+- [x] Build people quick-create (name only).
+- [x] Simpan dan tampilkan ringkasan pembagian + settlement pada entry.
 
 ## 2.6 Hari 6 - Bulk Paste + Latency Tuning
-- [ ] Implement bulk paste sheet + preview + simpan parsial.
+- [x] Implement bulk paste sheet + preview + simpan parsial.
 - [ ] Implement batched write Dexie (`bulkPut`) untuk multi-entry.
-- [ ] Pastikan semua read/write UI berasal dari store lokal.
+- [x] Pastikan semua read/write UI berasal dari store lokal.
 - [ ] Tuning performa interaksi add/edit agar target ack `< 100ms` tetap tercapai.
 
 ## 2.7 Hari 7 - Stabilization dan Dogfooding
 - [ ] E2E core flow offline: quick add, inline edit, split equal/custom, bulk paste.
-- [ ] Regression test parser untuk edge cases utama.
+- [x] Regression test parser untuk edge cases utama.
 - [ ] UAT internal di mobile web (Safari + Chrome Android).
-- [ ] Bugfix blocker dan final polish microcopy.
+- [x] Bugfix blocker dan final polish microcopy.
 
-## 2.8 Quality Gate Phase 1 (Harus Lolos)
-- [ ] Semua core flow berfungsi saat perangkat offline.
+## 2.8 PWA & Update Reliability (Tambahan Phase 0.5)
+- [x] Manifest web app + metadata install di Next App Router.
+- [x] Service worker minimal untuk offline shell + static assets.
+- [x] Offline/online status badge non-blocking.
+- [x] Safe update banner (`Update tersedia`) + reload by user action.
+- [x] Versioned SW build (template + inject version dari `package.json`).
+
+## 2.9 Quality Gate Phase 1 (Harus Lolos)
+- [x] Semua core flow berfungsi saat perangkat offline.
 - [ ] Add interaction terasa instan (target acknowledgement `< 100ms` pada device creator).
-- [ ] Tidak ada data loss selama storage browser/tab tidak dihapus.
+- [x] Tidak ada data loss selama storage browser/tab tidak dihapus.
 - [ ] Creator berhasil dogfooding harian minimal 5 dari 7 hari.
 
 ## 3. PHASE 2 (Backend & Sync Activation) - PRESERVE DESIGN, NO IMPLEMENTATION NOW

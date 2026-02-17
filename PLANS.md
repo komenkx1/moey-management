@@ -1,5 +1,31 @@
 # KeMana MVP Masterplan
 
+## 0. Progress Snapshot (Per 17 Februari 2026)
+### Sudah Selesai (Phase 0/1)
+- Arsitektur repo aktif: `apps/web`, `packages/core`, `packages/storage` (core logic terpisah dari UI Next.js).
+- Quick Add parser production-ready untuk pola utama:
+  - `kopi 18`, `parkir 2k`, `dinner 120 3p`
+  - nominal dengan cleaning (`Rp18k,`, `(18k)`)
+  - inline summation (`25 + 10 + 5`, termasuk tanpa spasi tertentu) + warning terstruktur.
+- Dense list + expand row inline, edit inline, category chips, split equal/custom, bulk paste.
+- Warning UI non-blocking, delete dengan undo toast, composer autofocus + Enter submit.
+- Local-first persistence aktif via localStorage + guard hydration (mencegah data ketimpa kosong di dev refresh).
+- PWA minimal aktif:
+  - manifest + service worker template (`sw.template.js`)
+  - offline access dasar setelah first online load
+  - offline badge + safe update banner (`Update tersedia -> Muat ulang`)
+  - cache versioning mengikuti versi app.
+- Test parser: `19` test lulus (`vitest`).
+
+### Sedang Berjalan
+- Polishing UX dense layout, microcopy, dan indikator status online/offline.
+- Dokumentasi deployment/release untuk flow solo dev + GitHub/Vercel.
+
+### Belum Diaktifkan (Tetap Sesuai Desain)
+- Dexie/IndexedDB sebagai storage utama (masih localStorage untuk validasi cepat).
+- Backend Supabase, RLS, auth, sync queue, conflict resolution.
+- OCR upload/scan flow.
+
 ## 1. Product Goal
 KeMana adalah aplikasi pencatatan pengeluaran super cepat dengan fokus utama:
 - Menangkap pengeluaran harian secepat chat.
@@ -53,7 +79,8 @@ KeMana adalah aplikasi pencatatan pengeluaran super cepat dengan fokus utama:
 - Mengurangi noise bug jaringan/auth sehingga evaluasi fokus pada kecepatan capture.
 
 ### Phase 1 (Active Implementation, Local-First Only)
-- IndexedDB (Dexie) menjadi single source of truth.
+- LocalStorage menjadi single source of truth saat ini (active implementation).
+- Dexie tetap target migrasi berikutnya tanpa mengubah domain logic.
 - Tanpa login, tanpa backend, tanpa sync, tanpa upload file, tanpa anonymous auth.
 - Implementation tactic: mulai dengan localStorage untuk validasi "feel" cepat, lalu migrasi ke Dexie.
 - Prioritas implementasi:
@@ -119,8 +146,8 @@ KeMana adalah aplikasi pencatatan pengeluaran super cepat dengan fokus utama:
   - `Custom`.
 - Tambah orang langsung di tempat (nama saja).
 - Ringkasan instan:
-  - `Budi owes kamu 33k`
-  - `Sinta owes kamu 33k`
+  - `Pembagian: Budi bayar 33k`
+  - `Settlement: Budi ganti ke Kamu 33k`
 
 ### 5.6 Progressive Onboarding
 - First use: tanpa signup wall.
@@ -186,9 +213,9 @@ Contoh valid:
   - Minimal 1 orang selain payer jika mode split aktif.
 
 ## 7.3 Ringkasan Owes
-- Tampilkan hanya orang dengan kewajiban > 0 terhadap payer.
+- Tampilkan daftar pembagian per orang (`Nama bayar RpX`) untuk semua participant.
+- Tampilkan settlement sekunder untuk orang dengan kewajiban > 0 terhadap payer (`Nama ganti ke Payer RpX`).
 - Format compact amount: `33k`, `1.2jt`.
-- Contoh: `Budi owes kamu 33k`.
 
 ## 7.4 Aturan Rounding
 - Perhitungan internal tetap integer Rupiah (tanpa float).
@@ -270,7 +297,8 @@ Catatan strategi:
 - Bagian sync (11.2-11.4) dipertahankan sebagai desain Phase 2, belum diimplementasikan sekarang.
 
 ## 11.1 Local-First
-- Semua create/update/delete masuk Dexie dulu (optimistic UI).
+- Semua create/update/delete masuk localStorage dulu (optimistic UI) pada implementasi saat ini.
+- Migrasi ke Dexie tetap direncanakan sebagai langkah berikutnya tanpa ubah kontrak domain.
 - UI selalu membaca dari local store.
 - Tidak ada sync queue aktif pada Phase 1.
 
@@ -447,6 +475,12 @@ Ancaman utama:
 - Hari 5: split equal + split custom + validasi rounding.
 - Hari 6: bulk paste + polishing kecepatan input/list.
 - Hari 7: test core flow offline + dogfooding creator + bug fix.
+
+## 16.1 Status Aktual terhadap Milestone
+- Hari 1-3: `Done` (thin slice usable, quick add + dense list + inline edit berjalan).
+- Hari 4: `Partial` (core logic sudah dipindah ke `packages/core`, storage masih localStorage).
+- Hari 5-6: `Done` untuk split equal/custom + bulk paste; `Partial` untuk tuning berbasis metrik.
+- Hari 7: `Partial` (parser regression tests sudah ada; dogfooding habit metric belum difinalisasi).
 
 ## Phase 2 (Future Activation, No Implementation Yet)
 - Aktivasi Supabase schema + RLS + storage policy.
