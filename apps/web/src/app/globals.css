@@ -113,6 +113,31 @@ select {
   color: #737370;
 }
 
+.hint.teaching {
+  font-size: 12px;
+  color: #5c6f73;
+  background: transparent;
+  border-left: 2px solid #c9d7da;
+  padding-left: 8px;
+  margin-top: 4px;
+  line-height: 1.2;
+  max-width: 100%;
+}
+
+.hint-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-decoration: underline dotted;
+  font-size: 12px;
+  color: #737370;
+  cursor: pointer;
+}
+
+.format-help {
+  margin-top: 4px;
+}
+
 .hint.preview-row {
   display: flex;
   align-items: flex-start;

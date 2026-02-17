@@ -11,6 +11,7 @@ import {
   CategoryRules,
   Entry,
   EntrySource,
+  ParseQuickAddResult,
   EntrySplit,
   ParseWarning
 } from "@kemana/core/types";
@@ -38,6 +39,7 @@ export default function HomePage() {
   const [debouncedQuickInput, setDebouncedQuickInput] = useState("");
   const [quickError, setQuickError] = useState<string | null>(null);
   const [showQuickWarningDetails, setShowQuickWarningDetails] = useState(false);
+  const [showFormatHelp, setShowFormatHelp] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkInput, setBulkInput] = useState("");
   const [undoToast, setUndoToast] = useState<UndoToastState | null>(null);
@@ -105,6 +107,20 @@ export default function HomePage() {
     }
     return parseQuickAdd(debouncedQuickInput);
   }, [debouncedQuickInput]);
+  const showTeachingHint = useMemo(
+    () =>
+      shouldShowTeachingHint({
+        input: quickInput,
+        preview: quickPreview,
+        bulkOpen,
+        quickError
+      }),
+    [quickInput, quickPreview, bulkOpen, quickError]
+  );
+  const teachingHintText = useMemo(
+    () => (showTeachingHint ? getTeachingHint(quickInput) : null),
+    [showTeachingHint, quickInput]
+  );
   const quickPreviewTextParts = quickPreview?.ok ? splitDisplayText(quickPreview.value.text) : null;
   const summedAmountMeta = quickPreview?.ok ? extractSummedAmountMeta(quickPreview.warnings) : null;
   const isSummationInput = summedAmountMeta !== null;
@@ -272,6 +288,7 @@ export default function HomePage() {
             value={quickInput}
             onChange={(event) => {
               setQuickInput(event.target.value);
+              setQuickError(null);
               setShowQuickWarningDetails(false);
             }}
             placeholder="contoh: kopi 18 | Gacoan - mie 25 + es 10 + pajak 5 | dinner 120 3p"
@@ -286,7 +303,21 @@ export default function HomePage() {
             Tambah
           </button>
         </div>
-        <div className="hint subtle">Tip: bisa jumlahkan pakai + :  (contoh: nasi 25 + kopi 10 + garam 5)</div>
+        <div>
+          <button
+            type="button"
+            className="hint-link"
+            onClick={() => setShowFormatHelp((prev) => !prev)}
+            aria-expanded={showFormatHelp}
+          >
+            Format
+          </button>
+          {showFormatHelp ? (
+            <div className="hint subtle format-help">
+              contoh: `kopi 18` • `Gacoan - nasi 10k + mie 10k` • `dinner 120 3p`
+            </div>
+          ) : null}
+        </div>
 
         {quickPreview?.ok && (
           <div className="hint preview-row">
@@ -346,8 +377,8 @@ export default function HomePage() {
             </div>
           </div>
         )}
-        {quickPreview && !quickPreview.ok && <div className="error subtle">{quickPreview.reason}</div>}
         {quickError && <div className="error subtle">{quickError}</div>}
+        {showTeachingHint ? <div className="hint teaching">{teachingHintText}</div> : null}
 
         {showQuickWarningDetails && quickPreview?.ok && quickPreview.warnings?.length ? (
           <ul className="warning-list">
@@ -597,6 +628,61 @@ function extractDisplayItems(text: string): { name: string; amount?: number }[] 
       amount
     };
   });
+}
+
+function shouldShowTeachingHint(params: {
+  input: string;
+  preview: ParseQuickAddResult | null;
+  bulkOpen: boolean;
+  quickError: string | null;
+}): boolean {
+  const { input, preview, bulkOpen, quickError } = params;
+  const trimmed = input.trim();
+
+  if (bulkOpen) {
+    return false;
+  }
+
+  if (quickError !== null) {
+    return false;
+  }
+
+  if (trimmed.length < 3) {
+    return false;
+  }
+
+  if (preview?.ok === true) {
+    return false;
+  }
+
+  const hasLetter = /[a-z]/i.test(trimmed);
+  const hasDigit = /\d/.test(trimmed);
+  const hasSplitToken = /\b\d+p\b/i.test(trimmed);
+  const withoutSplitToken = trimmed.replace(/\b\d+p\b/gi, " ");
+  const hasNominalDigit = /\d/.test(withoutSplitToken);
+
+  if (hasLetter && !hasDigit) {
+    return true;
+  }
+
+  if (hasSplitToken && !hasNominalDigit) {
+    return true;
+  }
+
+  return false;
+}
+
+function getTeachingHint(input: string): string {
+  const trimmed = input.trim();
+  const hasSplitToken = /\b\d+p\b/i.test(trimmed);
+  const withoutSplitToken = trimmed.replace(/\b\d+p\b/gi, " ");
+  const hasNominalDigit = /\d/.test(withoutSplitToken);
+
+  if (hasSplitToken && !hasNominalDigit) {
+    return "Tambah harga dulu: contoh `Gacoan 32k 3p`";
+  }
+
+  return "Tambah nominal: contoh `Gacoan 32k`";
 }
 
 function EntryRow({
