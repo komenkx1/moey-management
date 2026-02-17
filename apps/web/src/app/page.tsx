@@ -1010,7 +1010,7 @@ export default function HomePage() {
   }
 
   return (
-    <main className="page">
+    <main className="page safe-top app-shell">
       <h1 className="title">KeMana</h1>
       <p className="subtitle">Biar tau uangmu kemana</p>
       {storageWarning ? <div className="storage-warning">{storageWarning}</div> : null}

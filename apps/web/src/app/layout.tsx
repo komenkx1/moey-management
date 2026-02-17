@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import SWRegister from "./sw-register";
+import ThemeColorSync from "./theme-color";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -8,7 +9,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "KeMana"
   },
   icons: {
@@ -22,7 +23,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0f2f33"
+  themeColor: "#0f2f33",
+  viewportFit: "cover"
 };
 
 export default function RootLayout({
@@ -32,15 +34,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id">
-      <head>
-        <link rel="manifest" href="/manifest.webmanifest" />
-        <meta name="theme-color" content="#0f2f33" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
-        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
-      </head>
       <body>
         {children}
+        <ThemeColorSync />
         <SWRegister />
       </body>
     </html>
