@@ -730,6 +730,7 @@ function EntryRow({
               Simpan
             </button>
           </div>
+          <hr className="section-divider" />
 
           <div className="chip-group">
             {CATEGORIES.map((category) => (
@@ -764,7 +765,6 @@ function EntryRow({
               </ul>
             </div>
           ) : null}
-          <hr />
           <div className="row-actions compact">
             <button className="btn ghost btn-sm" type="button" onClick={() => setSplitOpen((prev) => !prev)}>
               {splitOpen ? "Tutup Split" : "Split"}
