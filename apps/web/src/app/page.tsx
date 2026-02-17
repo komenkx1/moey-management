@@ -96,6 +96,14 @@ interface TodaySummaryStats {
   emptyState: SmartEmptyState | null;
 }
 
+interface ItemLine {
+  label: string;
+  qty?: number;
+  amount?: number;
+  amountRaw?: string;
+  raw: string;
+}
+
 function toDateKey(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -489,6 +497,23 @@ function paymentMethodLabel(value: PaymentMethod | undefined): string {
   }
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function detectQtyTokens(text: string): boolean {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return false;
+  }
+
+  return (
+    /\b\d+\s*[x×]\s*\d+\b/i.test(normalized) ||
+    /\b[a-zA-Z][\w-]*(?:\s+[a-zA-Z][\w-]*)*\s+[x×]\s*\d+\b/i.test(normalized) ||
+    /\b\d+\s*[x×]\s*[a-zA-Z][\w-]*/i.test(normalized)
+  );
+}
+
 export default function HomePage() {
   const appVersion = process.env.NEXT_PUBLIC_APP_VERSION ?? "dev";
   const [isStorageReady, setIsStorageReady] = useState(false);
@@ -507,7 +532,6 @@ export default function HomePage() {
   const [debouncedQuickInput, setDebouncedQuickInput] = useState("");
   const [quickError, setQuickError] = useState<string | null>(null);
   const [showQuickWarningDetails, setShowQuickWarningDetails] = useState(false);
-  const [showFormatHelp, setShowFormatHelp] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkInput, setBulkInput] = useState("");
   const [undoToast, setUndoToast] = useState<UndoToastState | null>(null);
@@ -622,23 +646,17 @@ export default function HomePage() {
     }
     return parseQuickAdd(debouncedQuickInput);
   }, [debouncedQuickInput]);
-  const showTeachingHint = useMemo(
-    () =>
-      shouldShowTeachingHint({
-        input: quickInput,
-        preview: quickPreview,
-        bulkOpen,
-        quickError
-      }),
-    [quickInput, quickPreview, bulkOpen, quickError]
-  );
-  const teachingHintText = useMemo(
-    () => (showTeachingHint ? getTeachingHint(quickInput) : null),
-    [showTeachingHint, quickInput]
+  const adaptiveHints = useMemo(
+    () => getInputHints(quickInput, quickPreview),
+    [quickInput, quickPreview]
   );
   const quickPreviewTextParts = quickPreview?.ok ? splitDisplayText(quickPreview.value.text) : null;
   const summedAmountMeta = quickPreview?.ok ? extractSummedAmountMeta(quickPreview.warnings) : null;
   const isSummationInput = summedAmountMeta !== null;
+  const quickPreviewSubtitleBreakdown =
+    quickPreviewTextParts?.subtitle
+      ? parseItemBreakdownFromSubtitle(quickPreviewTextParts.subtitle)
+      : null;
   const quickPreviewSubtitleItems =
     quickPreviewTextParts?.subtitle ? splitSubtitleItems(quickPreviewTextParts.subtitle) : null;
 
@@ -979,22 +997,15 @@ export default function HomePage() {
             Tambah
           </button>
         </div>
-        <div>
-          <button
-            type="button"
-            className="hint-link"
-            onClick={() => setShowFormatHelp((prev) => !prev)}
-            aria-expanded={showFormatHelp}
-          >
-            Format
-          </button>
-          {showFormatHelp ? (
-            <div className="hint subtle format-help">
-              contoh: `kopi 18` • `Gacoan - nasi 10k + mie 10k` • `dinner 120 3p`
-            </div>
-          ) : null}
-          <div className="hint subtle quick-tip">Tip: bisa jumlahkan pakai + (25 + 10 + 5)</div>
-        </div>
+        {adaptiveHints.length ? (
+          <div className="smart-hints">
+            {adaptiveHints.map((hint, index) => (
+              <div key={`${hint}-${index}`} className="hint subtle smart-hint">
+                {hint}
+              </div>
+            ))}
+          </div>
+        ) : null}
 
         {quickPreview?.ok && (
           <div className="hint preview-row">
@@ -1002,7 +1013,18 @@ export default function HomePage() {
               {quickPreviewTextParts?.subtitle ? (
                 <>
                   <div className="preview-title">{quickPreviewTextParts.title}</div>
-                  {quickPreviewSubtitleItems ? (
+                  {quickPreviewSubtitleBreakdown ? (
+                    <div className="subtitle-items">
+                      {quickPreviewSubtitleBreakdown.slice(0, 3).map((item, index) => (
+                        <span key={`${item.raw}-${index}`} className="item-pill">
+                          {formatItemPillText(item)}
+                        </span>
+                      ))}
+                      {quickPreviewSubtitleBreakdown.length > 3 ? (
+                        <span className="item-pill more">+{quickPreviewSubtitleBreakdown.length - 3}</span>
+                      ) : null}
+                    </div>
+                  ) : quickPreviewSubtitleItems ? (
                     <div className="subtitle-items">
                       {quickPreviewSubtitleItems.slice(0, 3).map((item, index) => (
                         <span key={`${item}-${index}`} className="item-pill">
@@ -1055,7 +1077,6 @@ export default function HomePage() {
           </div>
         )}
         {quickError && <div className="error subtle">{quickError}</div>}
-        {showTeachingHint ? <div className="hint teaching">{teachingHintText}</div> : null}
 
         {showQuickWarningDetails && quickPreview?.ok && quickPreview.warnings?.length ? (
           <ul className="warning-list">
@@ -1357,9 +1378,8 @@ function parseDisplayAmountToken(token: string): number | undefined {
   return parsedInt;
 }
 
-function extractDisplayItems(text: string): { name: string; amount?: number }[] | null {
-  const subtitle = splitDisplayText(text).subtitle;
-  if (!subtitle) {
+function parseItemBreakdownFromSubtitle(subtitle: string): ItemLine[] | null {
+  if (!/[,;•]|\s\+\s/.test(subtitle)) {
     return null;
   }
 
@@ -1372,79 +1392,92 @@ function extractDisplayItems(text: string): { name: string; amount?: number }[] 
     return null;
   }
 
-  const amountTokenRegex = /rp?\s*\d+(?:[.,]\d+)?(?:k|rb|jt)?|\d+(?:[.,]\d+)?(?:k|rb|jt)?/gi;
+  const amountTokenRegex =
+    /(?:rp\s*)?\d+(?:[.,]\d+)?(?:k|rb|jt)?|\d+(?:[.,]\d+)?(?:k|rb|jt)?/gi;
 
-  return rawItems.map((rawItem) => {
-    const matches = rawItem.match(amountTokenRegex);
-    const lastAmountToken = matches?.[matches.length - 1];
+  const lines = rawItems.map((raw) => {
+    const rawItem = raw.replace(/\s+/g, " ").trim();
+    const qtySuffixMatch = rawItem.match(/[x×]\s*(\d+)\b/i);
+    const qtyPrefixMatch = rawItem.match(/\b(\d+)\s*[x×](?=\s*\d|\s*[a-zA-Z])/i);
+    const qtyValue = qtySuffixMatch?.[1] ?? qtyPrefixMatch?.[1];
+    const qty = qtyValue ? Number.parseInt(qtyValue, 10) : undefined;
+
+    const amountMatches = Array.from(rawItem.matchAll(amountTokenRegex));
+    const lastAmountToken = amountMatches[amountMatches.length - 1]?.[0]?.trim();
     const amount = lastAmountToken ? parseDisplayAmountToken(lastAmountToken) : undefined;
 
-    let name = rawItem;
+    let label = rawItem;
+    label = label.replace(/\b\d+\s*[x×](?=\s*\d|\s*[a-zA-Z]|\s|$)/gi, " ");
+    label = label.replace(/(?:^|\s)[x×]\s*\d+\b/gi, " ");
     if (lastAmountToken) {
-      const removePattern = new RegExp(`\\s*${lastAmountToken.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i");
-      name = rawItem.replace(removePattern, "").trim();
+      label = label.replace(new RegExp(escapeRegExp(lastAmountToken), "ig"), " ");
+    }
+    label = label.replace(/\s+/g, " ").trim();
+    if (!label) {
+      label = rawItem;
     }
 
     return {
-      name: name || rawItem,
-      amount
+      raw: rawItem,
+      label,
+      qty: Number.isFinite(qty) && qty && qty > 0 ? qty : undefined,
+      amount,
+      amountRaw: lastAmountToken
     };
   });
+
+  const validCount = lines.filter(
+    (item) => item.label.length > 0 || item.qty !== undefined || item.amount !== undefined
+  ).length;
+
+  return validCount >= 2 ? lines : null;
 }
 
-function shouldShowTeachingHint(params: {
-  input: string;
-  preview: ParseQuickAddResult | null;
-  bulkOpen: boolean;
-  quickError: string | null;
-}): boolean {
-  const { input, preview, bulkOpen, quickError } = params;
+function formatItemPillText(item: ItemLine): string {
+  const label = item.label || item.raw;
+  const qtyPart = item.qty ? ` ×${item.qty}` : "";
+  if (item.amount !== undefined) {
+    return `${label}${qtyPart} • Rp${formatAmountCompact(item.amount)}`;
+  }
+  return `${label}${qtyPart}`.trim();
+}
+
+function getInputHints(
+  input: string,
+  preview: ParseQuickAddResult | null
+): string[] {
   const trimmed = input.trim();
-
-  if (bulkOpen) {
-    return false;
+  if (!trimmed) {
+    return [];
   }
 
-  if (quickError !== null) {
-    return false;
-  }
-
-  if (trimmed.length < 3) {
-    return false;
-  }
-
-  if (preview?.ok === true) {
-    return false;
-  }
-
-  const hasLetter = /[a-z]/i.test(trimmed);
   const hasDigit = /\d/.test(trimmed);
-  const hasSplitToken = /\b\d+p\b/i.test(trimmed);
-  const withoutSplitToken = trimmed.replace(/\b\d+p\b/gi, " ");
-  const hasNominalDigit = /\d/.test(withoutSplitToken);
+  const hasMerchantFormat = /\s[-—]\s/.test(trimmed);
+  const endsWithMerchantDash = /[-—]\s*$/.test(trimmed);
+  const hasSumPattern =
+    /\d\s*\+\s*\d/.test(trimmed) ||
+    (preview?.ok ? extractSummedAmountMeta(preview.warnings) !== null : false);
+  const hasQtyPattern = detectQtyTokens(trimmed);
 
-  if (hasLetter && !hasDigit) {
-    return true;
+  const hints: string[] = [];
+
+  if (hasMerchantFormat || endsWithMerchantDash) {
+    hints.push("Format merchant: Gacoan - mie 25k + es 10k");
+  } else if (!hasDigit) {
+    hints.push("Format cepat: kopi 18, parkir 2k, dinner 120 3p");
+  } else {
+    hints.push("Bisa pakai merchant: Gacoan - mie 25k");
   }
 
-  if (hasSplitToken && !hasNominalDigit) {
-    return true;
+  if (hasSumPattern) {
+    hints.push("Jumlahkan dengan + : 25 + 10 + 5");
   }
 
-  return false;
-}
-
-function getTeachingHint(input: string): string {
-  const trimmed = input.trim();
-  const hasSplitToken = /\b\d+p\b/i.test(trimmed);
-  const withoutSplitToken = trimmed.replace(/\b\d+p\b/gi, " ");
-  const hasNominalDigit = /\d/.test(withoutSplitToken);
-
-  if (hasSplitToken && !hasNominalDigit) {
-    return "Tambah harga dulu: contoh `Gacoan 32k 3p`";
+  if (hasQtyPattern) {
+    hints.push("Qty opsional: mie x2 25k atau Aqua 2x 5k");
   }
 
-  return "Tambah nominal: contoh `Gacoan 32k`";
+  return Array.from(new Set(hints)).slice(0, 3);
 }
 
 function DailySummaryCard({ summary }: { summary: TodaySummaryStats }) {
@@ -1509,6 +1542,7 @@ function EntryRow({
   );
   const [customDraft, setCustomDraft] = useState<Record<string, string>>({});
   const [isCustomDirty, setIsCustomDirty] = useState(false);
+  const [showItemBreakdown, setShowItemBreakdown] = useState(false);
   const [customSubmitStatus, setCustomSubmitStatus] = useState<{
     type: "less" | "more" | "ok";
     diff: number;
@@ -1579,6 +1613,10 @@ function EntryRow({
   const hasSelectedPaymentMethod = currentPaymentMethod !== "Unknown";
   const expandedPanelId = `row-expanded-${entry.id}`;
   const displayText = useMemo(() => splitDisplayText(entry.text), [entry.text]);
+  const subtitleBreakdown = useMemo(
+    () => (displayText.subtitle ? parseItemBreakdownFromSubtitle(displayText.subtitle) : null),
+    [displayText.subtitle]
+  );
   const subtitleItems = useMemo(
     () => (displayText.subtitle ? splitSubtitleItems(displayText.subtitle) : null),
     [displayText.subtitle]
@@ -1597,7 +1635,12 @@ function EntryRow({
         .map((share) => `${share.person} ganti ke ${entry.split?.payer} Rp${formatAmountCompact(share.amount)}`)
     };
   }, [entry.split]);
-  const displayItems = useMemo(() => extractDisplayItems(entry.text), [entry.text]);
+
+  useEffect(() => {
+    if (!subtitleBreakdown) {
+      setShowItemBreakdown(false);
+    }
+  }, [subtitleBreakdown]);
 
   function saveInlineEdit() {
     const numericAmount = Number.parseInt(amountDraft.replace(/[^\d]/g, ""), 10);
@@ -1703,7 +1746,18 @@ function EntryRow({
           <div>
             <div className="row-text">{displayText.title}</div>
             {displayText.subtitle ? (
-              subtitleItems ? (
+              subtitleBreakdown ? (
+                <div className="subtitle-items">
+                  {subtitleBreakdown.slice(0, 3).map((item, index) => (
+                    <span key={`${item.raw}-${index}`} className="item-pill">
+                      {formatItemPillText(item)}
+                    </span>
+                  ))}
+                  {subtitleBreakdown.length > 3 ? (
+                    <span className="item-pill more">+{subtitleBreakdown.length - 3}</span>
+                  ) : null}
+                </div>
+              ) : subtitleItems ? (
                 <div className="subtitle-items">
                   {subtitleItems.slice(0, 3).map((item, index) => (
                     <span key={`${item}-${index}`} className="item-pill">
@@ -1926,18 +1980,32 @@ function EntryRow({
             </div>
           ) : null}
 
-          {displayItems ? (
-            <div className="breakdown">
-              {displayItems.map((item, index) => (
-                <div key={`${item.name}-${index}`} className="breakdown-row">
-                  <span>{item.name}</span>
-                  <span>{item.amount !== undefined ? `Rp${formatAmountIDR(item.amount)}` : ""}</span>
+          {subtitleBreakdown ? (
+            <div className="item-breakdown-wrap">
+              <button
+                className="btn secondary btn-sm"
+                type="button"
+                onClick={() => setShowItemBreakdown((prev) => !prev)}
+              >
+                {showItemBreakdown ? "Sembunyikan item" : "Lihat item"}
+              </button>
+              {showItemBreakdown ? (
+                <div className="breakdown">
+                  {subtitleBreakdown.map((item, index) => (
+                    <div key={`${item.raw}-${index}`} className="breakdown-row">
+                      <span>{item.label || item.raw}</span>
+                      <span className="breakdown-meta">
+                        {item.qty ? `×${item.qty}` : ""}
+                        {item.amount !== undefined ? ` ${item.qty ? "• " : ""}Rp${formatAmountCompact(item.amount)}` : ""}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="breakdown-total">
+                    <span>total</span>
+                    <span>Rp{formatAmountIDR(entry.amount)}</span>
+                  </div>
                 </div>
-              ))}
-              <div className="breakdown-total">
-                <span>total</span>
-                <span>Rp{formatAmountIDR(entry.amount)}</span>
-              </div>
+              ) : null}
             </div>
           ) : null}
         </div>

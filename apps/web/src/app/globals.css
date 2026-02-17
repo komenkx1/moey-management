@@ -226,22 +226,15 @@ select {
   max-width: 100%;
 }
 
-.hint-link {
-  border: 0;
-  background: transparent;
-  padding: 0;
-  text-decoration: underline dotted;
-  font-size: 12px;
-  color: #737370;
-  cursor: pointer;
+.smart-hints {
+  display: grid;
+  gap: 4px;
 }
 
-.format-help {
-  margin-top: 4px;
-}
-
-.quick-tip {
-  margin-top: 4px;
+.smart-hint {
+  border-left: 2px solid #d7e3e5;
+  padding-left: 8px;
+  color: #5c6f73;
 }
 
 .hint.preview-row {
@@ -614,6 +607,12 @@ select {
   color: #4b4b49;
 }
 
+.item-breakdown-wrap {
+  margin-top: 10px;
+  display: grid;
+  gap: 6px;
+}
+
 .breakdown {
   margin-top: 8px;
   border-top: 1px dashed #ddd;
@@ -625,6 +624,11 @@ select {
   display: flex;
   justify-content: space-between;
   color: #444;
+}
+
+.breakdown-meta {
+  color: #626260;
+  white-space: nowrap;
 }
 
 .breakdown-total {
