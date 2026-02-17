@@ -426,3 +426,48 @@ select {
   cursor: pointer;
   padding: 0;
 }
+
+.pwa-status-badge {
+  position: fixed;
+  top: 10px;
+  right: 12px;
+  z-index: 40;
+  border: 1px solid #d2d2cc;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 11px;
+  line-height: 1.1;
+  font-weight: 600;
+  background: #fafaf8;
+  color: #4f4f4c;
+  pointer-events: none;
+}
+
+.pwa-status-badge.offline {
+  border-color: #e6bcbc;
+  background: #fff1f1;
+  color: #8a2a2a;
+}
+
+.pwa-status-badge.online {
+  border-color: #cdd9ce;
+  background: #f3faf4;
+  color: #2f6238;
+}
+
+.pwa-update-banner {
+  position: fixed;
+  left: 50%;
+  bottom: 64px;
+  transform: translateX(-50%);
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #d4d4ce;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #2a2a28;
+  padding: 8px 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
