@@ -31,6 +31,7 @@ interface UndoToastState {
 
 export default function HomePage() {
   const appVersion = process.env.NEXT_PUBLIC_APP_VERSION ?? "dev";
+  const [isStorageReady, setIsStorageReady] = useState(false);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [rules, setRules] = useState<CategoryRules>([]);
   const [quickInput, setQuickInput] = useState("");
@@ -44,8 +45,11 @@ export default function HomePage() {
   const pendingUndoRef = useRef<UndoToastState | null>(null);
 
   useEffect(() => {
-    setEntries(loadEntries());
-    setRules(loadRules());
+    const loadedEntries = loadEntries();
+    const loadedRules = loadRules();
+    setEntries(loadedEntries);
+    setRules(loadedRules);
+    setIsStorageReady(true);
   }, []);
 
   useEffect(() => {
@@ -60,8 +64,11 @@ export default function HomePage() {
   }, [quickInput]);
 
   useEffect(() => {
+    if (!isStorageReady) {
+      return;
+    }
     saveEntries(entries);
-  }, [entries]);
+  }, [entries, isStorageReady]);
 
   useEffect(() => {
     if (!pendingUndoRef.current) {
@@ -73,8 +80,11 @@ export default function HomePage() {
   }, [entries]);
 
   useEffect(() => {
+    if (!isStorageReady) {
+      return;
+    }
     saveRules(rules);
-  }, [rules]);
+  }, [rules, isStorageReady]);
 
   useEffect(() => {
     if (!undoToast) {
