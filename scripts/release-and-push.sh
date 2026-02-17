@@ -52,6 +52,7 @@ TAG="$INPUT_VERSION"
 if [[ "$TAG" != v* ]]; then
   TAG="v$TAG"
 fi
+VERSION="${TAG#v}"
 
 if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z]+)*$ ]]; then
   echo "Error: format versi tidak valid. Gunakan format semver, contoh v0.1.1"
@@ -62,6 +63,25 @@ if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
   echo "Error: tag $TAG sudah ada."
   exit 1
 fi
+
+echo "==> Bump apps/web/package.json ke versi $VERSION..."
+(
+  cd apps/web
+  npm version "$VERSION" --no-git-tag-version >/dev/null
+)
+
+echo "==> Commit perubahan versi..."
+git add apps/web/package.json
+if [ -f "apps/web/package-lock.json" ]; then
+  git add apps/web/package-lock.json
+fi
+
+if git diff --cached --quiet; then
+  echo "Error: tidak ada perubahan versi yang bisa di-commit."
+  exit 1
+fi
+
+git commit -m "chore(release): bump web version to $VERSION"
 
 echo "==> Membuat tag $TAG..."
 git tag -a "$TAG" -m "release $TAG"

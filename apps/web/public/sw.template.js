@@ -1,4 +1,4 @@
-const CACHE_NAME = "kemana-v2";
+const CACHE_NAME = "kemana-APP_VERSION";
 const PRECACHE_URLS = [
   "/",
   "/manifest.webmanifest",
@@ -44,10 +44,18 @@ self.addEventListener("fetch", (event) => {
 
   if (event.request.mode === "navigate") {
     event.respondWith(
-      fetch(event.request).catch(async () => {
-        const cache = await caches.open(CACHE_NAME);
-        return (await cache.match("/")) || Response.error();
-      })
+      (async () => {
+        try {
+          const network = await fetch(event.request);
+          const cache = await caches.open(CACHE_NAME);
+          cache.put("/", network.clone());
+          return network;
+        } catch {
+          const cache = await caches.open(CACHE_NAME);
+          const cached = await cache.match("/");
+          return cached || Response.error();
+        }
+      })()
     );
     return;
   }

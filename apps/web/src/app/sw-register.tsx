@@ -59,7 +59,7 @@ export default function SWRegister() {
     navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
 
     navigator.serviceWorker
-      .register("/sw.js")
+      .register(`/sw.js?v=${process.env.NEXT_PUBLIC_APP_VERSION || "dev"}`)
       .then((registration) => {
         if (!isMounted) {
           return;
@@ -111,7 +111,7 @@ export default function SWRegister() {
         role="status"
         aria-live="polite"
       >
-        {isOffline ? "Offline" : swStatus === "ready" ? "Online" : "Online"}
+        {isOffline ? "Offline" : swStatus === "ready" ? "Siap offline" : "Online"}
       </div>
       {updateReady ? (
         <div className="pwa-update-banner" role="status" aria-live="polite">
