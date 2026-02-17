@@ -1,5 +1,13 @@
 import { Category, CategoryRules } from "./types";
 
+const DEFAULT_CATEGORY_KEYWORDS: Array<{ category: Category; keywords: string[] }> = [
+  { category: "Makan", keywords: ["makan", "kopi", "nasi", "gacoan"] },
+  { category: "Transport", keywords: ["grab", "gojek", "parkir", "tol"] },
+  { category: "Belanja", keywords: ["indomaret", "alfamart", "belanja"] },
+  { category: "Tagihan", keywords: ["listrik", "air", "internet", "tagihan"] },
+  { category: "Hiburan", keywords: ["bioskop", "nonton", "game", "hiburan"] }
+];
+
 export function keywordFromText(text: string): string {
   const [firstWord = ""] = text.trim().toLowerCase().split(/\s+/);
   return firstWord;
@@ -17,6 +25,12 @@ export function inferCategory(text: string, rules: CategoryRules): Category {
     }
     if (rule.match === "contains" && normalizedText.includes(rule.pattern)) {
       return rule.category;
+    }
+  }
+
+  for (const group of DEFAULT_CATEGORY_KEYWORDS) {
+    if (group.keywords.some((keyword) => normalizedText.includes(keyword))) {
+      return group.category;
     }
   }
 

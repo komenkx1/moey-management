@@ -8,6 +8,15 @@ export const CATEGORIES = [
 ] as const;
 
 export type Category = (typeof CATEGORIES)[number];
+export const PAYMENT_METHODS = [
+  "Unknown",
+  "Cash",
+  "QRIS",
+  "Debit",
+  "Credit",
+  "Transfer"
+] as const;
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 export type SplitMode = "equal" | "custom";
 export type EntrySource = "quick_add" | "bulk_paste" | "scan_receipt";
@@ -35,6 +44,7 @@ export interface Entry {
   amount: number;
   date: string;
   category: Category;
+  paymentMethod?: PaymentMethod;
   source: EntrySource;
   parseWarnings?: ParseWarning[];
   createdAt: string;

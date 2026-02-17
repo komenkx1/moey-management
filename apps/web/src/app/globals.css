@@ -44,6 +44,98 @@ select {
   color: #626262;
 }
 
+.daily-summary-card {
+  margin-top: 12px;
+  margin-bottom: 8px;
+  border: 1px solid #d8e2e3;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f4fbfc 0%, #ffffff 100%);
+  padding: 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.daily-summary-title {
+  font-size: 12px;
+  color: #587178;
+  font-weight: 600;
+}
+
+.daily-summary-amount {
+  font-size: 26px;
+  line-height: 1.1;
+  font-weight: 700;
+  color: #16353a;
+}
+
+.daily-summary-status {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.daily-summary-status.hemat,
+.daily-summary-status.aman {
+  background: #ebf8ed;
+  color: #216337;
+}
+
+.daily-summary-status.normal {
+  background: #eef4f8;
+  color: #2b4d67;
+}
+
+.daily-summary-status.lumayan {
+  background: #fff7ea;
+  color: #89571f;
+}
+
+.daily-summary-status.boros {
+  background: #ffefef;
+  color: #8f2424;
+}
+
+.daily-summary-meta {
+  font-size: 12px;
+  color: #446066;
+}
+
+.daily-summary-compare {
+  font-size: 11px;
+  color: #5f7579;
+}
+
+.daily-summary-breakdown {
+  font-size: 12px;
+  color: #2f5058;
+  font-weight: 600;
+}
+
+.daily-summary-top {
+  font-size: 12px;
+  color: #4f676d;
+}
+
+.daily-summary-empty {
+  border-top: 1px dashed #cfdedf;
+  padding-top: 6px;
+  display: grid;
+  gap: 2px;
+}
+
+.daily-summary-empty-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #274a52;
+}
+
+.daily-summary-empty-subtitle {
+  font-size: 12px;
+  color: #4f686d;
+}
+
 .composer {
   position: sticky;
   top: 0;
@@ -232,6 +324,43 @@ select {
   gap: 10px;
 }
 
+.day-group {
+  display: grid;
+  gap: 8px;
+}
+
+.day-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 10px;
+  border: 1px solid #e3e3de;
+  border-radius: 8px;
+  background: #f3f3f0;
+}
+
+.day-title {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.2;
+  font-weight: 600;
+  color: #5a5a57;
+}
+
+.day-total {
+  font-size: 13px;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #2f2f2c;
+  white-space: nowrap;
+}
+
+.day-list {
+  display: grid;
+  gap: 8px;
+}
+
 .row {
   border: 1px solid #d9d9d6;
   border-radius: 12px;
@@ -299,6 +428,10 @@ select {
   gap: 8px;
 }
 
+.chip-group.compact {
+  margin-top: 8px;
+}
+
 .chip {
   border: 1px solid #d0d0cb;
   border-radius: 999px;
@@ -313,6 +446,14 @@ select {
   border-color: #1f1f1f;
   background: #1f1f1f;
   color: #fff;
+}
+
+.chip.secondary {
+  background: #fbfbf9;
+}
+
+.field-section {
+  margin-top: 10px;
 }
 
 .inline-grid {
