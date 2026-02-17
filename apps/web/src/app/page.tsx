@@ -30,6 +30,7 @@ interface UndoToastState {
 }
 
 export default function HomePage() {
+  const appVersion = process.env.NEXT_PUBLIC_APP_VERSION ?? "dev";
   const [entries, setEntries] = useState<Entry[]>([]);
   const [rules, setRules] = useState<CategoryRules>([]);
   const [quickInput, setQuickInput] = useState("");
@@ -405,6 +406,10 @@ export default function HomePage() {
           </button>
         </div>
       ) : null}
+
+      <footer className="app-version" aria-label="Versi aplikasi">
+        v{appVersion}
+      </footer>
     </main>
   );
 }
