@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { formatAmountCompact, formatAmountIDR } from "@kemana/core/format";
 import { parseQuickAdd } from "@kemana/core/parser";
 import { inferCategory, updateCategoryRule } from "@kemana/core/rules";
@@ -18,7 +18,17 @@ import {
   PaymentMethod
 } from "@kemana/core/types";
 import { createId } from "@/lib/id";
-import { loadEntries, loadRules, saveEntries, saveRules } from "@kemana/storage";
+import {
+  clearStorageHealthWarnings,
+  createBackupPayload,
+  downloadBackupFile,
+  getStorageHealth,
+  importBackupFromText,
+  loadEntries,
+  loadRules,
+  saveEntries,
+  saveRules
+} from "@kemana/storage";
 
 interface BulkPreviewLine {
   line: string;
@@ -31,6 +41,20 @@ interface UndoToastState {
   index: number;
   expiresAt: number;
 }
+
+interface ActionToastState {
+  message: string;
+  expiresAt: number;
+}
+
+type DateFilterPreset = "today" | "7d" | "30d" | "all";
+
+const FILTER_OPTIONS: Array<{ value: DateFilterPreset; label: string }> = [
+  { value: "today", label: "Hari ini" },
+  { value: "7d", label: "7 hari" },
+  { value: "30d", label: "30 hari" },
+  { value: "all", label: "Semua" }
+];
 
 interface TopCategorySummary {
   category: Category;
@@ -54,11 +78,13 @@ interface SmartEmptyState {
 }
 
 interface TodaySummaryStats {
+  periodLabel: string;
   totalAmount: number;
   entryCount: number;
   topCategory: TopCategorySummary | null;
   topCategories: CategoryBreakdown[];
   sevenDayAverage: number;
+  compareText: string;
   status: SpendingStatus;
   emptyState: SmartEmptyState | null;
 }
@@ -95,8 +121,25 @@ function parseDateKey(value: string): Date | null {
   return date;
 }
 
+function normalizeDateInput(value: string): string | null {
+  const trimmed = value.trim();
+  if (parseDateKey(trimmed)) {
+    return trimmed;
+  }
+
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+  return toDateKey(parsed);
+}
+
 function sumAmount(items: Entry[]): number {
   return items.reduce((sum, entry) => sum + entry.amount, 0);
+}
+
+function toDayStartTimestamp(date: Date): number {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 }
 
 function formatDayLabel(dateISO: string, now: Date = new Date()): string {
@@ -115,32 +158,91 @@ function formatDayLabel(dateISO: string, now: Date = new Date()): string {
     return dateISO;
   }
 
-  const label = new Intl.DateTimeFormat("id-ID", {
-    weekday: "short",
+  const diffDays = Math.floor((toDayStartTimestamp(now) - toDayStartTimestamp(parsed)) / 86_400_000);
+
+  if (diffDays >= 0 && diffDays <= 6) {
+    const weekday = new Intl.DateTimeFormat("id-ID", { weekday: "short" }).format(parsed);
+    return weekday.charAt(0).toUpperCase() + weekday.slice(1);
+  }
+
+  const formatOptions: Intl.DateTimeFormatOptions = {
     day: "numeric",
     month: "short"
-  }).format(parsed);
+  };
+  if (parsed.getFullYear() !== now.getFullYear()) {
+    formatOptions.year = "numeric";
+  }
+  const label = new Intl.DateTimeFormat("id-ID", formatOptions).format(parsed);
 
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
 function groupEntriesByDate(entries: Entry[]): { dates: string[]; groups: Record<string, Entry[]> } {
-  const groups: Record<string, Entry[]> = {};
+  const groups: Record<string, Array<{ entry: Entry; index: number }>> = {};
 
-  for (const entry of entries) {
+  for (const [index, entry] of entries.entries()) {
     if (!groups[entry.date]) {
       groups[entry.date] = [];
     }
-    groups[entry.date].push(entry);
+    groups[entry.date].push({ entry, index });
   }
 
-  const dates = Object.keys(groups).sort((a, b) => b.localeCompare(a));
-  return { dates, groups };
+  const sortedGroups: Record<string, Entry[]> = {};
+  for (const [dateISO, items] of Object.entries(groups)) {
+    sortedGroups[dateISO] = [...items]
+      .sort((a, b) => {
+        const aCreated = Date.parse(a.entry.createdAt);
+        const bCreated = Date.parse(b.entry.createdAt);
+
+        if (Number.isFinite(aCreated) && Number.isFinite(bCreated) && aCreated !== bCreated) {
+          return bCreated - aCreated;
+        }
+
+        const aUpdated = Date.parse(a.entry.updatedAt);
+        const bUpdated = Date.parse(b.entry.updatedAt);
+        if (Number.isFinite(aUpdated) && Number.isFinite(bUpdated) && aUpdated !== bUpdated) {
+          return bUpdated - aUpdated;
+        }
+
+        return a.index - b.index;
+      })
+      .map((item) => item.entry);
+  }
+
+  const dates = Object.keys(sortedGroups).sort((a, b) => b.localeCompare(a));
+  return { dates, groups: sortedGroups };
 }
 
-function getTodayEntries(entries: Entry[], now: Date = new Date()): Entry[] {
+function getFilteredEntries(
+  entries: Entry[],
+  preset: DateFilterPreset,
+  now: Date = new Date()
+): Entry[] {
   const todayKey = toDateKey(now);
-  return entries.filter((entry) => entry.date === todayKey);
+  if (preset === "all") {
+    return entries;
+  }
+
+  if (preset === "today") {
+    return entries.filter((entry) => entry.date === todayKey);
+  }
+
+  const days = preset === "7d" ? 7 : 30;
+  const startKey = toDateKey(offsetDate(now, -(days - 1)));
+  return entries.filter((entry) => entry.date >= startKey && entry.date <= todayKey);
+}
+
+function getFilterLabel(preset: DateFilterPreset): string {
+  switch (preset) {
+    case "today":
+      return "Hari ini";
+    case "7d":
+      return "7 hari terakhir";
+    case "30d":
+      return "30 hari terakhir";
+    default:
+      return "Semua data";
+  }
 }
 
 function getSpendingStatus(todayTotal: number, sevenDayAverage: number): SpendingStatus {
@@ -164,14 +266,13 @@ function getSpendingStatus(todayTotal: number, sevenDayAverage: number): Spendin
   return { label: "Boros 😬", tone: "boros" };
 }
 
-function getTopCategoryToday(entries: Entry[], now: Date = new Date()): TopCategorySummary | null {
-  const todayEntries = getTodayEntries(entries, now);
-  if (todayEntries.length === 0) {
+function getTopCategory(entries: Entry[]): TopCategorySummary | null {
+  if (entries.length === 0) {
     return null;
   }
 
   const perCategory = new Map<Category, number>();
-  for (const entry of todayEntries) {
+  for (const entry of entries) {
     perCategory.set(entry.category, (perCategory.get(entry.category) ?? 0) + entry.amount);
   }
 
@@ -185,15 +286,14 @@ function getTopCategoryToday(entries: Entry[], now: Date = new Date()): TopCateg
   return top;
 }
 
-function getTopCategoryBreakdownToday(entries: Entry[], now: Date = new Date()): CategoryBreakdown[] {
-  const todayEntries = getTodayEntries(entries, now);
-  const totalAmount = todayEntries.reduce((sum, entry) => sum + entry.amount, 0);
-  if (todayEntries.length === 0 || totalAmount <= 0) {
+function getTopCategoryBreakdown(entries: Entry[]): CategoryBreakdown[] {
+  const totalAmount = entries.reduce((sum, entry) => sum + entry.amount, 0);
+  if (entries.length === 0 || totalAmount <= 0) {
     return [];
   }
 
   const perCategory = new Map<Category, number>();
-  for (const entry of todayEntries) {
+  for (const entry of entries) {
     perCategory.set(entry.category, (perCategory.get(entry.category) ?? 0) + entry.amount);
   }
 
@@ -252,27 +352,71 @@ function getSmartEmptyState(entries: Entry[], now: Date = new Date()): SmartEmpt
   };
 }
 
-function getTodaySummaryStats(entries: Entry[], now: Date = new Date()): TodaySummaryStats {
-  const todayEntries = getTodayEntries(entries, now);
-  const totalAmount = todayEntries.reduce((sum, entry) => sum + entry.amount, 0);
+function getSummaryStats(params: {
+  allEntries: Entry[];
+  filteredEntries: Entry[];
+  preset: DateFilterPreset;
+  now?: Date;
+}): TodaySummaryStats {
+  const { allEntries, filteredEntries, preset, now = new Date() } = params;
+  const totalAmount = filteredEntries.reduce((sum, entry) => sum + entry.amount, 0);
   const last7Keys = Array.from({ length: 7 }, (_, index) => toDateKey(offsetDate(now, -(index + 1))));
   const dailyTotals = new Map<string, number>();
-  for (const entry of entries) {
+  for (const entry of allEntries) {
     dailyTotals.set(entry.date, (dailyTotals.get(entry.date) ?? 0) + entry.amount);
   }
   const sevenDayTotal = last7Keys.reduce((sum, dateKey) => sum + (dailyTotals.get(dateKey) ?? 0), 0);
   const sevenDayAverage = sevenDayTotal / 7;
-  const status = getSpendingStatus(totalAmount, sevenDayAverage);
-  const topCategory = getTopCategoryToday(entries, now);
-  const topCategories = getTopCategoryBreakdownToday(entries, now);
-  const emptyState = todayEntries.length === 0 ? getSmartEmptyState(entries, now) : null;
+  const topCategory = getTopCategory(filteredEntries);
+  const topCategories = getTopCategoryBreakdown(filteredEntries);
+
+  if (preset === "today") {
+    const status = getSpendingStatus(totalAmount, sevenDayAverage);
+    const emptyState = filteredEntries.length === 0 ? getSmartEmptyState(allEntries, now) : null;
+
+    return {
+      periodLabel: getFilterLabel(preset),
+      totalAmount,
+      entryCount: filteredEntries.length,
+      topCategory,
+      topCategories,
+      sevenDayAverage,
+      compareText: `Rata-rata 7 hari: Rp${formatAmountIDR(Math.round(sevenDayAverage))}`,
+      status,
+      emptyState
+    };
+  }
+
+  const status: SpendingStatus =
+    totalAmount === 0
+      ? { label: "Hemat 🎉", tone: "hemat" }
+      : { label: "Normal 🙂", tone: "normal" };
+  const emptyState =
+    filteredEntries.length === 0
+      ? {
+          title: `Belum ada catatan di ${getFilterLabel(preset).toLowerCase()}`,
+          subtitle: "Coba ubah rentang tanggal."
+        }
+      : null;
+  const dayCount =
+    preset === "7d"
+      ? 7
+      : preset === "30d"
+        ? 30
+        : Math.max(1, new Set(filteredEntries.map((entry) => entry.date)).size);
+  const averageForRange = totalAmount / dayCount;
 
   return {
+    periodLabel: getFilterLabel(preset),
     totalAmount,
-    entryCount: todayEntries.length,
+    entryCount: filteredEntries.length,
     topCategory,
     topCategories,
     sevenDayAverage,
+    compareText:
+      preset === "all"
+        ? `Rata-rata per hari aktif: Rp${formatAmountIDR(Math.round(averageForRange))}`
+        : `Rata-rata ${dayCount} hari: Rp${formatAmountIDR(Math.round(averageForRange))}`,
     status,
     emptyState
   };
@@ -300,6 +444,12 @@ export default function HomePage() {
   const [isStorageReady, setIsStorageReady] = useState(false);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [rules, setRules] = useState<CategoryRules>([]);
+  const [storageWarning, setStorageWarning] = useState<string | null>(null);
+  const [backupMessage, setBackupMessage] = useState<string | null>(null);
+  const [replaceOnImport, setReplaceOnImport] = useState(false);
+  const [dateFilter, setDateFilter] = useState<DateFilterPreset>("today");
+  const [autoExpandedEntryId, setAutoExpandedEntryId] = useState<string | null>(null);
+  const [actionToast, setActionToast] = useState<ActionToastState | null>(null);
   const [quickInput, setQuickInput] = useState("");
   const [debouncedQuickInput, setDebouncedQuickInput] = useState("");
   const [quickError, setQuickError] = useState<string | null>(null);
@@ -309,13 +459,18 @@ export default function HomePage() {
   const [bulkInput, setBulkInput] = useState("");
   const [undoToast, setUndoToast] = useState<UndoToastState | null>(null);
   const quickInputRef = useRef<HTMLInputElement>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
   const pendingUndoRef = useRef<UndoToastState | null>(null);
 
   useEffect(() => {
     const loadedEntries = loadEntries();
     const loadedRules = loadRules();
+    const storageHealth = getStorageHealth();
     setEntries(loadedEntries);
     setRules(loadedRules);
+    if (storageHealth.hasCorruption) {
+      setStorageWarning("Data penyimpanan bermasalah. Coba Import Backup.");
+    }
     setIsStorageReady(true);
   }, []);
 
@@ -366,6 +521,19 @@ export default function HomePage() {
     return () => window.clearTimeout(timer);
   }, [undoToast]);
 
+  useEffect(() => {
+    if (!actionToast) {
+      return;
+    }
+
+    const timeoutMs = Math.max(0, actionToast.expiresAt - Date.now());
+    const timer = window.setTimeout(() => {
+      setActionToast((current) => (current?.expiresAt === actionToast.expiresAt ? null : current));
+    }, timeoutMs);
+
+    return () => window.clearTimeout(timer);
+  }, [actionToast]);
+
   const quickPreview = useMemo(() => {
     if (!debouncedQuickInput.trim()) {
       return null;
@@ -411,8 +579,15 @@ export default function HomePage() {
   }, [bulkInput]);
 
   const validBulkCount = bulkPreview.filter((line) => line.ok).length;
-  const todaySummaryStats = useMemo(() => getTodaySummaryStats(entries), [entries]);
-  const groupedEntriesResult = useMemo(() => groupEntriesByDate(entries), [entries]);
+  const filteredEntries = useMemo(
+    () => getFilteredEntries(entries, dateFilter),
+    [entries, dateFilter]
+  );
+  const summaryStats = useMemo(
+    () => getSummaryStats({ allEntries: entries, filteredEntries, preset: dateFilter }),
+    [entries, filteredEntries, dateFilter]
+  );
+  const groupedEntriesResult = useMemo(() => groupEntriesByDate(filteredEntries), [filteredEntries]);
   const groupedEntries = useMemo(() => groupedEntriesResult.groups, [groupedEntriesResult]);
   const orderedDates = useMemo(() => groupedEntriesResult.dates, [groupedEntriesResult]);
   const dailyTotal = useMemo(
@@ -426,6 +601,13 @@ export default function HomePage() {
       ),
     [orderedDates, groupedEntries]
   );
+
+  function showActionToast(message: string) {
+    setActionToast({
+      message,
+      expiresAt: Date.now() + 2_000
+    });
+  }
 
   function buildEntry(raw: string, source: EntrySource): Entry | null {
     const parsed = parseQuickAdd(raw, new Date(), source);
@@ -474,6 +656,8 @@ export default function HomePage() {
     };
 
     setEntries((prev) => [nextEntry, ...prev]);
+    setAutoExpandedEntryId(nextEntry.id);
+    showActionToast("Transaksi ditambahkan");
     setQuickInput("");
     setQuickError(null);
     setShowQuickWarningDetails(false);
@@ -501,33 +685,44 @@ export default function HomePage() {
     }
 
     setEntries((prev) => [...nextEntries.reverse(), ...prev]);
+    showActionToast(`${nextEntries.length} transaksi ditambahkan`);
     setBulkInput("");
     setBulkOpen(false);
   }
 
-  function updateEntry(entryId: string, updater: (entry: Entry) => Entry) {
+  function updateEntry(
+    entryId: string,
+    updater: (entry: Entry) => Entry,
+    toastMessage?: string
+  ) {
+    let didUpdate = false;
     setEntries((prev) =>
       prev.map((entry) => {
         if (entry.id !== entryId) {
           return entry;
         }
+        didUpdate = true;
         return {
           ...updater(entry),
           updatedAt: new Date().toISOString()
         };
       })
     );
+    if (didUpdate && toastMessage) {
+      showActionToast(toastMessage);
+    }
   }
 
   function handleCategoryChange(entry: Entry, category: Category) {
     updateEntry(entry.id, (current) => ({
       ...current,
       category
-    }));
+    }), "Kategori diperbarui");
     setRules((prev) => updateCategoryRule(prev, entry.text, category));
   }
 
   function handleDelete(entryId: string) {
+    let didDelete = false;
     setEntries((prev) => {
       const deletedIndex = prev.findIndex((entry) => entry.id === entryId);
       if (deletedIndex === -1) {
@@ -539,8 +734,12 @@ export default function HomePage() {
         index: deletedIndex,
         expiresAt: Date.now() + 6_000
       };
+      didDelete = true;
       return prev.filter((current) => current.id !== entryId);
     });
+    if (didDelete) {
+      showActionToast("Transaksi dihapus");
+    }
   }
 
   function handleUndoDelete() {
@@ -557,10 +756,49 @@ export default function HomePage() {
     setUndoToast(null);
   }
 
+  function handleExportBackup() {
+    const payload = createBackupPayload(entries, rules, appVersion);
+    downloadBackupFile(payload);
+    setBackupMessage("Backup berhasil diekspor.");
+  }
+
+  async function handleImportBackup(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    try {
+      const raw = await file.text();
+      const result = importBackupFromText({
+        raw,
+        currentEntries: entries,
+        currentRules: rules,
+        mode: replaceOnImport ? "replace" : "merge"
+      });
+
+      if (!result.ok) {
+        setBackupMessage(result.message);
+      } else {
+        setEntries(result.entries);
+        setRules(result.rules);
+        clearStorageHealthWarnings();
+        setStorageWarning(null);
+        setBackupMessage(result.message);
+        showActionToast("Import backup berhasil");
+      }
+    } catch {
+      setBackupMessage("File backup tidak bisa dibaca.");
+    } finally {
+      event.target.value = "";
+    }
+  }
+
   return (
     <main className="page">
       <h1 className="title">KeMana</h1>
       <p className="subtitle">Biar tau uangmu kemana</p>
+      {storageWarning ? <div className="storage-warning">{storageWarning}</div> : null}
 
       <section className="composer">
         <div className="composer-row">
@@ -599,6 +837,7 @@ export default function HomePage() {
               contoh: `kopi 18` • `Gacoan - nasi 10k + mie 10k` • `dinner 120 3p`
             </div>
           ) : null}
+          <div className="hint subtle quick-tip">Tip: bisa jumlahkan pakai + (25 + 10 + 5)</div>
         </div>
 
         {quickPreview?.ok && (
@@ -705,11 +944,61 @@ export default function HomePage() {
         )}
       </section>
 
-      <DailySummaryCard summary={todaySummaryStats} />
+      <section className="data-tools" aria-label="Data backup">
+        <div className="data-tools-row">
+          <div className="hint subtle">Data</div>
+          <button className="btn secondary btn-sm" type="button" onClick={handleExportBackup}>
+            Export Backup
+          </button>
+          <button
+            className="btn secondary btn-sm"
+            type="button"
+            onClick={() => importFileRef.current?.click()}
+          >
+            Import Backup
+          </button>
+          <input
+            ref={importFileRef}
+            type="file"
+            accept="application/json"
+            className="sr-only"
+            onChange={handleImportBackup}
+          />
+        </div>
+        <label className="data-tools-toggle">
+          <input
+            type="checkbox"
+            checked={replaceOnImport}
+            onChange={(event) => setReplaceOnImport(event.target.checked)}
+          />
+          <span>Ganti semua data saat import</span>
+        </label>
+        <div className="hint subtle">Backup disimpan sebagai file .json</div>
+        {backupMessage ? <div className="hint subtle">{backupMessage}</div> : null}
+      </section>
+
+      <section className="range-filter" aria-label="Filter tanggal">
+        {FILTER_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            className={`chip filter-chip ${dateFilter === option.value ? "active" : ""}`}
+            onClick={() => setDateFilter(option.value)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </section>
+
+      <DailySummaryCard summary={summaryStats} />
 
       <section className="list">
-        {entries.length === 0 ? (
-          <div className="empty">Belum ada catatan. Coba ketik pengeluaran pertama kamu.</div>
+        {filteredEntries.length === 0 ? (
+          <div className="empty">
+            {entries.length === 0
+              ? "Belum ada catatan. Coba ketik pengeluaran pertama kamu."
+              : "Tidak ada transaksi pada rentang ini."}
+          </div>
         ) : (
           orderedDates.map((dateISO) => (
             <section key={dateISO} className="day-group" aria-label={`Grup ${dateISO}`}>
@@ -722,8 +1011,12 @@ export default function HomePage() {
                   <EntryRow
                     key={entry.id}
                     entry={entry}
+                    shouldAutoExpand={autoExpandedEntryId === entry.id}
+                    onAutoExpandHandled={() =>
+                      setAutoExpandedEntryId((current) => (current === entry.id ? null : current))
+                    }
                     onDelete={() => handleDelete(entry.id)}
-                    onUpdate={(updater) => updateEntry(entry.id, updater)}
+                    onUpdate={(updater, toastMessage) => updateEntry(entry.id, updater, toastMessage)}
                     onCategoryChange={(category) => handleCategoryChange(entry, category)}
                   />
                 ))}
@@ -739,6 +1032,11 @@ export default function HomePage() {
           <button className="undo-link" type="button" onClick={handleUndoDelete}>
             Undo
           </button>
+        </div>
+      ) : null}
+      {actionToast ? (
+        <div className={`action-toast ${undoToast ? "with-undo" : ""}`} role="status" aria-live="polite">
+          {actionToast.message}
         </div>
       ) : null}
 
@@ -986,12 +1284,10 @@ function DailySummaryCard({ summary }: { summary: TodaySummaryStats }) {
 
   return (
     <section className="daily-summary-card" aria-label="Ringkasan hari ini">
-      <div className="daily-summary-title">Hari ini</div>
+      <div className="daily-summary-title">{summary.periodLabel}</div>
       <div className="daily-summary-amount">Kamu keluar Rp{formatAmountIDR(summary.totalAmount)}</div>
       <div className={`daily-summary-status ${summary.status.tone}`}>{summary.status.label}</div>
-      <div className="daily-summary-compare">
-        Rata-rata 7 hari: Rp{formatAmountIDR(Math.round(summary.sevenDayAverage))}
-      </div>
+      <div className="daily-summary-compare">{summary.compareText}</div>
       <div className="daily-summary-meta">{summary.entryCount} transaksi</div>
       {summary.emptyState ? (
         <div className="daily-summary-empty">
@@ -1014,18 +1310,24 @@ function DailySummaryCard({ summary }: { summary: TodaySummaryStats }) {
 
 function EntryRow({
   entry,
+  shouldAutoExpand,
+  onAutoExpandHandled,
   onDelete,
   onUpdate,
   onCategoryChange
 }: {
   entry: Entry;
+  shouldAutoExpand?: boolean;
+  onAutoExpandHandled?: () => void;
   onDelete: () => void;
-  onUpdate: (updater: (entry: Entry) => Entry) => void;
+  onUpdate: (updater: (entry: Entry) => Entry, toastMessage?: string) => void;
   onCategoryChange: (category: Category) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [textDraft, setTextDraft] = useState(entry.text);
   const [amountDraft, setAmountDraft] = useState(String(entry.amount));
+  const [dateEditorOpen, setDateEditorOpen] = useState(false);
+  const [dateDraft, setDateDraft] = useState(entry.date);
   const [splitOpen, setSplitOpen] = useState(false);
   const [splitMode, setSplitMode] = useState<"equal" | "custom">(entry.split?.mode ?? "equal");
   const [peopleInput, setPeopleInput] = useState(
@@ -1044,7 +1346,16 @@ function EntryRow({
   useEffect(() => {
     setTextDraft(entry.text);
     setAmountDraft(String(entry.amount));
-  }, [entry.text, entry.amount]);
+    setDateDraft(entry.date);
+  }, [entry.text, entry.amount, entry.date]);
+
+  useEffect(() => {
+    if (!shouldAutoExpand) {
+      return;
+    }
+    setIsExpanded(true);
+    onAutoExpandHandled?.();
+  }, [shouldAutoExpand, onAutoExpandHandled]);
 
   useEffect(() => {
     const wasSplitOpen = prevSplitOpenRef.current;
@@ -1125,7 +1436,21 @@ function EntryRow({
       ...current,
       text: nextText,
       amount: numericAmount
-    }));
+    }), "Perubahan disimpan");
+  }
+
+  function saveDateEdit() {
+    const normalizedDate = normalizeDateInput(dateDraft);
+    if (!normalizedDate) {
+      return;
+    }
+
+    onUpdate((current) => ({
+      ...current,
+      date: normalizedDate
+    }), "Tanggal diperbarui");
+    setDateDraft(normalizedDate);
+    setDateEditorOpen(false);
   }
 
   function applyEqualSplit() {
@@ -1141,7 +1466,7 @@ function EntryRow({
         payer: current.split?.payer ?? "Kamu",
         shares
       }
-    }));
+    }), "Split diperbarui");
     setIsCustomDirty(false);
     setCustomSubmitStatus(null);
   }
@@ -1176,7 +1501,7 @@ function EntryRow({
         payer: current.split?.payer ?? "Kamu",
         shares: validated
       }
-    }));
+    }), "Split diperbarui");
     setIsCustomDirty(false);
     setCustomSubmitStatus({ type: "ok", diff: 0 });
   }
@@ -1233,16 +1558,46 @@ function EntryRow({
             </button>
           </div>
 
+          <div className="date-inline-editor">
+            <div className="hint subtle">Tanggal: {entry.date}</div>
+            {!dateEditorOpen ? (
+              <button className="btn secondary btn-sm" type="button" onClick={() => setDateEditorOpen(true)}>
+                Ubah tanggal
+              </button>
+            ) : (
+              <div className="date-inline-controls">
+                <input
+                  className="input"
+                  type="date"
+                  value={dateDraft}
+                  onChange={(event) => setDateDraft(event.target.value)}
+                />
+                <div className="row-actions compact">
+                  <button className="btn secondary btn-sm" type="button" onClick={saveDateEdit}>
+                    Simpan tanggal
+                  </button>
+                  <button
+                    className="btn ghost btn-sm"
+                    type="button"
+                    onClick={() => {
+                      setDateDraft(entry.date);
+                      setDateEditorOpen(false);
+                    }}
+                  >
+                    Batal
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="chip-group">
             {CATEGORIES.map((category) => (
               <button
                 key={category}
                 type="button"
                 className={`chip ${entry.category === category ? "active" : ""}`}
-                onClick={() => {
-                  onCategoryChange(category);
-                  setIsExpanded(false);
-                }}
+                onClick={() => onCategoryChange(category)}
               >
                 {category}
               </button>
@@ -1261,7 +1616,7 @@ function EntryRow({
                     onUpdate((current) => ({
                       ...current,
                       paymentMethod: method
-                    }))
+                    }), "Metode bayar diperbarui")
                   }
                 >
                   {paymentMethodLabel(method)}
