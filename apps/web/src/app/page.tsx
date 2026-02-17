@@ -389,7 +389,7 @@ export default function HomePage() {
         ) : null}
 
         <button className="btn secondary" type="button" onClick={() => setBulkOpen((prev) => !prev)}>
-          {bulkOpen ? "Tutup masukan banyak item" : "masukan banyak item"}
+          {bulkOpen ? "Tutup masukan banyak item" : "Masukan banyak item"}
         </button>
 
         {bulkOpen && (
@@ -398,7 +398,7 @@ export default function HomePage() {
               className="textarea"
               value={bulkInput}
               onChange={(event) => setBulkInput(event.target.value)}
-              placeholder={"Satu baris satu transaksi.\nkopi 18\nparkir 2k\ndinner 120 3p"}
+              placeholder={"Tempel banyak transaksi (1 baris = 1 transaksi).\nContoh :\nkopi 18\nparkir 2k\ndinner 120 3p"}
             />
             <div className="hint">
               Valid: {validBulkCount}/{bulkPreview.length}
