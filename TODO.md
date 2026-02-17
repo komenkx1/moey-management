@@ -5,6 +5,8 @@
 - Parser + split + rules sudah dipisah ke `packages/core`.
 - Storage adapter local-first aktif di `packages/storage` (localStorage).
 - PWA minimal + offline/update flow sudah aktif.
+- Composer sudah lebih tenang: teaching hint adaptif, format help collapsible, error merah hanya setelah submit.
+- Expanded row sudah punya breakdown display item untuk meningkatkan trust (display-only).
 - Fokus sisa Phase 1: validasi metrik latency/habit dan migrasi storage ke Dexie (tanpa ubah domain contract).
 
 ## 1. Prinsip Eksekusi
@@ -49,6 +51,8 @@ Status:
 - [x] Seed kategori default + fallback `Lainnya`.
 - [x] Implement category remember sederhana berbasis keyword/merchant lokal.
 - [x] Tampilkan warning parse ambigu secara inline (tanpa modal blocking).
+- [x] Implement teaching hint kontekstual + format help collapsible agar user cepat paham format input.
+- [x] Ubah feedback error composer agar muncul setelah submit (bukan saat user mengetik).
 
 ## 2.4 Hari 4 - Rapikan Arsitektur (Fake Monorepo -> Target)
 - [ ] Buat struktur target monorepo (`/apps/web`, `/apps/mobile`, `/packages/core`, `/packages/infra`).
@@ -74,6 +78,7 @@ Status:
 - [x] Regression test parser untuk edge cases utama.
 - [ ] UAT internal di mobile web (Safari + Chrome Android).
 - [x] Bugfix blocker dan final polish microcopy.
+- [x] Tambahkan display breakdown item di expanded row tanpa mengubah schema.
 
 ## 2.8 PWA & Update Reliability (Tambahan Phase 0.5)
 - [x] Manifest web app + metadata install di Next App Router.
@@ -81,6 +86,8 @@ Status:
 - [x] Offline/online status badge non-blocking.
 - [x] Safe update banner (`Update tersedia`) + reload by user action.
 - [x] Versioned SW build (template + inject version dari `package.json`).
+- [x] Navigation network-first (`no-store`) + app shell fallback untuk kurangi stale HTML.
+- [x] Activate lifecycle atomic (`clear old cache -> claim client`) untuk stabilitas update.
 
 ## 2.9 Quality Gate Phase 1 (Harus Lolos)
 - [x] Semua core flow berfungsi saat perangkat offline.

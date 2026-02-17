@@ -9,12 +9,17 @@
   - inline summation (`25 + 10 + 5`, termasuk tanpa spasi tertentu) + warning terstruktur.
 - Dense list + expand row inline, edit inline, category chips, split equal/custom, bulk paste.
 - Warning UI non-blocking, delete dengan undo toast, composer autofocus + Enter submit.
+- Teaching UX adaptif:
+  - error merah parser hanya setelah submit gagal (bukan saat mengetik)
+  - hint edukasi muncul hanya saat user buntu
+  - bantuan format dibuat collapsible (`Format`) untuk mengurangi visual noise.
+- Entry expanded menampilkan breakdown display per item (display-only, tanpa ubah schema/parser/storage).
 - Local-first persistence aktif via localStorage + guard hydration (mencegah data ketimpa kosong di dev refresh).
 - PWA minimal aktif:
   - manifest + service worker template (`sw.template.js`)
   - offline access dasar setelah first online load
   - offline badge + safe update banner (`Update tersedia -> Muat ulang`)
-  - cache versioning mengikuti versi app.
+  - cache versioning mengikuti versi app + lifecycle SW lebih stabil (activate atomic, update tidak loop).
 - Test parser: `19` test lulus (`vitest`).
 
 ### Sedang Berjalan
@@ -121,6 +126,8 @@ KeMana adalah aplikasi pencatatan pengeluaran super cepat dengan fokus utama:
 - User ketik natural text, preview parse muncul realtime (amount/date/split).
 - Saat Enter/tap Tambah: simpan lokal instan + input reset.
 - Jika parse ambigu: simpan sebagai draft warning inline, bukan blocking modal.
+- Error validation merah ditampilkan saat submit gagal; saat mengetik, gunakan hint ringan.
+- Bantuan format ditampilkan on-demand via tombol kecil `Format` (collapsed by default).
 - Microcopy warning: `Nominal belum yakin. Tap untuk koreksi.`
 
 ### 5.3 Bulk Paste
@@ -139,6 +146,7 @@ KeMana adalah aplikasi pencatatan pengeluaran super cepat dengan fokus utama:
   - Ganti kategori chip.
   - Ubah nominal.
   - Buka split editor.
+- Setelah submit, jika text memuat pola multi-item, tampilkan breakdown display (nama item + nominal jika terdeteksi) untuk meningkatkan trust.
 
 ### 5.5 Split Editor
 - Mode:
@@ -481,6 +489,7 @@ Ancaman utama:
 - Hari 4: `Partial` (core logic sudah dipindah ke `packages/core`, storage masih localStorage).
 - Hari 5-6: `Done` untuk split equal/custom + bulk paste; `Partial` untuk tuning berbasis metrik.
 - Hari 7: `Partial` (parser regression tests sudah ada; dogfooding habit metric belum difinalisasi).
+- Phase 0.5 PWA Reliability: `Done` (status online/offline, safe update banner, SW versioned template flow).
 
 ## Phase 2 (Future Activation, No Implementation Yet)
 - Aktivasi Supabase schema + RLS + storage policy.

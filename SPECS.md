@@ -7,6 +7,9 @@
 - [x] Split equal/custom + validasi selisih.
 - [x] Bulk paste multi-line + preview.
 - [x] Category rule sederhana (remember dari koreksi kategori).
+- [x] Teaching hint adaptif (muncul hanya saat user buntu, tidak permanen).
+- [x] Format help collapsible (`Format`) untuk mengurangi visual noise composer.
+- [x] Breakdown display per item di expanded row (display-only, tanpa schema baru).
 - [x] Local persistence single-device (localStorage).
 - [x] PWA minimal + offline badge + safe update banner.
 - [x] Parser regression tests aktif (`19` test lulus).
@@ -65,6 +68,32 @@ Then perubahan selesai maksimal 2 interaksi utama.
 Given user memasukkan `gacoan 25 + 10 + 5`  
 When parser berjalan  
 Then amount tersimpan `40000` dan sistem memberi warning non-blocking bahwa nominal dijumlahkan otomatis.
+
+### QA-11 Teaching Hint Kontekstual
+Given user mengetik input yang belum lengkap (contoh ada teks tanpa nominal)  
+When user belum menekan submit  
+Then app menampilkan hint ringan kontekstual.
+And hint tidak tampil saat input sudah valid.
+
+### QA-12 Error Merah Setelah Submit
+Given input quick add tidak valid  
+When user masih mengetik  
+Then error parser merah tidak muncul.
+When user menekan `Tambah`/Enter  
+Then error parser merah muncul sebagai feedback submit.
+
+### QA-13 Format Help Minimal
+Given user berada di composer  
+When user belum klik `Format`  
+Then bantuan format tetap tersembunyi.
+When user klik `Format`  
+Then contoh format singkat ditampilkan tanpa modal/route change.
+
+### QA-14 Breakdown Display Layer
+Given entry text memuat pola multi-item pada subtitle  
+When user membuka expanded row  
+Then app menampilkan breakdown display item + total untuk meningkatkan kepercayaan.
+And item tidak disimpan sebagai schema terpisah.
 
 ## 1.2 Split Bill
 ### SB-01 Equal Split
