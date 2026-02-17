@@ -349,6 +349,26 @@ select {
   color: #4b4b49;
 }
 
+.breakdown {
+  margin-top: 8px;
+  border-top: 1px dashed #ddd;
+  padding-top: 6px;
+  font-size: 13px;
+}
+
+.breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  color: #444;
+}
+
+.breakdown-total {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
 .warning-pill {
   border: 1px solid #d6b64d;
   border-radius: 999px;

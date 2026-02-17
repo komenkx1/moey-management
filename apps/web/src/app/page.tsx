@@ -524,6 +524,81 @@ function splitSubtitleItems(subtitle: string): string[] | null {
   return items.length > 0 ? items : null;
 }
 
+function parseDisplayAmountToken(token: string): number | undefined {
+  const lowered = token.trim().toLowerCase();
+  if (!lowered) {
+    return undefined;
+  }
+
+  const cleaned = lowered
+    .replace(/^rp\s*/i, "")
+    .replace(/[^a-z0-9.,]/g, "")
+    .replace(/[.,]+$/g, "");
+
+  const match = cleaned.match(/^(\d+(?:[.,]\d+)?)(k|rb|jt)?$/i);
+  if (!match) {
+    return undefined;
+  }
+
+  const numericPart = match[1];
+  const suffix = match[2]?.toLowerCase();
+
+  if (suffix) {
+    const parsedFloat = Number.parseFloat(numericPart.replace(",", "."));
+    if (!Number.isFinite(parsedFloat)) {
+      return undefined;
+    }
+    const multiplier = suffix === "jt" ? 1_000_000 : 1_000;
+    return Math.round(parsedFloat * multiplier);
+  }
+
+  const parsedInt = Number.parseInt(numericPart.replace(/[.,]/g, ""), 10);
+  if (!Number.isFinite(parsedInt)) {
+    return undefined;
+  }
+
+  if (parsedInt >= 1 && parsedInt <= 999) {
+    return parsedInt * 1_000;
+  }
+
+  return parsedInt;
+}
+
+function extractDisplayItems(text: string): { name: string; amount?: number }[] | null {
+  const subtitle = splitDisplayText(text).subtitle;
+  if (!subtitle) {
+    return null;
+  }
+
+  const rawItems = subtitle
+    .split(/[,;•]|\s\+\s/)
+    .map((item) => item.replace(/\s+/g, " ").trim())
+    .filter((item) => item.length > 0);
+
+  if (rawItems.length < 2) {
+    return null;
+  }
+
+  const amountTokenRegex = /rp?\s*\d+(?:[.,]\d+)?(?:k|rb|jt)?|\d+(?:[.,]\d+)?(?:k|rb|jt)?/gi;
+
+  return rawItems.map((rawItem) => {
+    const matches = rawItem.match(amountTokenRegex);
+    const lastAmountToken = matches?.[matches.length - 1];
+    const amount = lastAmountToken ? parseDisplayAmountToken(lastAmountToken) : undefined;
+
+    let name = rawItem;
+    if (lastAmountToken) {
+      const removePattern = new RegExp(`\\s*${lastAmountToken.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i");
+      name = rawItem.replace(removePattern, "").trim();
+    }
+
+    return {
+      name: name || rawItem,
+      amount
+    };
+  });
+}
+
 function EntryRow({
   entry,
   onDelete,
@@ -622,6 +697,7 @@ function EntryRow({
         .map((share) => `${share.person} ganti ke ${entry.split?.payer} Rp${formatAmountCompact(share.amount)}`)
     };
   }, [entry.split]);
+  const displayItems = useMemo(() => extractDisplayItems(entry.text), [entry.text]);
 
   function saveInlineEdit() {
     const numericAmount = Number.parseInt(amountDraft.replace(/[^\d]/g, ""), 10);
@@ -871,6 +947,21 @@ function EntryRow({
                     </div>
                   ))
                 : null}
+            </div>
+          ) : null}
+
+          {displayItems ? (
+            <div className="breakdown">
+              {displayItems.map((item, index) => (
+                <div key={`${item.name}-${index}`} className="breakdown-row">
+                  <span>{item.name}</span>
+                  <span>{item.amount !== undefined ? `Rp${formatAmountIDR(item.amount)}` : ""}</span>
+                </div>
+              ))}
+              <div className="breakdown-total">
+                <span>total</span>
+                <span>Rp{formatAmountIDR(entry.amount)}</span>
+              </div>
             </div>
           ) : null}
         </div>
