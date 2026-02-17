@@ -1,4 +1,4 @@
-const CACHE_NAME = "kemana-0.1.55";
+const CACHE_NAME = "kemana-0.1.8";
 const PRECACHE_URLS = [
   "/",
   "/manifest.webmanifest",
@@ -11,7 +11,6 @@ const PRECACHE_URLS = [
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS)));
-  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {

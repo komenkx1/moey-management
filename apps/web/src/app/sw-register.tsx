@@ -111,7 +111,7 @@ export default function SWRegister() {
         role="status"
         aria-live="polite"
       >
-        {isOffline ? "Sedang offline" : swStatus === "ready" ? "Online" : "Menyiapkan offline"}
+        {isOffline ? "Offline" : swStatus === "ready" ? "Siap offline" : "Online"}
       </div>
       {updateReady ? (
         <div className="pwa-update-banner" role="status" aria-live="polite">
