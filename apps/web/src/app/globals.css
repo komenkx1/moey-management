@@ -428,6 +428,23 @@ select {
   border-radius: 12px;
   background: #fff;
   overflow: hidden;
+  transition: background-color 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+}
+
+.row.highlight {
+  border-color: #f0c9a0;
+  background: #fff7ee;
+  box-shadow: 0 0 0 2px rgba(240, 201, 160, 0.28);
+  animation: row-highlight-fade 2.8s ease-out;
+}
+
+@keyframes row-highlight-fade {
+  0% {
+    box-shadow: 0 0 0 0 rgba(240, 201, 160, 0.45);
+  }
+  100% {
+    box-shadow: 0 0 0 2px rgba(240, 201, 160, 0.18);
+  }
 }
 
 .row-hit {
@@ -719,6 +736,45 @@ select {
 
 .action-toast.with-undo {
   bottom: 58px;
+}
+
+.moved-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #e7caa4;
+  border-radius: 999px;
+  background: #fffaf3;
+  color: #5d3f1a;
+  padding: 8px 12px;
+  font-size: 12px;
+  z-index: 32;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+.moved-toast.with-action {
+  bottom: 58px;
+}
+
+.moved-toast.with-undo {
+  bottom: 62px;
+}
+
+.moved-toast.with-undo.with-action {
+  bottom: 104px;
+}
+
+.moved-link {
+  border: 0;
+  background: transparent;
+  color: #1b5f6a;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
 }
 
 .pwa-status-badge {

@@ -47,6 +47,13 @@ interface ActionToastState {
   expiresAt: number;
 }
 
+interface MovedToastState {
+  entryId: string;
+  targetDate: string;
+  label: string;
+  expiresAt: number;
+}
+
 type DateFilterPreset = "today" | "7d" | "30d" | "all";
 
 const FILTER_OPTIONS: Array<{ value: DateFilterPreset; label: string }> = [
@@ -230,6 +237,49 @@ function getFilteredEntries(
   const days = preset === "7d" ? 7 : 30;
   const startKey = toDateKey(offsetDate(now, -(days - 1)));
   return entries.filter((entry) => entry.date >= startKey && entry.date <= todayKey);
+}
+
+function includesDateInFilter(
+  dateISO: string,
+  preset: DateFilterPreset,
+  now: Date = new Date()
+): boolean {
+  const todayKey = toDateKey(now);
+  if (preset === "all") {
+    return true;
+  }
+  if (preset === "today") {
+    return dateISO === todayKey;
+  }
+
+  const days = preset === "7d" ? 7 : 30;
+  const startKey = toDateKey(offsetDate(now, -(days - 1)));
+  return dateISO >= startKey && dateISO <= todayKey;
+}
+
+function getBestFilterForDate(
+  dateISO: string,
+  now: Date = new Date()
+): DateFilterPreset {
+  const parsed = parseDateKey(dateISO);
+  if (!parsed) {
+    return "all";
+  }
+
+  const diffDays = Math.floor(
+    (toDayStartTimestamp(now) - toDayStartTimestamp(parsed)) / 86_400_000
+  );
+
+  if (diffDays === 0) {
+    return "today";
+  }
+  if (diffDays >= 0 && diffDays <= 6) {
+    return "7d";
+  }
+  if (diffDays >= 0 && diffDays <= 29) {
+    return "30d";
+  }
+  return "all";
 }
 
 function getFilterLabel(preset: DateFilterPreset): string {
@@ -450,6 +500,9 @@ export default function HomePage() {
   const [dateFilter, setDateFilter] = useState<DateFilterPreset>("today");
   const [autoExpandedEntryId, setAutoExpandedEntryId] = useState<string | null>(null);
   const [actionToast, setActionToast] = useState<ActionToastState | null>(null);
+  const [movedToast, setMovedToast] = useState<MovedToastState | null>(null);
+  const [pendingScrollToId, setPendingScrollToId] = useState<string | null>(null);
+  const [highlightEntryId, setHighlightEntryId] = useState<string | null>(null);
   const [quickInput, setQuickInput] = useState("");
   const [debouncedQuickInput, setDebouncedQuickInput] = useState("");
   const [quickError, setQuickError] = useState<string | null>(null);
@@ -534,6 +587,35 @@ export default function HomePage() {
     return () => window.clearTimeout(timer);
   }, [actionToast]);
 
+  useEffect(() => {
+    if (!movedToast) {
+      return;
+    }
+
+    const timeoutMs = Math.max(0, movedToast.expiresAt - Date.now());
+    const timer = window.setTimeout(() => {
+      setMovedToast((current) =>
+        current?.expiresAt === movedToast.expiresAt ? null : current
+      );
+    }, timeoutMs);
+
+    return () => window.clearTimeout(timer);
+  }, [movedToast]);
+
+  useEffect(() => {
+    if (!highlightEntryId) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setHighlightEntryId((current) =>
+        current === highlightEntryId ? null : current
+      );
+    }, 2_800);
+
+    return () => window.clearTimeout(timer);
+  }, [highlightEntryId]);
+
   const quickPreview = useMemo(() => {
     if (!debouncedQuickInput.trim()) {
       return null;
@@ -602,11 +684,85 @@ export default function HomePage() {
     [orderedDates, groupedEntries]
   );
 
+  useEffect(() => {
+    if (!pendingScrollToId) {
+      return;
+    }
+
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 3;
+
+    const scrollToPending = () => {
+      if (cancelled) {
+        return;
+      }
+
+      const selector = `[data-entry-id="${pendingScrollToId}"]`;
+      const element = document.querySelector(selector) as HTMLElement | null;
+      if (element) {
+        try {
+          element.scrollIntoView({ block: "center", behavior: "smooth" });
+        } catch {
+          element.scrollIntoView({ block: "center" });
+        }
+        setPendingScrollToId((current) =>
+          current === pendingScrollToId ? null : current
+        );
+        return;
+      }
+
+      if (attempts >= maxAttempts) {
+        setPendingScrollToId((current) =>
+          current === pendingScrollToId ? null : current
+        );
+        return;
+      }
+
+      attempts += 1;
+      window.setTimeout(() => {
+        window.requestAnimationFrame(scrollToPending);
+      }, 80);
+    };
+
+    window.requestAnimationFrame(scrollToPending);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pendingScrollToId, orderedDates]);
+
   function showActionToast(message: string) {
     setActionToast({
       message,
       expiresAt: Date.now() + 2_000
     });
+  }
+
+  function handleEntryDateChanged(entryId: string, nextDateISO: string) {
+    const label = formatDayLabel(nextDateISO, new Date());
+    setMovedToast({
+      entryId,
+      targetDate: nextDateISO,
+      label,
+      expiresAt: Date.now() + 6_000
+    });
+    setPendingScrollToId(entryId);
+    setHighlightEntryId(entryId);
+  }
+
+  function handleMovedToastSee() {
+    if (!movedToast) {
+      return;
+    }
+
+    if (!includesDateInFilter(movedToast.targetDate, dateFilter)) {
+      setDateFilter(getBestFilterForDate(movedToast.targetDate));
+    }
+
+    setPendingScrollToId(movedToast.entryId);
+    setHighlightEntryId(movedToast.entryId);
+    setMovedToast(null);
   }
 
   function buildEntry(raw: string, source: EntrySource): Entry | null {
@@ -1011,12 +1167,14 @@ export default function HomePage() {
                   <EntryRow
                     key={entry.id}
                     entry={entry}
+                    isHighlighted={highlightEntryId === entry.id}
                     shouldAutoExpand={autoExpandedEntryId === entry.id}
                     onAutoExpandHandled={() =>
                       setAutoExpandedEntryId((current) => (current === entry.id ? null : current))
                     }
                     onDelete={() => handleDelete(entry.id)}
                     onUpdate={(updater, toastMessage) => updateEntry(entry.id, updater, toastMessage)}
+                    onDateChanged={handleEntryDateChanged}
                     onCategoryChange={(category) => handleCategoryChange(entry, category)}
                   />
                 ))}
@@ -1037,6 +1195,18 @@ export default function HomePage() {
       {actionToast ? (
         <div className={`action-toast ${undoToast ? "with-undo" : ""}`} role="status" aria-live="polite">
           {actionToast.message}
+        </div>
+      ) : null}
+      {movedToast ? (
+        <div
+          className={`moved-toast ${undoToast ? "with-undo" : ""} ${actionToast ? "with-action" : ""}`}
+          role="status"
+          aria-live="polite"
+        >
+          <span>Dipindah ke {movedToast.label}</span>
+          <button className="moved-link" type="button" onClick={handleMovedToastSee}>
+            Lihat
+          </button>
         </div>
       ) : null}
 
@@ -1310,17 +1480,21 @@ function DailySummaryCard({ summary }: { summary: TodaySummaryStats }) {
 
 function EntryRow({
   entry,
+  isHighlighted,
   shouldAutoExpand,
   onAutoExpandHandled,
   onDelete,
   onUpdate,
+  onDateChanged,
   onCategoryChange
 }: {
   entry: Entry;
+  isHighlighted?: boolean;
   shouldAutoExpand?: boolean;
   onAutoExpandHandled?: () => void;
   onDelete: () => void;
   onUpdate: (updater: (entry: Entry) => Entry, toastMessage?: string) => void;
+  onDateChanged?: (entryId: string, nextDateISO: string) => void;
   onCategoryChange: (category: Category) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -1445,10 +1619,16 @@ function EntryRow({
       return;
     }
 
+    if (normalizedDate === entry.date) {
+      setDateEditorOpen(false);
+      return;
+    }
+
     onUpdate((current) => ({
       ...current,
       date: normalizedDate
-    }), "Tanggal diperbarui");
+    }));
+    onDateChanged?.(entry.id, normalizedDate);
     setDateDraft(normalizedDate);
     setDateEditorOpen(false);
   }
@@ -1507,7 +1687,11 @@ function EntryRow({
   }
 
   return (
-    <article className={`row ${isExpanded ? "expanded" : ""}`}>
+    <article
+      id={`entry-${entry.id}`}
+      data-entry-id={entry.id}
+      className={`row ${isExpanded ? "expanded" : ""} ${isHighlighted ? "highlight" : ""}`}
+    >
       <button
         className="row-hit"
         type="button"
