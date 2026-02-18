@@ -1678,6 +1678,11 @@ function EntryRow({
   const currentPaymentMethod: PaymentMethod = entry.paymentMethod ?? "Unknown";
   const splitCount = entry.split?.shares?.length ?? null;
   const warningCount = entry.parseWarnings?.length ?? 0;
+  const hasSplit = Boolean(entry.split && entry.split.shares.length > 0);
+  const splitStateLabel = hasSplit
+    ? `${entry.split?.shares.length ?? 0} orang • ${entry.split?.mode === "custom" ? "Custom" : "Equal"}`
+    : "Belum diatur";
+  const splitToggleLabel = splitOpen ? "Selesai" : hasSplit ? "Edit Split" : "Buat Split";
   const hasSelectedPaymentMethod = currentPaymentMethod !== "Unknown";
   const expandedPanelId = `row-expanded-${entry.id}`;
   const displayText = useMemo(() => splitDisplayText(entry.text), [entry.text]);
@@ -1797,6 +1802,26 @@ function EntryRow({
     setCustomSubmitStatus({ type: "ok", diff: 0 });
   }
 
+  function cancelSplitEditPanel() {
+    setSplitOpen(false);
+    setIsCustomDirty(false);
+    setCustomSubmitStatus(null);
+  }
+
+  function clearAppliedSplit() {
+    if (!entry.split) {
+      return;
+    }
+    onUpdate((current) => ({
+      ...current,
+      split: undefined
+    }), "Split dibatalkan");
+    setSplitOpen(false);
+    setSplitMode("equal");
+    setIsCustomDirty(false);
+    setCustomSubmitStatus(null);
+  }
+
   return (
     <article
       id={`entry-${entry.id}`}
@@ -1841,7 +1866,7 @@ function EntryRow({
             <div className="row-meta">
               {entry.date} • {entry.category}
               {hasSelectedPaymentMethod ? ` • ${paymentMethodLabel(currentPaymentMethod)}` : ""}
-              {splitCount && splitCount > 1 ? ` • ${splitCount}p` : ""}
+              {splitCount && splitCount > 1 ? ` • Split ${splitCount}p` : ""}
               {warningCount ? ` • !${warningCount}` : ""}
             </div>
           </div>
@@ -1949,13 +1974,33 @@ function EntryRow({
             </div>
           ) : null}
           <hr className="section-divider" />
-          <div className="row-actions compact">
-            <button className="btn ghost btn-sm" type="button" onClick={() => setSplitOpen((prev) => !prev)}>
-              {splitOpen ? "Tutup Split" : "Split"}
-            </button>
-            <button className="btn ghost btn-sm danger" type="button" onClick={onDelete}>
-              Hapus
-            </button>
+          <div className="split-entry-header">
+            <div className="split-entry-info">
+              <div className="split-entry-title">Split bill</div>
+              <div className="split-entry-meta">{splitStateLabel}</div>
+            </div>
+            <div className="row-actions compact split-entry-actions">
+              <button
+                className={`btn btn-sm ${splitOpen || hasSplit ? "secondary" : ""}`}
+                type="button"
+                onClick={() => setSplitOpen((prev) => !prev)}
+              >
+                {splitToggleLabel}
+              </button>
+              {splitOpen ? (
+                <button className="btn secondary btn-sm" type="button" onClick={cancelSplitEditPanel}>
+                  Batal
+                </button>
+              ) : null}
+              {hasSplit ? (
+                <button className="btn ghost btn-sm danger" type="button" onClick={clearAppliedSplit}>
+                  Batalkan split
+                </button>
+              ) : null}
+              <button className="btn ghost btn-sm danger" type="button" onClick={onDelete}>
+                Hapus
+              </button>
+            </div>
           </div>
 
           {splitOpen ? (

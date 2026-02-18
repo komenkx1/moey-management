@@ -570,6 +570,34 @@ select {
   margin: 12px 0 10px;
 }
 
+.split-entry-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.split-entry-info {
+  min-width: 0;
+}
+
+.split-entry-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #30302d;
+}
+
+.split-entry-meta {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #676764;
+}
+
+.split-entry-actions {
+  margin-top: 0;
+}
+
 .split-box {
   margin-top: 12px;
   border: 1px dashed #cdcdc8;
