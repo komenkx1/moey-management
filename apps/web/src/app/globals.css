@@ -156,6 +156,107 @@ select {
   color: #4f686d;
 }
 
+.night-close-bar {
+  margin-top: 8px;
+  border: 1px solid #d8e1e2;
+  border-radius: 12px;
+  background: #f7fafb;
+  padding: 10px 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.night-close-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #2d4e55;
+}
+
+.night-close-subtitle {
+  font-size: 12px;
+  color: #4f666b;
+}
+
+.night-close-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.night-close-inline-confirmation {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #2a6737;
+}
+
+.night-close-backdrop {
+  position: fixed;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.22);
+  z-index: 44;
+}
+
+.night-close-panel {
+  position: fixed;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  width: min(760px, calc(100% - 20px));
+  border: 1px solid #d8d8d2;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.16);
+  padding: 12px;
+  z-index: 45;
+  display: grid;
+  gap: 10px;
+}
+
+.night-close-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.night-close-panel-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #213e45;
+}
+
+.night-close-panel-date {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #667d82;
+}
+
+.night-close-panel-grid {
+  display: grid;
+  gap: 4px;
+}
+
+.night-close-panel-line {
+  font-size: 13px;
+  color: #394f54;
+}
+
+.night-close-panel-prompt {
+  border-left: 2px solid #cfdde0;
+  padding-left: 8px;
+  font-size: 12px;
+  color: #566f74;
+}
+
+.night-close-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .composer {
   position: sticky;
   top: 0;

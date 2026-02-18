@@ -29,6 +29,16 @@ import {
   saveEntries,
   saveRules
 } from "@kemana/storage";
+import NightCloseBar from "./NightCloseBar";
+import NightClosePanel from "./NightClosePanel";
+import {
+  getAverageLast7Days,
+  getNightCloseCopy,
+  getTopCategory as getNightCloseTopCategory,
+  getTodayISO,
+  getTodayStats,
+  shouldShowNightClose
+} from "./night-close";
 import SmartRecallBar from "./SmartRecallBar";
 import { getSmartRecallPrompt } from "./recall";
 
@@ -66,6 +76,7 @@ const FILTER_OPTIONS: Array<{ value: DateFilterPreset; label: string }> = [
 ];
 const LAST_OPEN_AT_KEY = "kemana.lastOpenAt";
 const RECALL_DISMISSED_SESSION_KEY = "kemana.dismissedRecallUntil";
+const NIGHT_CLOSE_CLOSED_AT_KEY = "kemana.nightCloseClosedAt";
 
 interface TopCategorySummary {
   category: Category;
@@ -606,6 +617,10 @@ export default function HomePage() {
   const [recallDismissedInSession, setRecallDismissedInSession] = useState(false);
   const [isRecallSessionReady, setIsRecallSessionReady] = useState(false);
   const [recallInputPrimed, setRecallInputPrimed] = useState(false);
+  const [nightCloseClosedAt, setNightCloseClosedAt] = useState<string | null>(null);
+  const [isNightCloseReady, setIsNightCloseReady] = useState(false);
+  const [nightClosePanelOpen, setNightClosePanelOpen] = useState(false);
+  const [nightCloseConfirmation, setNightCloseConfirmation] = useState<string | null>(null);
   const [quickError, setQuickError] = useState<string | null>(null);
   const [showQuickWarningDetails, setShowQuickWarningDetails] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -639,6 +654,9 @@ export default function HomePage() {
     window.localStorage.setItem(LAST_OPEN_AT_KEY, String(now));
     setRecallDismissedInSession(Boolean(window.sessionStorage.getItem(RECALL_DISMISSED_SESSION_KEY)));
     setIsRecallSessionReady(true);
+
+    setNightCloseClosedAt(window.localStorage.getItem(NIGHT_CLOSE_CLOSED_AT_KEY));
+    setIsNightCloseReady(true);
   }, []);
 
   useEffect(() => {
@@ -726,6 +744,20 @@ export default function HomePage() {
     return () => window.clearTimeout(timer);
   }, [highlightEntryId]);
 
+  useEffect(() => {
+    if (!nightCloseConfirmation) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setNightCloseConfirmation((current) =>
+        current === nightCloseConfirmation ? null : current
+      );
+    }, 2_600);
+
+    return () => window.clearTimeout(timer);
+  }, [nightCloseConfirmation]);
+
   const quickPreview = useMemo(() => {
     if (!debouncedQuickInput.trim()) {
       return null;
@@ -795,6 +827,31 @@ export default function HomePage() {
     () => getSummaryStats({ allEntries: entries, filteredEntries, preset: dateFilter }),
     [entries, filteredEntries, dateFilter]
   );
+  const nightCloseTodayStats = useMemo(() => getTodayStats(entries), [entries]);
+  const nightCloseAvg7 = useMemo(() => getAverageLast7Days(entries), [entries]);
+  const nightCloseTopCategory = useMemo(
+    () => getNightCloseTopCategory(nightCloseTodayStats.byCategory),
+    [nightCloseTodayStats.byCategory]
+  );
+  const nightCloseCopy = useMemo(
+    () => getNightCloseCopy({ stats: nightCloseTodayStats, avg7: nightCloseAvg7 }),
+    [nightCloseTodayStats, nightCloseAvg7]
+  );
+  const showNightCloseBar = useMemo(
+    () =>
+      isNightCloseReady &&
+      shouldShowNightClose({
+        entries,
+        closedAt: nightCloseClosedAt
+      }),
+    [entries, isNightCloseReady, nightCloseClosedAt]
+  );
+  useEffect(() => {
+    if (showNightCloseBar) {
+      return;
+    }
+    setNightClosePanelOpen(false);
+  }, [showNightCloseBar]);
   const groupedEntriesResult = useMemo(() => groupEntriesByDate(filteredEntries), [filteredEntries]);
   const groupedEntries = useMemo(() => groupedEntriesResult.groups, [groupedEntriesResult]);
   const orderedDates = useMemo(() => groupedEntriesResult.dates, [groupedEntriesResult]);
@@ -909,6 +966,32 @@ export default function HomePage() {
     setPendingScrollToId(movedToast.entryId);
     setHighlightEntryId(movedToast.entryId);
     setMovedToast(null);
+  }
+
+  function markNightCloseDone(showConfirmation: boolean) {
+    const todayISO = getTodayISO();
+    setNightCloseClosedAt(todayISO);
+    window.localStorage.setItem(NIGHT_CLOSE_CLOSED_AT_KEY, todayISO);
+    setNightClosePanelOpen(false);
+    if (showConfirmation) {
+      setNightCloseConfirmation("Hari ditutup ✅");
+    }
+  }
+
+  function handleNightCloseBarClose() {
+    markNightCloseDone(false);
+  }
+
+  function handleNightCloseDoneFromPanel() {
+    markNightCloseDone(true);
+  }
+
+  function handleNightCloseAddEntry() {
+    setNightClosePanelOpen(false);
+    setRecallInputPrimed(true);
+    window.requestAnimationFrame(() => {
+      quickInputRef.current?.focus();
+    });
   }
 
   function buildEntry(raw: string, source: EntrySource): Entry | null {
@@ -1307,6 +1390,16 @@ export default function HomePage() {
       </section>
 
       <DailySummaryCard summary={summaryStats} />
+      {showNightCloseBar ? (
+        <NightCloseBar
+          subtitle={nightCloseCopy.subtitle}
+          onReview={() => setNightClosePanelOpen(true)}
+          onClose={handleNightCloseBarClose}
+        />
+      ) : null}
+      {nightCloseConfirmation ? (
+        <div className="night-close-inline-confirmation">{nightCloseConfirmation}</div>
+      ) : null}
 
       <section className="list">
         {filteredEntries.length === 0 ? (
@@ -1369,6 +1462,17 @@ export default function HomePage() {
           </button>
         </div>
       ) : null}
+      <NightClosePanel
+        open={nightClosePanelOpen}
+        dateLabel={`Hari ini • ${nightCloseTodayStats.dateISO}`}
+        total={nightCloseTodayStats.total}
+        count={nightCloseTodayStats.count}
+        topCategory={nightCloseTopCategory}
+        promptLine={nightCloseCopy.promptLine}
+        onClose={() => setNightClosePanelOpen(false)}
+        onDone={handleNightCloseDoneFromPanel}
+        onAddEntry={handleNightCloseAddEntry}
+      />
 
       <footer className="app-version" aria-label="Versi aplikasi">
         v{appVersion}
