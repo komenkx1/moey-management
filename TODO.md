@@ -5,8 +5,17 @@
 - Parser + split + rules sudah dipisah ke `packages/core`.
 - Storage adapter local-first aktif di `packages/storage` (localStorage).
 - PWA minimal + offline/update flow sudah aktif.
-- Composer sudah lebih tenang: teaching hint adaptif, format help collapsible, error merah hanya setelah submit.
+- Composer sudah lebih tenang: teaching hint adaptif kontekstual, error merah hanya setelah submit.
+- Parser qty-aware sudah aktif (`3x 15k`, `x3 15k`, `15k x3`, `3 x 15k`) dan token qty dipertahankan di text.
 - Expanded row sudah punya breakdown display item untuk meningkatkan trust (display-only).
+- Date edit punya feedback pindah yang jelas (`Dipindah ke ...`, tombol `Lihat`, scroll + highlight row).
+- Summary/report sudah split-aware (menghitung porsi `Kamu` saat entry punya split).
+- Daily Summary card + smart empty state sudah aktif.
+- Group by date + total per hari sudah aktif.
+- Filter rentang tanggal (`Hari ini`, `7 hari`, `30 hari`, `Semua`) sudah aktif untuk list + summary.
+- Payment method opsional sudah aktif (awareness-only, non-blocking).
+- Export/Import backup JSON + storage corruption guard sudah aktif.
+- Adaptive iOS PWA status bar blending aktif (best-effort).
 - Fokus sisa Phase 1: validasi metrik latency/habit dan migrasi storage ke Dexie (tanpa ubah domain contract).
 
 ## 1. Prinsip Eksekusi
@@ -51,7 +60,7 @@ Status:
 - [x] Seed kategori default + fallback `Lainnya`.
 - [x] Implement category remember sederhana berbasis keyword/merchant lokal.
 - [x] Tampilkan warning parse ambigu secara inline (tanpa modal blocking).
-- [x] Implement teaching hint kontekstual + format help collapsible agar user cepat paham format input.
+- [x] Implement teaching hint kontekstual adaptif agar user cepat paham format input.
 - [x] Ubah feedback error composer agar muncul setelah submit (bukan saat user mengetik).
 
 ## 2.4 Hari 4 - Rapikan Arsitektur (Fake Monorepo -> Target)
@@ -80,6 +89,13 @@ Status:
 - [x] Bugfix blocker dan final polish microcopy.
 - [x] Tambahkan display breakdown item di expanded row tanpa mengubah schema.
 
+## 2.10 Trust & Reporting Polish (Phase 1 Lanjutan)
+- [x] Parser qty-aware untuk format fleksibel (`3x 15k`, `x3 15k`, `15k x3`, `3 x 15k`).
+- [x] Pertahankan token qty di text tersimpan agar konteks transaksi tidak hilang.
+- [x] Sinkronkan summary/report ke porsi net `Kamu` saat split bill.
+- [x] Tambahkan feedback pindah tanggal + aksi `Lihat` + scroll/highlight row.
+- [x] Tambahkan adaptive iOS status bar blending (metadata + viewport-fit + dynamic theme-color).
+
 ## 2.8 PWA & Update Reliability (Tambahan Phase 0.5)
 - [x] Manifest web app + metadata install di Next App Router.
 - [x] Service worker minimal untuk offline shell + static assets.
@@ -88,6 +104,17 @@ Status:
 - [x] Versioned SW build (template + inject version dari `package.json`).
 - [x] Navigation network-first (`no-store`) + app shell fallback untuk kurangi stale HTML.
 - [x] Activate lifecycle atomic (`clear old cache -> claim client`) untuk stabilitas update.
+- [x] iOS status bar blending best-effort (`black-translucent`, `viewport-fit=cover`, dynamic `theme-color`).
+
+## 2.11 Reporting & Data Safety Completeness
+- [x] Daily Summary card dengan status + top category + empty state.
+- [x] Grouped history per tanggal + total per grup.
+- [x] Date range filter memengaruhi list + summary.
+- [x] Split-aware reporting memakai porsi net `Kamu`.
+- [x] Date move trust feedback (`Dipindah ke...`, `Lihat`, auto-scroll, highlight).
+- [x] Export backup JSON + import merge/replace + dedupe by id.
+- [x] Storage parse guard (corrupt JSON tidak bikin blank screen).
+- [ ] Validasi copywriting status summary lewat dogfooding 7 hari (agar tone konsisten suportif).
 
 ## 2.9 Quality Gate Phase 1 (Harus Lolos)
 - [x] Semua core flow berfungsi saat perangkat offline.

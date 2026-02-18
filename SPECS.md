@@ -3,16 +3,26 @@
 ## 0. Status Implementasi (Per 17 Februari 2026)
 - [x] Quick Add parser + warning system terstruktur.
 - [x] Quick Add inline addition (`+`) dengan total otomatis.
+- [x] Quick Add qty-aware parsing (`3x 15k`, `x3 15k`, `15k x3`, `3 x 15k`).
 - [x] Dense list + expand row + inline edit.
 - [x] Split equal/custom + validasi selisih.
 - [x] Bulk paste multi-line + preview.
 - [x] Category rule sederhana (remember dari koreksi kategori).
 - [x] Teaching hint adaptif (muncul hanya saat user buntu, tidak permanen).
-- [x] Format help collapsible (`Format`) untuk mengurangi visual noise composer.
+- [x] Teaching hint kontekstual aktif berdasarkan pola input (format cepat/merchant/sum/qty).
 - [x] Breakdown display per item di expanded row (display-only, tanpa schema baru).
 - [x] Local persistence single-device (localStorage).
 - [x] PWA minimal + offline badge + safe update banner.
-- [x] Parser regression tests aktif (`19` test lulus).
+- [x] Adaptive iOS PWA status bar blending (best-effort via `viewport-fit=cover` + dynamic `theme-color`).
+- [x] Feedback pindah tanggal (`Dipindah ke ...`, tombol `Lihat`, scroll + highlight row).
+- [x] Report/summary pengeluaran split-aware (menghitung porsi `Kamu`).
+- [x] Daily summary card + smart empty state.
+- [x] Grouped history per tanggal + total harian per grup.
+- [x] Filter rentang tanggal (`Hari ini`, `7 hari`, `30 hari`, `Semua`) untuk list + summary.
+- [x] Payment method opsional (awareness-only, non-blocking).
+- [x] Export/Import backup JSON (merge/replace) tanpa backend.
+- [x] Storage guard (corrupt JSON handling + storage version ringan).
+- [x] Parser regression tests aktif (`26` test lulus).
 - [ ] Dexie migration (target berikutnya, belum aktif).
 - [ ] Backend/auth/sync/RLS (tetap Phase 2, belum implementasi).
 
@@ -94,6 +104,16 @@ Given entry text memuat pola multi-item pada subtitle
 When user membuka expanded row  
 Then app menampilkan breakdown display item + total untuk meningkatkan kepercayaan.
 And item tidak disimpan sebagai schema terpisah.
+
+### QA-15 Qty Parsing Flexible
+Given user memasukkan `makan 3x 15k`, `makan x3 15k`, `makan 15k x3`, atau `makan 3 x 15k`  
+When user submit  
+Then parser menghitung amount sebagai qty * nominal per item.
+
+### QA-16 Qty Context Preserved in Text
+Given user input mengandung qty  
+When entry tersimpan  
+Then text tetap menyimpan token qty (contoh `makan 3x`) agar konteks transaksi terbaca.
 
 ## 1.2 Split Bill
 ### SB-01 Equal Split
@@ -234,6 +254,55 @@ Then sistem menampilkan kandidat `merchant`, `date`, `total` untuk review manual
 Given OCR menghasilkan confidence rendah  
 When hasil ditampilkan  
 Then user wajib konfirmasi/edit sebelum simpan entry.
+
+## 1.9 Reporting & Trust Feedback
+### RP-01 Split-Aware Summary
+Given user punya entry split bill  
+When app menghitung total harian/summary/top category  
+Then report memakai porsi `Kamu` (bukan total bill penuh).
+
+### RP-02 Date Move Feedback
+Given user mengubah tanggal entry dari inline editor  
+When simpan tanggal sukses  
+Then app menampilkan feedback `Dipindah ke {labelTanggal}` dengan aksi `Lihat`.
+And saat `Lihat` diklik, app scroll ke row tujuan dan highlight singkat.
+
+### RP-03 Date Move Works With Active Filter
+Given filter aktif tidak mencakup tanggal baru entry  
+When user klik `Lihat` pada feedback pindah tanggal  
+Then filter otomatis disesuaikan ke rentang yang mencakup tanggal target sebelum scroll.
+
+### RP-04 Date Group Header Total
+Given entries sudah dikelompokkan per tanggal  
+When user melihat header grup tanggal  
+Then header menampilkan label tanggal human-friendly dan total nominal untuk grup tersebut.
+
+### RP-05 Summary Follows Active Range
+Given user mengganti filter tanggal (`Hari ini`, `7 hari`, `30 hari`, `Semua`)  
+When summary dihitung ulang  
+Then angka total, status, top category, dan jumlah transaksi mengikuti rentang aktif.
+
+## 1.10 PWA & Update Safety
+### PWA-01 Offline Open After First Online
+Given user pernah membuka app saat online minimal sekali  
+When user membuka app lagi saat offline  
+Then app shell tetap terbuka dan data lokal tetap ditampilkan.
+
+### PWA-02 Update Banner Without Silent Reload
+Given ada service worker baru setelah release  
+When app lama masih terbuka  
+Then app tidak reload otomatis.
+And app menampilkan banner `Update tersedia`.
+
+### PWA-03 User-Triggered Reload
+Given banner `Update tersedia` tampil  
+When user klik `Muat ulang`  
+Then service worker baru diaktifkan dan app reload satu kali.
+
+### PWA-04 Versioned Cache Invalidation
+Given versi app berubah saat build release  
+When service worker baru diregister  
+Then cache name ikut berubah sesuai versi sehingga aset lama tidak tersangkut.
 
 ## 2. Non-Goals Checklist (MVP)
 - [x] Tidak ada chart/dashboard analitik.

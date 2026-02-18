@@ -7,20 +7,34 @@
   - `kopi 18`, `parkir 2k`, `dinner 120 3p`
   - nominal dengan cleaning (`Rp18k,`, `(18k)`)
   - inline summation (`25 + 10 + 5`, termasuk tanpa spasi tertentu) + warning terstruktur.
+  - qty-aware parsing (`3x 15k`, `x3 15k`, `15k x3`, `3 x 15k`) termasuk kombinasi `+`.
+  - token qty dipertahankan di text tersimpan agar konteks input tetap terbaca.
 - Dense list + expand row inline, edit inline, category chips, split equal/custom, bulk paste.
 - Warning UI non-blocking, delete dengan undo toast, composer autofocus + Enter submit.
 - Teaching UX adaptif:
   - error merah parser hanya setelah submit gagal (bukan saat mengetik)
-  - hint edukasi muncul hanya saat user buntu
-  - bantuan format dibuat collapsible (`Format`) untuk mengurangi visual noise.
+  - hint edukasi kontekstual muncul saat user mengetik (format cepat/merchant/sum/qty) tanpa modal.
 - Entry expanded menampilkan breakdown display per item (display-only, tanpa ubah schema/parser/storage).
+- Date edit UX sudah lebih jelas:
+  - setelah ubah tanggal, muncul feedback `Dipindah ke ...` + tombol `Lihat`
+  - auto scroll + highlight row untuk mengurangi kesan data hilang.
 - Local-first persistence aktif via localStorage + guard hydration (mencegah data ketimpa kosong di dev refresh).
 - PWA minimal aktif:
   - manifest + service worker template (`sw.template.js`)
   - offline access dasar setelah first online load
   - offline badge + safe update banner (`Update tersedia -> Muat ulang`)
   - cache versioning mengikuti versi app + lifecycle SW lebih stabil (activate atomic, update tidak loop).
-- Test parser: `19` test lulus (`vitest`).
+- iOS PWA status bar adaptive aktif (best-effort): `black-translucent` + `viewport-fit=cover` + sync `theme-color` dari `--app-bg`.
+- Summary/report sudah split-aware (menggunakan porsi `Kamu` jika entry punya split).
+- Daily awareness sudah aktif:
+  - Daily Summary card + smart empty state.
+  - Grouped history per tanggal + total harian.
+  - Filter rentang (`Hari ini`, `7 hari`, `30 hari`, `Semua`) untuk list + summary.
+  - Edit tanggal inline memindahkan entry antar grup + feedback `Dipindah ke ...`.
+- Data safety dasar aktif:
+  - Export/Import backup JSON (merge/replace) tanpa backend.
+  - Guard storage corruption + storage version ringan.
+- Test parser: `26` test lulus (`vitest`).
 
 ### Sedang Berjalan
 - Polishing UX dense layout, microcopy, dan indikator status online/offline.
@@ -30,6 +44,23 @@
 - Dexie/IndexedDB sebagai storage utama (masih localStorage untuk validasi cepat).
 - Backend Supabase, RLS, auth, sync queue, conflict resolution.
 - OCR upload/scan flow.
+
+## 0.1 Detail Status PWA & Reporting
+### PWA (Phase 0.5/1)
+- `Done`: installable manifest + icon set.
+- `Done`: SW minimal, offline shell fallback, static asset caching.
+- `Done`: safe update flow user-triggered (`Update tersedia` -> `Muat ulang`) tanpa auto reload diam-diam.
+- `Done`: versioned SW template berbasis versi app.
+- `Done`: badge status koneksi (offline/online readiness) non-blocking.
+- `Pending validasi lanjutan`: smoke test berkala di Safari iOS homescreen + Android Chrome setelah tiap release.
+
+### Reporting (Phase 1)
+- `Done`: summary harian (total, status, transaksi, top kategori).
+- `Done`: split-aware reporting (net porsi `Kamu`).
+- `Done`: grouped ledger per tanggal + total per grup.
+- `Done`: filter rentang tanggal memengaruhi list dan summary.
+- `Done`: feedback trust untuk perpindahan tanggal + auto scroll/highlight.
+- `Pending validasi lanjutan`: tuning wording insight berdasarkan data harian creator (agar tidak terasa menghakimi di data awal).
 
 ## 1. Product Goal
 KeMana adalah aplikasi pencatatan pengeluaran super cepat dengan fokus utama:
@@ -127,7 +158,7 @@ KeMana adalah aplikasi pencatatan pengeluaran super cepat dengan fokus utama:
 - Saat Enter/tap Tambah: simpan lokal instan + input reset.
 - Jika parse ambigu: simpan sebagai draft warning inline, bukan blocking modal.
 - Error validation merah ditampilkan saat submit gagal; saat mengetik, gunakan hint ringan.
-- Bantuan format ditampilkan on-demand via tombol kecil `Format` (collapsed by default).
+- Hint format adaptif ditampilkan kontekstual sesuai pola input user (format cepat, merchant, sum, qty).
 - Microcopy warning: `Nominal belum yakin. Tap untuk koreksi.`
 
 ### 5.3 Bulk Paste
@@ -167,11 +198,17 @@ KeMana adalah aplikasi pencatatan pengeluaran super cepat dengan fokus utama:
 Target format umum:
 - `<teks> <nominal>`
 - `<teks> <nominal> <np>` untuk split jumlah orang (mis. `3p`)
+- qty opsional:
+  - `<teks> <qty>x <nominal>`
+  - `<teks> x<qty> <nominal>`
+  - `<teks> <nominal> x<qty>`
+  - `<teks> <qty> x <nominal>`
 
 Contoh valid:
 - `kopi 18` -> text=`kopi`, amount=`18.000` (heuristik IDR ribuan).
 - `parkir 2k` -> amount=`2.000`.
 - `dinner 120 3p` -> amount=`120.000`, split_count=`3`.
+- `makan 3x 15k` -> text menyimpan `makan 3x`, amount=`45.000`.
 
 ## 6.2 Normalisasi Nominal
 - Gunakan integer minor unit (IDR tanpa pecahan) di domain.
@@ -198,6 +235,10 @@ Contoh valid:
 | `dinner 120 0p` | Invalid split count |
 | `tol 5rb 3p` | amount 5.000, split 3 orang |
 | `kopi 18 besok` | Token tanggal unsupported di MVP, `besok` masuk text |
+| `makan 3 x 15k` | Valid qty + amount, tersimpan text `makan 3x`, amount 45.000 |
+| `makan x3 15k` | Valid qty prefix, amount 45.000 |
+| `makan 15k x3` | Valid qty suffix, amount 45.000 |
+| `makan 3x15k` | Valid combined token, amount 45.000 |
 
 ## 6.4 Autocomplete
 - Sumber: histori text/merchant user sendiri.
@@ -489,7 +530,8 @@ Ancaman utama:
 - Hari 4: `Partial` (core logic sudah dipindah ke `packages/core`, storage masih localStorage).
 - Hari 5-6: `Done` untuk split equal/custom + bulk paste; `Partial` untuk tuning berbasis metrik.
 - Hari 7: `Partial` (parser regression tests sudah ada; dogfooding habit metric belum difinalisasi).
-- Phase 0.5 PWA Reliability: `Done` (status online/offline, safe update banner, SW versioned template flow).
+- Phase 0.5 PWA Reliability: `Done` (status online/offline, safe update banner, SW versioned template flow, adaptive iOS status bar blending).
+- Phase 1 Trust & Feedback: `Done` (date move feedback + lihat/highlight, report net split-aware, copy status lebih suportif untuk data awal).
 
 ## Phase 2 (Future Activation, No Implementation Yet)
 - Aktivasi Supabase schema + RLS + storage policy.
