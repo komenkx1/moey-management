@@ -241,6 +241,42 @@ select {
   gap: 4px;
 }
 
+.smart-recall {
+  border: 1px solid #d8e3e5;
+  border-radius: 10px;
+  background: #f4fafb;
+  color: #37575d;
+  padding: 8px 10px;
+  display: grid;
+  gap: 8px;
+  animation: recall-fade-in 180ms ease-out;
+}
+
+.smart-recall-text {
+  display: grid;
+  gap: 2px;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.smart-recall-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+@keyframes recall-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .smart-hint {
   border-left: 2px solid #d7e3e5;
   padding-left: 8px;

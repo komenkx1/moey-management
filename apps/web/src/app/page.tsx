@@ -29,6 +29,8 @@ import {
   saveEntries,
   saveRules
 } from "@kemana/storage";
+import SmartRecallBar from "./SmartRecallBar";
+import { getSmartRecallPrompt } from "./recall";
 
 interface BulkPreviewLine {
   line: string;
@@ -62,6 +64,8 @@ const FILTER_OPTIONS: Array<{ value: DateFilterPreset; label: string }> = [
   { value: "30d", label: "30 hari" },
   { value: "all", label: "Semua" }
 ];
+const LAST_OPEN_AT_KEY = "kemana.lastOpenAt";
+const RECALL_DISMISSED_SESSION_KEY = "kemana.dismissedRecallUntil";
 
 interface TopCategorySummary {
   category: Category;
@@ -598,6 +602,10 @@ export default function HomePage() {
   const [highlightEntryId, setHighlightEntryId] = useState<string | null>(null);
   const [quickInput, setQuickInput] = useState("");
   const [debouncedQuickInput, setDebouncedQuickInput] = useState("");
+  const [lastAppOpenAt, setLastAppOpenAt] = useState<number | null>(null);
+  const [recallDismissedInSession, setRecallDismissedInSession] = useState(false);
+  const [isRecallSessionReady, setIsRecallSessionReady] = useState(false);
+  const [recallInputPrimed, setRecallInputPrimed] = useState(false);
   const [quickError, setQuickError] = useState<string | null>(null);
   const [showQuickWarningDetails, setShowQuickWarningDetails] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -621,6 +629,16 @@ export default function HomePage() {
 
   useEffect(() => {
     quickInputRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    const now = Date.now();
+    const storedLastOpenAt = window.localStorage.getItem(LAST_OPEN_AT_KEY);
+    const parsedLastOpenAt = storedLastOpenAt ? Number.parseInt(storedLastOpenAt, 10) : Number.NaN;
+    setLastAppOpenAt(Number.isFinite(parsedLastOpenAt) ? parsedLastOpenAt : null);
+    window.localStorage.setItem(LAST_OPEN_AT_KEY, String(now));
+    setRecallDismissedInSession(Boolean(window.sessionStorage.getItem(RECALL_DISMISSED_SESSION_KEY)));
+    setIsRecallSessionReady(true);
   }, []);
 
   useEffect(() => {
@@ -714,6 +732,28 @@ export default function HomePage() {
     }
     return parseQuickAdd(debouncedQuickInput);
   }, [debouncedQuickInput]);
+  const smartRecallPrompt = useMemo(() => {
+    if (!isStorageReady || !isRecallSessionReady || recallDismissedInSession) {
+      return null;
+    }
+
+    return getSmartRecallPrompt({
+      entries,
+      lastAppOpenAt
+    });
+  }, [entries, isStorageReady, isRecallSessionReady, lastAppOpenAt, recallDismissedInSession]);
+  const quickInputPlaceholder = useMemo(() => {
+    if (smartRecallPrompt || recallInputPrimed) {
+      return "barusan bayar apa?";
+    }
+
+    const currentHour = new Date().getHours();
+    if (currentHour >= 19 && currentHour <= 23) {
+      return "hari ini keluar apa?";
+    }
+
+    return "Misal : Foree - matcha 10k + kue 20k";
+  }, [smartRecallPrompt, recallInputPrimed]);
   const adaptiveHints = useMemo(
     () => getInputHints(quickInput, quickPreview),
     [quickInput, quickPreview]
@@ -825,6 +865,26 @@ export default function HomePage() {
     });
   }
 
+  function dismissRecallForSession() {
+    setRecallDismissedInSession(true);
+    window.sessionStorage.setItem(RECALL_DISMISSED_SESSION_KEY, String(Date.now()));
+  }
+
+  function handleRecallAddRecent() {
+    setRecallInputPrimed(true);
+    dismissRecallForSession();
+    setQuickError(null);
+    setShowQuickWarningDetails(false);
+    window.requestAnimationFrame(() => {
+      quickInputRef.current?.focus();
+    });
+  }
+
+  function handleRecallDismiss() {
+    setRecallInputPrimed(false);
+    dismissRecallForSession();
+  }
+
   function handleEntryDateChanged(entryId: string, nextDateISO: string) {
     const label = formatDayLabel(nextDateISO, new Date());
     setMovedToast({
@@ -900,7 +960,9 @@ export default function HomePage() {
     setEntries((prev) => [nextEntry, ...prev]);
     setAutoExpandedEntryId(nextEntry.id);
     showActionToast("Transaksi ditambahkan");
+    dismissRecallForSession();
     setQuickInput("");
+    setRecallInputPrimed(false);
     setQuickError(null);
     setShowQuickWarningDetails(false);
     window.requestAnimationFrame(() => {
@@ -928,6 +990,8 @@ export default function HomePage() {
 
     setEntries((prev) => [...nextEntries.reverse(), ...prev]);
     showActionToast(`${nextEntries.length} transaksi ditambahkan`);
+    dismissRecallForSession();
+    setRecallInputPrimed(false);
     setBulkInput("");
     setBulkOpen(false);
   }
@@ -1039,10 +1103,17 @@ export default function HomePage() {
   return (
     <main className="page safe-top app-shell">
       <h1 className="title">KeMana</h1>
-      <p className="subtitle">Biar tau uangmu kemana</p>
+      <p className="subtitle">Biar tau uangmu kemana, yuk catat</p>
       {storageWarning ? <div className="storage-warning">{storageWarning}</div> : null}
 
       <section className="composer">
+        {smartRecallPrompt ? (
+          <SmartRecallBar
+            prompt={smartRecallPrompt}
+            onAddRecent={handleRecallAddRecent}
+            onDismiss={handleRecallDismiss}
+          />
+        ) : null}
         <div className="composer-row">
           <input
             ref={quickInputRef}
@@ -1053,7 +1124,7 @@ export default function HomePage() {
               setQuickError(null);
               setShowQuickWarningDetails(false);
             }}
-            placeholder="contoh: kopi 18 | Gacoan - mie 25 + es 10 + pajak 5 | dinner 120 3p"
+            placeholder={quickInputPlaceholder}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();
@@ -1527,25 +1598,23 @@ function getInputHints(
     (preview?.ok ? extractSummedAmountMeta(preview.warnings) !== null : false);
   const hasQtyPattern = detectQtyTokens(trimmed);
 
-  const hints: string[] = [];
-
-  if (hasMerchantFormat || endsWithMerchantDash) {
-    hints.push("Format merchant: Gacoan - mie 25k + es 10k");
-  } else if (!hasDigit) {
-    hints.push("Format cepat: kopi 18, parkir 2k, dinner 120 3p");
-  } else {
-    hints.push("Bisa pakai merchant: Gacoan - mie 25k");
+  if (hasQtyPattern) {
+    return ["Qty opsional: mie x2 25k atau Aqua 2x 5k"];
   }
 
   if (hasSumPattern) {
-    hints.push("Jumlahkan dengan + : 25 + 10 + 5");
+    return ["Jumlahkan pakai + : 25 + 10 + 5"];
   }
 
-  if (hasQtyPattern) {
-    hints.push("Qty opsional: mie x2 25k atau Aqua 2x 5k");
+  if (hasMerchantFormat || endsWithMerchantDash) {
+    return ["Format merchant: Gacoan - mie 25k + es 10k"];
   }
 
-  return Array.from(new Set(hints)).slice(0, 3);
+  if (!hasDigit) {
+    return ["Format cepat: kopi 18 atau dinner 120 3p"];
+  }
+
+  return [];
 }
 
 function DailySummaryCard({ summary }: { summary: TodaySummaryStats }) {
