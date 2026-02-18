@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { formatAmountIDR } from "@kemana/core/format";
 import type { NightCloseTopCategory } from "./night-close";
 
@@ -26,7 +27,28 @@ export default function NightClosePanel({
   onDone,
   onAddEntry
 }: NightClosePanelProps) {
-  if (!open) {
+  const [isRendered, setIsRendered] = useState(open);
+  const [isVisible, setIsVisible] = useState(open);
+
+  useEffect(() => {
+    const ANIMATION_MS = 220;
+
+    if (open) {
+      setIsRendered(true);
+      const raf = window.requestAnimationFrame(() => {
+        setIsVisible(true);
+      });
+      return () => window.cancelAnimationFrame(raf);
+    }
+
+    setIsVisible(false);
+    const timer = window.setTimeout(() => {
+      setIsRendered(false);
+    }, ANIMATION_MS);
+    return () => window.clearTimeout(timer);
+  }, [open]);
+
+  if (!isRendered) {
     return null;
   }
 
@@ -34,12 +56,12 @@ export default function NightClosePanel({
     <>
       <button
         type="button"
-        className="night-close-backdrop"
+        className={`night-close-backdrop ${isVisible ? "open" : "closing"}`}
         aria-label="Tutup review"
         onClick={onClose}
       />
       <section
-        className="night-close-panel"
+        className={`night-close-panel ${isVisible ? "open" : "closing"}`}
         role="dialog"
         aria-modal="false"
         aria-label="Review tutup hari"
@@ -49,7 +71,7 @@ export default function NightClosePanel({
             <div className="night-close-panel-title">Tutup hari ini</div>
             <div className="night-close-panel-date">{dateLabel}</div>
           </div>
-          <button className="btn ghost btn-sm" type="button" onClick={onClose}>
+          <button className="night-close-close" type="button" onClick={onClose} aria-label="Tutup panel">
             ×
           </button>
         </div>

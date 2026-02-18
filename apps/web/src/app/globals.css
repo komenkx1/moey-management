@@ -196,13 +196,21 @@ select {
   border: 0;
   background: rgba(0, 0, 0, 0.22);
   z-index: 44;
+  opacity: 0;
+  transition: opacity 220ms ease;
+  pointer-events: none;
+}
+
+.night-close-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .night-close-panel {
   position: fixed;
   left: 50%;
   bottom: 12px;
-  transform: translateX(-50%);
+  transform: translateX(-50%) translateY(14px) scale(0.985);
   width: min(760px, calc(100% - 20px));
   border: 1px solid #d8d8d2;
   border-radius: 16px;
@@ -212,6 +220,15 @@ select {
   z-index: 45;
   display: grid;
   gap: 10px;
+  opacity: 0;
+  transition:
+    transform 220ms ease,
+    opacity 220ms ease;
+}
+
+.night-close-panel.open {
+  transform: translateX(-50%) translateY(0) scale(1);
+  opacity: 1;
 }
 
 .night-close-panel-header {
@@ -255,6 +272,30 @@ select {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.night-close-close {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #d5d5cf;
+  border-radius: 999px;
+  background: #f7f7f4;
+  color: #555552;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.night-close-close:hover {
+  background: #efefeb;
+  border-color: #c7c7c0;
+  color: #2f2f2c;
 }
 
 .composer {
