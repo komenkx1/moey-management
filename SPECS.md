@@ -1,6 +1,6 @@
 # KeMana MVP Specs
 
-## 0. Status Implementasi (Per 17 Februari 2026)
+## 0. Status Implementasi (Per 18 Februari 2026)
 - [x] Quick Add parser + warning system terstruktur.
 - [x] Quick Add inline addition (`+`) dengan total otomatis.
 - [x] Quick Add qty-aware parsing (`3x 15k`, `x3 15k`, `15k x3`, `3 x 15k`).
@@ -16,12 +16,15 @@
 - [x] Adaptive iOS PWA status bar blending (best-effort via `viewport-fit=cover` + dynamic `theme-color`).
 - [x] Feedback pindah tanggal (`Dipindah ke ...`, tombol `Lihat`, scroll + highlight row).
 - [x] Report/summary pengeluaran split-aware (menghitung porsi `Kamu`).
+- [x] Smart Recall prompt (gap/callback/first-time-today) dengan session dismiss.
 - [x] Daily summary card + smart empty state.
+- [x] Night Close ritual (bar + review panel + close marker harian lokal).
 - [x] Grouped history per tanggal + total harian per grup.
 - [x] Filter rentang tanggal (`Hari ini`, `7 hari`, `30 hari`, `Semua`) untuk list + summary.
 - [x] Payment method opsional (awareness-only, non-blocking).
 - [x] Export/Import backup JSON (merge/replace) tanpa backend.
 - [x] Storage guard (corrupt JSON handling + storage version ringan).
+- [x] Split UX lebih eksplisit (status split, `Buat/Edit Split`, `Batalkan split`, `Batal` editor).
 - [x] Parser regression tests aktif (`26` test lulus).
 - [ ] Dexie migration (target berikutnya, belum aktif).
 - [ ] Backend/auth/sync/RLS (tetap Phase 2, belum implementasi).
@@ -142,6 +145,13 @@ When user kembali ke entry detail
 Then ringkasan menampilkan:
 - daftar `Pembagian` (`Nama bayar RpX`)
 - daftar settlement sekunder (`Nama ganti ke Payer RpX`).
+
+### SB-06 Cancel Split Actions
+Given user sedang membuka split editor  
+When user klik `Batal`  
+Then panel split tertutup tanpa mengubah split tersimpan.
+And ketika user klik `Batalkan split`  
+Then split tersimpan di entry dihapus.
 
 ## 1.3 People Minimal
 ### PP-01 Buat People Saat Split
@@ -303,6 +313,44 @@ Then service worker baru diaktifkan dan app reload satu kali.
 Given versi app berubah saat build release  
 When service worker baru diregister  
 Then cache name ikut berubah sesuai versi sehingga aset lama tidak tersangkut.
+
+## 1.11 Smart Recall (Habit Trigger)
+### SR-01 Contextual Recall Prompt
+Given app dibuka  
+When kondisi gap 3 jam / first-time-today / comeback terpenuhi  
+Then Smart Recall bar tampil non-blocking di atas composer.
+
+### SR-02 Session Dismiss
+Given Smart Recall sedang tampil  
+When user klik `Engga ada`  
+Then prompt hilang dan tidak muncul lagi pada session reload saat ini.
+
+### SR-03 Fast Action to Input
+Given Smart Recall sedang tampil  
+When user klik `Tambah yang barusan`  
+Then input quick add terfokus dan placeholder berubah kontekstual.
+
+## 1.12 Night Close (End-of-Day Ritual)
+### NC-01 Night Window Trigger
+Given waktu lokal berada di 20:00-23:59  
+When user belum menutup hari untuk tanggal ini  
+Then bar `Tutup hari` tampil di bawah Daily Summary.
+
+### NC-02 Close Marker Persists Per Day
+Given user klik `Tutup` atau `Selesai (tandai beres)`  
+When halaman di-refresh pada hari yang sama  
+Then Night Close bar tidak muncul lagi.
+
+### NC-03 Review Panel Content
+Given user klik `Review`  
+When panel dibuka  
+Then panel menampilkan total hari ini, jumlah transaksi, dan kategori terbesar (jika ada).
+And copy panel memakai tone suportif (tanpa kata `boros`).
+
+### NC-04 Panel Close Interaction
+Given panel Night Close terbuka  
+When user klik backdrop, tombol `×`, atau tombol `Tutup`  
+Then panel tertutup tanpa memblokir flow input utama.
 
 ## 2. Non-Goals Checklist (MVP)
 - [x] Tidak ada chart/dashboard analitik.

@@ -1,6 +1,6 @@
 # TODO Eksekusi MVP KeMana (Single-Device First)
 
-## 0. Progress Update (Per 17 Februari 2026)
+## 0. Progress Update (Per 18 Februari 2026)
 - Phase 1 core UX sudah usable untuk dogfooding single-device.
 - Parser + split + rules sudah dipisah ke `packages/core`.
 - Storage adapter local-first aktif di `packages/storage` (localStorage).
@@ -16,6 +16,10 @@
 - Payment method opsional sudah aktif (awareness-only, non-blocking).
 - Export/Import backup JSON + storage corruption guard sudah aktif.
 - Adaptive iOS PWA status bar blending aktif (best-effort).
+- Smart Recall prompt + session awareness sudah aktif (memory trigger non-blocking).
+- Night Close ritual sudah aktif (bar, review panel, close marker harian lokal).
+- Split UX diperjelas (`Buat/Edit Split`, `Batalkan split`, `Batal` editor).
+- Transisi panel Night Close sudah dihaluskan (open/close animation + close button subtler).
 - Fokus sisa Phase 1: validasi metrik latency/habit dan migrasi storage ke Dexie (tanpa ubah domain contract).
 
 ## 1. Prinsip Eksekusi
@@ -115,6 +119,20 @@ Status:
 - [x] Export backup JSON + import merge/replace + dedupe by id.
 - [x] Storage parse guard (corrupt JSON tidak bikin blank screen).
 - [ ] Validasi copywriting status summary lewat dogfooding 7 hari (agar tone konsisten suportif).
+
+## 2.12 Habit Loop (Phase 2 Local, Tanpa Backend)
+- [x] Implement Smart Recall bar (gap 3 jam / first-time-today / comeback).
+- [x] Implement dismiss per session untuk recall (anti-nagging).
+- [x] Integrasikan placeholder adaptif berdasarkan context recall/malam.
+- [x] Implement Night Close bar pada window malam (20:00-23:59).
+- [x] Implement Night Close panel (review cepat + CTA tandai beres).
+- [x] Simpan close marker harian di localStorage.
+- [ ] Validasi manual perilaku lintas hari dan timezone override (QA checklist).
+
+## 2.13 UX Polish (Hari Ini)
+- [x] Kurangi visual noise composer (hint lebih ringkas, tidak numpuk).
+- [x] Perhalus transisi Night Close panel + backdrop.
+- [x] Perhalus affordance tombol close panel (`×`) agar tidak terasa keras.
 
 ## 2.9 Quality Gate Phase 1 (Harus Lolos)
 - [x] Semua core flow berfungsi saat perangkat offline.

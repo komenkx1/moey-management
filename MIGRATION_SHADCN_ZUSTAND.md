@@ -1,5 +1,7 @@
 # MIGRATION_SHADCN_ZUSTAND.md
 
+Status dokumen: belum dieksekusi, terakhir ditinjau 18 Feb 2026.
+
 ## Tujuan
 Migrasi UI KeMana dilakukan **setelah dogfooding selesai**, secara bertahap, tanpa rewrite total.
 

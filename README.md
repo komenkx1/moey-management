@@ -2,6 +2,14 @@
 
 KeMana adalah aplikasi pencatatan pengeluaran single-device, local-first, dengan fokus input cepat: "Biar tau uangmu kemana".
 
+## Progress Terkini (18 Feb 2026)
+
+- Smart Recall prompt non-blocking (memory trigger).
+- Night Close ritual (bar + review panel + close marker harian).
+- Report harian split-aware (pakai porsi `Kamu`).
+- Group by date + filter rentang (`Hari ini/7 hari/30 hari/Semua`).
+- PWA update flow aman (`Update tersedia` -> `Muat ulang`).
+
 ## Menjalankan Lokal
 
 ```bash

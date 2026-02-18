@@ -1,6 +1,6 @@
 # KeMana MVP Masterplan
 
-## 0. Progress Snapshot (Per 17 Februari 2026)
+## 0. Progress Snapshot (Per 18 Februari 2026)
 ### Sudah Selesai (Phase 0/1)
 - Arsitektur repo aktif: `apps/web`, `packages/core`, `packages/storage` (core logic terpisah dari UI Next.js).
 - Quick Add parser production-ready untuk pola utama:
@@ -10,6 +10,10 @@
   - qty-aware parsing (`3x 15k`, `x3 15k`, `15k x3`, `3 x 15k`) termasuk kombinasi `+`.
   - token qty dipertahankan di text tersimpan agar konteks input tetap terbaca.
 - Dense list + expand row inline, edit inline, category chips, split equal/custom, bulk paste.
+- Split UX dipertegas:
+  - CTA split lebih eksplisit (`Buat/Edit Split` + status split).
+  - aksi `Batalkan split` tersedia (hapus split tersimpan).
+  - aksi `Batal` untuk tutup editor split tanpa apply.
 - Warning UI non-blocking, delete dengan undo toast, composer autofocus + Enter submit.
 - Teaching UX adaptif:
   - error merah parser hanya setelah submit gagal (bukan saat mengetik)
@@ -19,6 +23,10 @@
   - setelah ubah tanggal, muncul feedback `Dipindah ke ...` + tombol `Lihat`
   - auto scroll + highlight row untuk mengurangi kesan data hilang.
 - Local-first persistence aktif via localStorage + guard hydration (mencegah data ketimpa kosong di dev refresh).
+- Smart Recall aktif (memory trigger non-blocking):
+  - tracking `last entry` + `last app open`.
+  - prompt kontekstual gap 3 jam / first-time-today / comeback.
+  - dismiss per session agar anti-nagging.
 - PWA minimal aktif:
   - manifest + service worker template (`sw.template.js`)
   - offline access dasar setelah first online load
@@ -34,10 +42,15 @@
 - Data safety dasar aktif:
   - Export/Import backup JSON (merge/replace) tanpa backend.
   - Guard storage corruption + storage version ringan.
+- Habit ritual Night Close aktif:
+  - bar `Tutup hari` muncul di window malam (20:00-23:59) sesuai kondisi.
+  - panel review non-blocking (bottom sheet style) + mark close harian lokal.
+  - animasi open/close panel sudah dihaluskan.
 - Test parser: `26` test lulus (`vitest`).
 
 ### Sedang Berjalan
 - Polishing UX dense layout, microcopy, dan indikator status online/offline.
+- Validasi dampak habit loop (Smart Recall + Night Close) pada konsistensi catat harian creator.
 - Dokumentasi deployment/release untuk flow solo dev + GitHub/Vercel.
 
 ### Belum Diaktifkan (Tetap Sesuai Desain)
@@ -61,6 +74,18 @@
 - `Done`: filter rentang tanggal memengaruhi list dan summary.
 - `Done`: feedback trust untuk perpindahan tanggal + auto scroll/highlight.
 - `Pending validasi lanjutan`: tuning wording insight berdasarkan data harian creator (agar tidak terasa menghakimi di data awal).
+
+## 0.2 Detail Status Habit Loop
+### Smart Recall (Phase 1)
+- `Done`: prompt kontekstual non-blocking di atas composer.
+- `Done`: session memory (`dismissed per reload`) agar tidak spam.
+- `Done`: adaptive placeholder berdasarkan context (default/recall/malam).
+
+### Night Close (Phase 2 Habit, local-only)
+- `Done`: trigger window malam (20:00-23:59) + marker close harian di localStorage.
+- `Done`: review panel dengan ringkasan cepat (total, transaksi, top kategori) + tone suportif.
+- `Done`: CTA `Selesai (tandai beres)` + konfirmasi inline `Hari ditutup`.
+- `Pending validasi lanjutan`: ukur retensi ritual malam selama dogfooding minimal 7 hari.
 
 ## 1. Product Goal
 KeMana adalah aplikasi pencatatan pengeluaran super cepat dengan fokus utama:
@@ -149,7 +174,7 @@ KeMana adalah aplikasi pencatatan pengeluaran super cepat dengan fokus utama:
   - Tombol sekunder: `Tempel Banyak`.
   - List transaksi padat (tanggal, merchant/text, amount, category chip, split badge).
 - Microcopy:
-  - Placeholder: `contoh: kopi 18, parkir 2k, dinner 120 3p`
+  - Placeholder adaptif (default: `catat pengeluaran`, malam/recall bisa berubah).
   - CTA submit: `Tambah`
   - Empty state: `Belum ada catatan. Coba ketik pengeluaran pertama kamu.`
 
@@ -192,6 +217,12 @@ KeMana adalah aplikasi pencatatan pengeluaran super cepat dengan fokus utama:
 - First use: tanpa signup wall.
 - Prompt tambah people hanya saat user pilih split.
 - Prompt buat rule muncul hanya setelah user sering koreksi kategori.
+
+### 5.7 Habit Loop (Recall + Night Close)
+- Smart Recall bar muncul kontekstual untuk memicu memory (bukan modal/alert).
+- User bisa dismiss prompt per session agar tidak mengganggu.
+- Night Close bar muncul malam hari untuk ritual review 20-30 detik.
+- Night Close panel memberi ringkasan suportif + aksi `Selesai (tandai beres)`.
 
 ## 6. Parsing Spec + Edge Cases
 ## 6.1 Input Grammar (MVP)
@@ -532,6 +563,7 @@ Ancaman utama:
 - Hari 7: `Partial` (parser regression tests sudah ada; dogfooding habit metric belum difinalisasi).
 - Phase 0.5 PWA Reliability: `Done` (status online/offline, safe update banner, SW versioned template flow, adaptive iOS status bar blending).
 - Phase 1 Trust & Feedback: `Done` (date move feedback + lihat/highlight, report net split-aware, copy status lebih suportif untuk data awal).
+- Phase 2 Habit Loop (local): `Done` (Smart Recall non-blocking + Night Close ritual + panel transisi halus).
 
 ## Phase 2 (Future Activation, No Implementation Yet)
 - Aktivasi Supabase schema + RLS + storage policy.

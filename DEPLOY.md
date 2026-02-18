@@ -1,5 +1,7 @@
 # DEPLOY
 
+Status dokumen: diverifikasi pada 18 Feb 2026 (struktur deploy `apps/web` masih relevan).
+
 ## 1) Git Workflow (Solo Dev)
 
 ### Inisialisasi repo + commit pertama
