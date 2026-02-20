@@ -1,6 +1,6 @@
 # KeMana MVP Masterplan
 
-## 0. Progress Snapshot (Per 18 Februari 2026)
+## 0. Progress Snapshot (Per 20 Februari 2026)
 ### Sudah Selesai (Phase 0/1)
 - Arsitektur repo aktif: `apps/web`, `packages/core`, `packages/storage` (core logic terpisah dari UI Next.js).
 - Quick Add parser production-ready untuk pola utama:
@@ -10,6 +10,7 @@
   - qty-aware parsing (`3x 15k`, `x3 15k`, `15k x3`, `3 x 15k`) termasuk kombinasi `+`.
   - token qty dipertahankan di text tersimpan agar konteks input tetap terbaca.
 - Dense list + expand row inline, edit inline, category chips, split equal/custom, bulk paste.
+- `page.tsx` sudah direfactor menjadi orchestration layer; UI besar diekstrak ke `src/components/kemana/*` tanpa ubah behavior.
 - Split UX dipertegas:
   - CTA split lebih eksplisit (`Buat/Edit Split` + status split).
   - aksi `Batalkan split` tersedia (hapus split tersimpan).
@@ -27,11 +28,15 @@
   - tracking `last entry` + `last app open`.
   - prompt kontekstual gap 3 jam / first-time-today / comeback.
   - dismiss per session agar anti-nagging.
+  - CTA recovery global `Tambah yang barusan` dekat composer (bukan hanya dari bar Smart Recall).
+  - telemetry lokal recovery (`recovery_count`, `last_recovery_at`) tersimpan di localStorage.
+  - indikator `Terakhir catat: ...` non-nagging aktif, update interval 1 menit, terisolasi di komponen kecil.
 - PWA minimal aktif:
   - manifest + service worker template (`sw.template.js`)
   - offline access dasar setelah first online load
   - offline badge + safe update banner (`Update tersedia -> Muat ulang`)
   - cache versioning mengikuti versi app + lifecycle SW lebih stabil (activate atomic, update tidak loop).
+  - install banner ringan dengan deteksi standalone/homescreen + flow Android/iOS terpisah.
 - iOS PWA status bar adaptive aktif (best-effort): `black-translucent` + `viewport-fit=cover` + sync `theme-color` dari `--app-bg`.
 - Summary/report sudah split-aware (menggunakan porsi `Kamu` jika entry punya split).
 - Daily awareness sudah aktif:
@@ -45,7 +50,10 @@
 - Habit ritual Night Close aktif:
   - bar `Tutup hari` muncul di window malam (20:00-23:59) sesuai kondisi.
   - panel review non-blocking (bottom sheet style) + mark close harian lokal.
+  - auto-surface saat app dibuka malam hari tetap konsisten meski user langsung fokus ke composer.
+  - setelah submit entry di window malam, bar tetap muncul sampai hari ditutup.
   - animasi open/close panel sudah dihaluskan.
+- Util harian konsisten sudah dipusatkan via `getLocalDayKey(date)` untuk marker Night Close dan metrik habit lokal.
 - Test parser: `26` test lulus (`vitest`).
 
 ### Sedang Berjalan
@@ -65,6 +73,7 @@
 - `Done`: safe update flow user-triggered (`Update tersedia` -> `Muat ulang`) tanpa auto reload diam-diam.
 - `Done`: versioned SW template berbasis versi app.
 - `Done`: badge status koneksi (offline/online readiness) non-blocking.
+- `Done`: install banner non-blocking (hidden di standalone, Android pakai `beforeinstallprompt`, iOS pakai panduan Add to Home Screen).
 - `Pending validasi lanjutan`: smoke test berkala di Safari iOS homescreen + Android Chrome setelah tiap release.
 
 ### Reporting (Phase 1)
@@ -80,11 +89,16 @@
 - `Done`: prompt kontekstual non-blocking di atas composer.
 - `Done`: session memory (`dismissed per reload`) agar tidak spam.
 - `Done`: adaptive placeholder berdasarkan context (default/recall/malam).
+- `Done`: tombol recovery global + focus input instan dari mana pun di Home.
+- `Done`: counter recovery lokal (`recovery_count`, `last_recovery_at`) untuk observasi habit.
+- `Done`: indikator `Terakhir catat` berbasis last-entry timestamp dengan update live 1 menit.
 
 ### Night Close (Phase 2 Habit, local-only)
 - `Done`: trigger window malam (20:00-23:59) + marker close harian di localStorage.
 - `Done`: review panel dengan ringkasan cepat (total, transaksi, top kategori) + tone suportif.
 - `Done`: CTA `Selesai (tandai beres)` + konfirmasi inline `Hari ditutup`.
+- `Done`: auto-surface tetap muncul saat app dibuka malam hari walau composer langsung difokuskan.
+- `Done`: bar tidak menghilang setelah submit entry di window malam sampai marker close hari itu dibuat.
 - `Pending validasi lanjutan`: ukur retensi ritual malam selama dogfooding minimal 7 hari.
 
 ## 1. Product Goal

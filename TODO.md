@@ -1,6 +1,6 @@
 # TODO Eksekusi MVP KeMana (Single-Device First)
 
-## 0. Progress Update (Per 18 Februari 2026)
+## 0. Progress Update (Per 20 Februari 2026)
 - Phase 1 core UX sudah usable untuk dogfooding single-device.
 - Parser + split + rules sudah dipisah ke `packages/core`.
 - Storage adapter local-first aktif di `packages/storage` (localStorage).
@@ -17,9 +17,14 @@
 - Export/Import backup JSON + storage corruption guard sudah aktif.
 - Adaptive iOS PWA status bar blending aktif (best-effort).
 - Smart Recall prompt + session awareness sudah aktif (memory trigger non-blocking).
+- Recovery CTA global `Tambah yang barusan` sudah aktif (dekat composer, non-blocking).
+- Recovery metrics lokal (`recovery_count`, `last_recovery_at`) sudah aktif.
+- Indikator `Terakhir catat: ...` sudah aktif dan update live tiap 1 menit.
 - Night Close ritual sudah aktif (bar, review panel, close marker harian lokal).
+- Night Close auto-surface saat buka app malam + tetap muncul setelah submit entry sampai hari ditutup.
 - Split UX diperjelas (`Buat/Edit Split`, `Batalkan split`, `Batal` editor).
 - Transisi panel Night Close sudah dihaluskan (open/close animation + close button subtler).
+- Refactor `page.tsx` ke komponen `src/components/kemana/*` + util shared (`src/lib/kemana-utils.ts`) sudah aktif.
 - Fokus sisa Phase 1: validasi metrik latency/habit dan migrasi storage ke Dexie (tanpa ubah domain contract).
 
 ## 1. Prinsip Eksekusi
@@ -109,6 +114,7 @@ Status:
 - [x] Navigation network-first (`no-store`) + app shell fallback untuk kurangi stale HTML.
 - [x] Activate lifecycle atomic (`clear old cache -> claim client`) untuk stabilitas update.
 - [x] iOS status bar blending best-effort (`black-translucent`, `viewport-fit=cover`, dynamic `theme-color`).
+- [x] Banner install PWA non-blocking (hidden di standalone, Android prompt native, iOS instruksi Add to Home Screen).
 
 ## 2.11 Reporting & Data Safety Completeness
 - [x] Daily Summary card dengan status + top category + empty state.
@@ -124,10 +130,21 @@ Status:
 - [x] Implement Smart Recall bar (gap 3 jam / first-time-today / comeback).
 - [x] Implement dismiss per session untuk recall (anti-nagging).
 - [x] Integrasikan placeholder adaptif berdasarkan context recall/malam.
+- [x] Tambahkan recovery CTA global `Tambah yang barusan` di Home (di luar Smart Recall bar).
+- [x] Simpan telemetry recovery lokal (`recovery_count`, `last_recovery_at`).
+- [x] Tambahkan indikator `Terakhir catat` berbasis last-entry timestamp dengan refresh 1 menit.
 - [x] Implement Night Close bar pada window malam (20:00-23:59).
 - [x] Implement Night Close panel (review cepat + CTA tandai beres).
 - [x] Simpan close marker harian di localStorage.
+- [x] Pastikan auto-surface Night Close tetap muncul saat app dibuka malam walau composer langsung fokus.
+- [x] Saat submit entry di window malam dan marker belum ada, bar Night Close tetap tampil.
 - [ ] Validasi manual perilaku lintas hari dan timezone override (QA checklist).
+
+## 2.14 Refactor Struktur UI (Tanpa Ubah Behavior)
+- [x] Ekstrak `page.tsx` menjadi komponen presentational di `src/components/kemana/*`.
+- [x] Pertahankan `page.tsx` sebagai orchestration state/effect/handler inti.
+- [x] Pindahkan helper pure ke `src/lib/kemana-utils.ts`.
+- [x] Jaga className/DOM/urutan elemen tetap identik saat ekstraksi.
 
 ## 2.13 UX Polish (Hari Ini)
 - [x] Kurangi visual noise composer (hint lebih ringkas, tidak numpuk).

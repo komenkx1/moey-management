@@ -1,6 +1,6 @@
 # KeMana MVP Specs
 
-## 0. Status Implementasi (Per 18 Februari 2026)
+## 0. Status Implementasi (Per 20 Februari 2026)
 - [x] Quick Add parser + warning system terstruktur.
 - [x] Quick Add inline addition (`+`) dengan total otomatis.
 - [x] Quick Add qty-aware parsing (`3x 15k`, `x3 15k`, `15k x3`, `3 x 15k`).
@@ -17,13 +17,20 @@
 - [x] Feedback pindah tanggal (`Dipindah ke ...`, tombol `Lihat`, scroll + highlight row).
 - [x] Report/summary pengeluaran split-aware (menghitung porsi `Kamu`).
 - [x] Smart Recall prompt (gap/callback/first-time-today) dengan session dismiss.
+- [x] Global recovery CTA `Tambah yang barusan` (di luar bar Smart Recall) + focus input cepat.
+- [x] Recovery metrics lokal (`recovery_count`, `last_recovery_at`) tersimpan untuk telemetry internal.
+- [x] Indikator ringan `Terakhir catat: ...` (menit/jam/hari) update live tiap 1 menit.
 - [x] Daily summary card + smart empty state.
 - [x] Night Close ritual (bar + review panel + close marker harian lokal).
+- [x] Night Close auto-surface saat buka app malam (20:00-23:59) walau composer langsung difokuskan.
 - [x] Grouped history per tanggal + total harian per grup.
 - [x] Filter rentang tanggal (`Hari ini`, `7 hari`, `30 hari`, `Semua`) untuk list + summary.
 - [x] Payment method opsional (awareness-only, non-blocking).
 - [x] Export/Import backup JSON (merge/replace) tanpa backend.
 - [x] Storage guard (corrupt JSON handling + storage version ringan).
+- [x] Util harian `getLocalDayKey(date)` dipakai konsisten untuk marker Night Close dan metrik habit lokal.
+- [x] Refactor `page.tsx` menjadi orchestration dengan ekstraksi komponen `src/components/kemana/*` tanpa ubah UI/behavior.
+- [x] PWA install banner non-blocking (hidden di standalone, Android prompt native, iOS instruksi A2HS).
 - [x] Split UX lebih eksplisit (status split, `Buat/Edit Split`, `Batalkan split`, `Batal` editor).
 - [x] Parser regression tests aktif (`26` test lulus).
 - [ ] Dexie migration (target berikutnya, belum aktif).
@@ -314,6 +321,13 @@ Given versi app berubah saat build release
 When service worker baru diregister  
 Then cache name ikut berubah sesuai versi sehingga aset lama tidak tersangkut.
 
+### PWA-05 Install Banner Standalone-Aware
+Given app dibuka dari browser biasa (non-standalone)  
+When user belum pernah dismiss/install banner  
+Then banner install kecil tampil non-blocking.
+And jika app sudah dibuka dari homescreen/standalone  
+Then banner tidak tampil.
+
 ## 1.11 Smart Recall (Habit Trigger)
 ### SR-01 Contextual Recall Prompt
 Given app dibuka  
@@ -329,6 +343,21 @@ Then prompt hilang dan tidak muncul lagi pada session reload saat ini.
 Given Smart Recall sedang tampil  
 When user klik `Tambah yang barusan`  
 Then input quick add terfokus dan placeholder berubah kontekstual.
+
+### SR-04 Global Recovery CTA
+Given user berada di Home dan Smart Recall bar tidak tampil  
+When user klik CTA global `Tambah yang barusan`  
+Then input quick add tetap terfokus dan placeholder tetap kontekstual seperti mode recall.
+
+### SR-05 Recovery Counter Local Persistence
+Given user klik CTA global recovery  
+When aksi diproses  
+Then counter `recovery_count` bertambah 1 dan `last_recovery_at` tersimpan di localStorage.
+
+### SR-06 Last Entry Gap Indicator
+Given user sudah memiliki minimal 1 entry  
+When user berada di Home  
+Then indikator `Terakhir catat: ...` tampil dengan format menit/jam/hari dan update ringan tiap 1 menit.
 
 ## 1.12 Night Close (End-of-Day Ritual)
 ### NC-01 Night Window Trigger
@@ -351,6 +380,16 @@ And copy panel memakai tone suportif (tanpa kata `boros`).
 Given panel Night Close terbuka  
 When user klik backdrop, tombol `×`, atau tombol `Tutup`  
 Then panel tertutup tanpa memblokir flow input utama.
+
+### NC-05 Auto Surface On Night Open
+Given waktu lokal berada di 20:00-23:59 dan marker close hari ini belum ada  
+When Home pertama kali dimount  
+Then bar Night Close otomatis tampil walau composer langsung fokus.
+
+### NC-06 Stays Visible Until Closed
+Given user menambah entry saat masih di window malam dan marker close belum ada  
+When submit berhasil  
+Then bar Night Close tetap tampil sampai user menandai hari selesai.
 
 ## 2. Non-Goals Checklist (MVP)
 - [x] Tidak ada chart/dashboard analitik.

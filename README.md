@@ -2,13 +2,22 @@
 
 KeMana adalah aplikasi pencatatan pengeluaran single-device, local-first, dengan fokus input cepat: "Biar tau uangmu kemana".
 
-## Progress Terkini (18 Feb 2026)
+## Progress Terkini (20 Feb 2026)
 
 - Smart Recall prompt non-blocking (memory trigger).
+- Global recovery CTA `Tambah yang barusan` selalu tersedia di composer.
+- Recovery telemetry lokal tersimpan (`recovery_count`, `last_recovery_at`).
+- Indikator ringan `Terakhir catat: ...` aktif dan update tiap 1 menit.
 - Night Close ritual (bar + review panel + close marker harian).
+- Night Close auto-surface saat buka app di window malam (20:00-23:59) jika hari belum ditutup.
 - Report harian split-aware (pakai porsi `Kamu`).
 - Group by date + filter rentang (`Hari ini/7 hari/30 hari/Semua`).
+- Refactor `page.tsx`: UI diekstrak ke `src/components/kemana/*`, page tetap sebagai orchestration state/handler.
 - PWA update flow aman (`Update tersedia` -> `Muat ulang`).
+- PWA install banner:
+  - otomatis hidden saat app dibuka dalam mode standalone/homescreen
+  - Android/Chromium pakai `beforeinstallprompt`
+  - iOS menampilkan instruksi `Share -> Add to Home Screen`
 
 ## Menjalankan Lokal
 
