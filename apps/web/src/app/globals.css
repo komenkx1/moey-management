@@ -1067,3 +1067,85 @@ select {
   line-height: 1.2;
   color: #8b8b87;
 }
+
+.pwa-install-banner {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 42;
+  width: min(640px, calc(100% - 18px));
+  border: 1px solid #d4d4ce;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #232321;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+}
+
+.pwa-install-banner-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2a2a28;
+}
+
+.pwa-install-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pwa-install-close {
+  width: 30px;
+  height: 30px;
+  border: 1px solid #d3d3cd;
+  border-radius: 999px;
+  background: #f7f7f3;
+  color: #4f4f4b;
+  line-height: 1;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.pwa-install-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.24);
+  z-index: 46;
+}
+
+.pwa-install-modal {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 58px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(520px, calc(100% - 20px));
+  z-index: 47;
+  border: 1px solid #d8d8d2;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.14);
+}
+
+.pwa-install-modal-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1f3f46;
+}
+
+.pwa-install-steps {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  color: #42595f;
+}
