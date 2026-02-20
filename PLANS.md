@@ -20,6 +20,8 @@
   - reuse hasil parse preview saat submit untuk menghindari parse ganda.
   - insert entry ke state dulu (ack UI instan), persist localStorage dijadwalkan background task.
   - instrumentation ack time debug-only (`DEBUG_PERF=true`, key `kemana.perf.quickAddAck.v1`).
+- Benchmark otomatis perceived ack sudah tersedia via `apps/web/scripts/ack-perceived-benchmark.mjs`.
+- Hasil benchmark terbaru (headless, devtools off): list `300` dan `1000` transaksi lulus target `p95 < 100ms` untuk metrik next-paint ack.
 - Teaching UX adaptif:
   - error merah parser hanya setelah submit gagal (bukan saat mengetik)
   - hint edukasi kontekstual muncul saat user mengetik (format cepat/merchant/sum/qty) tanpa modal.

@@ -33,6 +33,7 @@
 - [x] PWA install banner non-blocking (hidden di standalone, Android prompt native, iOS instruksi A2HS).
 - [x] Jalur submit Quick Add dituning untuk ack cepat (reuse parse preview + persist entries di background task).
 - [x] Instrumentasi debug ack submit tersedia via `DEBUG_PERF` (`kemana.perf.quickAddAck.v1`).
+- [x] Benchmark otomatis ack perceived next-paint tersedia dan lulus skenario list berat (`300`/`1000`, headless no-devtools, `p95 < 100ms`).
 - [x] Tuning safe-area top iOS standalone agar header tidak overlap status bar.
 - [x] Split UX lebih eksplisit (status split, `Buat/Edit Split`, `Batalkan split`, `Batal` editor).
 - [x] Parser regression tests aktif (`26` test lulus).
