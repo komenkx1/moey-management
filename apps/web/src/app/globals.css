@@ -327,10 +327,6 @@ select {
   flex-wrap: wrap;
 }
 
-.recovery-cta {
-  white-space: nowrap;
-}
-
 .last-entry-indicator {
   margin-left: auto;
 }

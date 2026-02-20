@@ -15,7 +15,6 @@ interface BulkPreviewLine {
 
 interface QuickAddComposerProps {
   lastEntryAt: number | null;
-  onGlobalRecoveryClick: () => void;
   smartRecallPrompt: SmartRecallPrompt | null;
   onRecallAddRecent: () => void;
   onRecallDismiss: () => void;
@@ -46,7 +45,6 @@ interface QuickAddComposerProps {
 
 export default function QuickAddComposer({
   lastEntryAt,
-  onGlobalRecoveryClick,
   smartRecallPrompt,
   onRecallAddRecent,
   onRecallDismiss,
@@ -77,13 +75,6 @@ export default function QuickAddComposer({
   return (
     <section className="composer">
       <div className="composer-context-row">
-        <button
-          className="btn secondary btn-sm recovery-cta"
-          type="button"
-          onClick={onGlobalRecoveryClick}
-        >
-          Tambah yang barusan
-        </button>
         <LastEntryGapIndicator lastEntryAt={lastEntryAt} />
       </div>
       {smartRecallPrompt ? (

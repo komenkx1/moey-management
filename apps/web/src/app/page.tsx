@@ -15,7 +15,6 @@ import {
   createBackupPayload,
   downloadBackupFile,
   getStorageHealth,
-  incrementRecoveryCount,
   importBackupFromText,
   loadEntries,
   loadRules,
@@ -459,11 +458,6 @@ export default function HomePage() {
     primeQuickInputForRecall();
   }
 
-  function handleGlobalRecoveryAddRecent() {
-    incrementRecoveryCount();
-    primeQuickInputForRecall({ dismissSession: false });
-  }
-
   function handleRecallDismiss() {
     setRecallInputPrimed(false);
     dismissRecallForSession();
@@ -725,7 +719,6 @@ export default function HomePage() {
       {/* Section: Quick Add Composer */}
       <QuickAddComposer
         lastEntryAt={lastEntryAt}
-        onGlobalRecoveryClick={handleGlobalRecoveryAddRecent}
         smartRecallPrompt={smartRecallPrompt}
         onRecallAddRecent={handleRecallAddRecent}
         onRecallDismiss={handleRecallDismiss}

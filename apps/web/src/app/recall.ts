@@ -46,6 +46,10 @@ export function getSmartRecallPrompt(params: {
   const nowDate = new Date(now);
   const lastEntryTimestamp = getLastEntryTimestamp(entries);
 
+  if (entries.length === 0) {
+    return null;
+  }
+
   if (lastEntryTimestamp !== null && now - lastEntryTimestamp >= THREE_HOURS_MS) {
     return {
       kind: "gap",
