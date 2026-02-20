@@ -25,6 +25,9 @@
 - Split UX diperjelas (`Buat/Edit Split`, `Batalkan split`, `Batal` editor).
 - Transisi panel Night Close sudah dihaluskan (open/close animation + close button subtler).
 - Refactor `page.tsx` ke komponen `src/components/kemana/*` + util shared (`src/lib/kemana-utils.ts`) sudah aktif.
+- Jalur submit Quick Add sudah dioptimalkan untuk ack cepat (reuse parse preview + persist background).
+- Instrumentasi debug ack submit sudah aktif (`DEBUG_PERF`, storage `kemana.perf.quickAddAck.v1`).
+- Safe-area iOS standalone sudah dituning untuk hindari bentrok judul dengan jam/status bar.
 - Fokus sisa Phase 1: validasi metrik latency/habit dan migrasi storage ke Dexie (tanpa ubah domain contract).
 
 ## 1. Prinsip Eksekusi
@@ -89,7 +92,10 @@ Status:
 - [x] Implement bulk paste sheet + preview + simpan parsial.
 - [ ] Implement batched write Dexie (`bulkPut`) untuk multi-entry.
 - [x] Pastikan semua read/write UI berasal dari store lokal.
-- [ ] Tuning performa interaksi add/edit agar target ack `< 100ms` tetap tercapai.
+- [x] Optimasi jalur submit Quick Add (reuse parse preview + insert dulu + persist entries di background task).
+- [x] Tambahkan instrumentation ack submit debug-only (`DEBUG_PERF`, key `kemana.perf.quickAddAck.v1`).
+- [x] Tuning performa interaksi add agar target ack `< 100ms` tercapai.
+- [ ] Polish performa interaksi edit agar tetap smooth (non-blocking untuk MVP).
 
 ## 2.7 Hari 7 - Stabilization dan Dogfooding
 - [ ] E2E core flow offline: quick add, inline edit, split equal/custom, bulk paste.
@@ -115,6 +121,7 @@ Status:
 - [x] Activate lifecycle atomic (`clear old cache -> claim client`) untuk stabilitas update.
 - [x] iOS status bar blending best-effort (`black-translucent`, `viewport-fit=cover`, dynamic `theme-color`).
 - [x] Banner install PWA non-blocking (hidden di standalone, Android prompt native, iOS instruksi Add to Home Screen).
+- [x] Tuning safe-area top di iOS standalone agar title/subtitle tidak overlap area jam/status bar.
 
 ## 2.11 Reporting & Data Safety Completeness
 - [x] Daily Summary card dengan status + top category + empty state.
@@ -153,7 +160,7 @@ Status:
 
 ## 2.9 Quality Gate Phase 1 (Harus Lolos)
 - [x] Semua core flow berfungsi saat perangkat offline.
-- [ ] Add interaction terasa instan (target acknowledgement `< 100ms` pada device creator).
+- [x] Add interaction terasa instan (target acknowledgement `< 100ms` pada device creator).
 - [x] Tidak ada data loss selama storage browser/tab tidak dihapus.
 - [ ] Creator berhasil dogfooding harian minimal 5 dari 7 hari.
 

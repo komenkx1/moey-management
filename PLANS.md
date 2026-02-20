@@ -16,6 +16,10 @@
   - aksi `Batalkan split` tersedia (hapus split tersimpan).
   - aksi `Batal` untuk tutup editor split tanpa apply.
 - Warning UI non-blocking, delete dengan undo toast, composer autofocus + Enter submit.
+- Perceived performance jalur submit Quick Add sudah dituning:
+  - reuse hasil parse preview saat submit untuk menghindari parse ganda.
+  - insert entry ke state dulu (ack UI instan), persist localStorage dijadwalkan background task.
+  - instrumentation ack time debug-only (`DEBUG_PERF=true`, key `kemana.perf.quickAddAck.v1`).
 - Teaching UX adaptif:
   - error merah parser hanya setelah submit gagal (bukan saat mengetik)
   - hint edukasi kontekstual muncul saat user mengetik (format cepat/merchant/sum/qty) tanpa modal.
@@ -37,6 +41,7 @@
   - offline badge + safe update banner (`Update tersedia -> Muat ulang`)
   - cache versioning mengikuti versi app + lifecycle SW lebih stabil (activate atomic, update tidak loop).
   - install banner ringan dengan deteksi standalone/homescreen + flow Android/iOS terpisah.
+  - safe-area top iOS standalone dituning agar header app tidak overlap area jam/status bar.
 - iOS PWA status bar adaptive aktif (best-effort): `black-translucent` + `viewport-fit=cover` + sync `theme-color` dari `--app-bg`.
 - Summary/report sudah split-aware (menggunakan porsi `Kamu` jika entry punya split).
 - Daily awareness sudah aktif:
@@ -74,6 +79,7 @@
 - `Done`: versioned SW template berbasis versi app.
 - `Done`: badge status koneksi (offline/online readiness) non-blocking.
 - `Done`: install banner non-blocking (hidden di standalone, Android pakai `beforeinstallprompt`, iOS pakai panduan Add to Home Screen).
+- `Done`: tuning safe-area top untuk iOS standalone agar title/subtitle tidak bentrok status bar.
 - `Pending validasi lanjutan`: smoke test berkala di Safari iOS homescreen + Android Chrome setelah tiap release.
 
 ### Reporting (Phase 1)
