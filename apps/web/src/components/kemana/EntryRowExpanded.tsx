@@ -287,7 +287,18 @@ function EntryRowExpanded({
         </div>
 
         <div className="date-inline-editor">
-          <div className="hint subtle">Tanggal: {entry.date}</div>
+          <div className="date-inline-header">
+            <div className="hint subtle">Tanggal: {entry.date}</div>
+            {dateEditorOpen ? (
+              <button
+                className="btn ghost btn-sm date-inline-close"
+                type="button"
+                onClick={saveDateEdit}
+              >
+                Simpan
+              </button>
+            ) : null}
+          </div>
           {!dateEditorOpen ? (
             <button className="btn secondary btn-sm" type="button" onClick={() => setDateEditorOpen(true)}>
               Ubah tanggal
@@ -300,21 +311,7 @@ function EntryRowExpanded({
                 value={dateDraft}
                 onChange={(event) => setDateDraft(event.target.value)}
               />
-              <div className="row-actions compact">
-                <button className="btn secondary btn-sm" type="button" onClick={saveDateEdit}>
-                  Simpan tanggal
-                </button>
-                <button
-                  className="btn ghost btn-sm"
-                  type="button"
-                  onClick={() => {
-                    setDateDraft(entry.date);
-                    setDateEditorOpen(false);
-                  }}
-                >
-                  Batal
-                </button>
-              </div>
+              <div className="hint subtle">Perubahan tanggal diterapkan setelah tekan Simpan.</div>
             </div>
           )}
         </div>

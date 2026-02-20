@@ -756,9 +756,27 @@ select {
   gap: 6px;
 }
 
+.date-inline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .date-inline-controls {
   display: grid;
   gap: 8px;
+  min-width: 0;
+}
+
+.date-inline-controls .input[type="date"] {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.date-inline-close {
+  margin-left: auto;
 }
 
 .inline-grid {

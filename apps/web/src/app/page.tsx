@@ -78,6 +78,7 @@ interface MovedToastState {
   entryId: string;
   targetDate: string;
   label: string;
+  movedOutOfFilter: boolean;
   expiresAt: number;
 }
 
@@ -470,11 +471,14 @@ export default function HomePage() {
 
   function handleEntryDateChanged(entryId: string, nextDateISO: string) {
     const label = formatDayLabel(nextDateISO, new Date());
+    const isDateVisibleInCurrentFilter = includesDateInFilter(nextDateISO, dateFilter);
+
     setMovedToast({
       entryId,
       targetDate: nextDateISO,
       label,
-      expiresAt: Date.now() + 6_000
+      movedOutOfFilter: !isDateVisibleInCurrentFilter,
+      expiresAt: Date.now() + 8_000
     });
     setPendingScrollToId(entryId);
     setHighlightEntryId(entryId);
@@ -846,7 +850,11 @@ export default function HomePage() {
           role="status"
           aria-live="polite"
         >
-          <span>Dipindah ke {movedToast.label}</span>
+          <span>
+            {movedToast.movedOutOfFilter
+              ? `Tanggal disimpan. Dipindah ke ${movedToast.label} (di luar filter aktif).`
+              : `Tanggal disimpan. Dipindah ke ${movedToast.label}`}
+          </span>
           <button className="moved-link" type="button" onClick={handleMovedToastSee}>
             Lihat
           </button>
