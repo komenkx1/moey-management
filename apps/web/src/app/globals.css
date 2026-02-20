@@ -5,7 +5,7 @@
 }
 
 body[data-ios-standalone="true"] {
-  --safe-header-offset: max(env(safe-area-inset-top), 24px);
+  --safe-header-offset: max(env(safe-area-inset-top), 44px);
 }
 
 * {
