@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { formatAmountCompact, formatAmountIDR } from "@kemana/core/format";
 import { buildCustomSplit, buildEqualSplit } from "@kemana/core/split";
 import {
@@ -33,7 +33,7 @@ interface EntryRowExpandedProps {
   onCategoryChange: (category: Category) => void;
 }
 
-export default function EntryRowExpanded({
+function EntryRowExpanded({
   entry,
   isHighlighted,
   shouldAutoExpand,
@@ -475,3 +475,16 @@ export default function EntryRowExpanded({
     </article>
   );
 }
+
+function areEntryRowExpandedPropsEqual(
+  previousProps: EntryRowExpandedProps,
+  nextProps: EntryRowExpandedProps
+): boolean {
+  return (
+    previousProps.entry === nextProps.entry &&
+    previousProps.isHighlighted === nextProps.isHighlighted &&
+    previousProps.shouldAutoExpand === nextProps.shouldAutoExpand
+  );
+}
+
+export default memo(EntryRowExpanded, areEntryRowExpandedPropsEqual);

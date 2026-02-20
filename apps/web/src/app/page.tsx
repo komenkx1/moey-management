@@ -24,6 +24,7 @@ import {
   saveRules,
   writeNightCloseMarker
 } from "@kemana/storage";
+import { recordQuickAddAck, scheduleBackgroundTask } from "@/lib/perf";
 import EntriesList from "@/components/kemana/EntriesList";
 import NightCloseBar from "@/components/kemana/NightCloseBar";
 import NightClosePanel from "@/components/kemana/NightClosePanel";
@@ -115,6 +116,8 @@ export default function HomePage() {
   const quickInputRef = useRef<HTMLInputElement>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
   const pendingUndoRef = useRef<UndoToastState | null>(null);
+  const cancelEntriesPersistRef = useRef<(() => void) | null>(null);
+  const isUnmountingRef = useRef(false);
 
   useEffect(() => {
     const loadedEntries = loadEntries();
@@ -156,8 +159,32 @@ export default function HomePage() {
     if (!isStorageReady) {
       return;
     }
-    saveEntries(entries);
+
+    cancelEntriesPersistRef.current?.();
+    const cancelPersist = scheduleBackgroundTask(() => {
+      saveEntries(entries);
+      if (cancelEntriesPersistRef.current === cancelPersist) {
+        cancelEntriesPersistRef.current = null;
+      }
+    });
+    cancelEntriesPersistRef.current = cancelPersist;
+
+    return () => {
+      if (isUnmountingRef.current) {
+        return;
+      }
+      cancelPersist();
+      if (cancelEntriesPersistRef.current === cancelPersist) {
+        cancelEntriesPersistRef.current = null;
+      }
+    };
   }, [entries, isStorageReady]);
+
+  useEffect(() => {
+    return () => {
+      isUnmountingRef.current = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!pendingUndoRef.current) {
@@ -514,7 +541,12 @@ export default function HomePage() {
   }
 
   function handleQuickAdd() {
-    const parsed = parseQuickAdd(quickInput, new Date(), "quick_add");
+    const submitStartedAt = performance.now();
+    const canReuseQuickPreview = quickPreview !== null && debouncedQuickInput === quickInput;
+    const parsed = canReuseQuickPreview
+      ? quickPreview
+      : parseQuickAdd(quickInput, new Date(), "quick_add");
+
     if (!parsed.ok) {
       setQuickError(parsed.reason);
       return;
@@ -546,6 +578,7 @@ export default function HomePage() {
     setShowQuickWarningDetails(false);
     window.requestAnimationFrame(() => {
       quickInputRef.current?.focus();
+      recordQuickAddAck(performance.now() - submitStartedAt);
     });
   }
 
