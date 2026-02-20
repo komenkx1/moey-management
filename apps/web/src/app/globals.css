@@ -310,6 +310,22 @@ select {
   background: #ffffff;
 }
 
+.composer-context-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.recovery-cta {
+  white-space: nowrap;
+}
+
+.last-entry-indicator {
+  margin-left: auto;
+}
+
 .composer-row {
   display: grid;
   grid-template-columns: 1fr auto;

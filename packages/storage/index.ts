@@ -4,6 +4,7 @@ import {
   Entry,
   PAYMENT_METHODS
 } from "../core/types";
+import { syncLastEntryAt } from "./habits";
 
 const ENTRIES_KEY = "kemana.entries.v1";
 const RULES_KEY = "kemana.rules.v1";
@@ -228,6 +229,7 @@ export function saveEntries(entries: Entry[]): void {
   ensureStorageVersion();
   try {
     window.localStorage.setItem(ENTRIES_KEY, JSON.stringify(entries));
+    syncLastEntryAt(entries);
   } catch {
     // Ignore write failures to avoid crashing UI.
   }
@@ -447,3 +449,12 @@ export function importBackupFromText(params: {
     ignoredEntries
   };
 }
+
+export { getLocalDayKey } from "./day-key";
+export {
+  incrementRecoveryCount,
+  readLastEntryAt,
+  readNightCloseMarker,
+  readRecoveryStats,
+  writeNightCloseMarker
+} from "./habits";

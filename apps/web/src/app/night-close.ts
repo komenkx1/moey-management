@@ -1,5 +1,6 @@
 import { formatAmountIDR } from "@kemana/core/format";
 import type { Category, Entry } from "@kemana/core/types";
+import { getLocalDayKey } from "@kemana/storage";
 
 const DAY_MS = 86_400_000;
 
@@ -18,13 +19,6 @@ export interface NightCloseTopCategory {
 export interface NightCloseCopy {
   subtitle: string;
   promptLine: string;
-}
-
-function toDateKey(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }
 
 function offsetDate(base: Date, days: number): Date {
@@ -54,7 +48,7 @@ export function isNightWindow(now: Date = new Date()): boolean {
 }
 
 export function getTodayStats(entries: Entry[], now: Date = new Date()): NightCloseStats {
-  const todayISO = toDateKey(now);
+  const todayISO = getLocalDayKey(now);
   const stats: NightCloseStats = {
     dateISO: todayISO,
     total: 0,
@@ -98,9 +92,9 @@ export function getTopCategory(
 }
 
 export function getAverageLast7Days(entries: Entry[], now: Date = new Date()): number {
-  const todayISO = toDateKey(now);
+  const todayISO = getLocalDayKey(now);
   const last7Keys = Array.from({ length: 7 }, (_, index) =>
-    toDateKey(offsetDate(now, -(index + 1)))
+    getLocalDayKey(offsetDate(now, -(index + 1)))
   );
   const last7Set = new Set(last7Keys);
 
@@ -119,20 +113,17 @@ export function shouldShowNightClose(params: {
   closedAt: string | null;
   now?: Date;
 }): boolean {
-  const { entries, closedAt, now = new Date() } = params;
+  const { closedAt, now = new Date() } = params;
   if (!isNightWindow(now)) {
     return false;
   }
 
-  const todayISO = toDateKey(now);
+  const todayISO = getLocalDayKey(now);
   if (closedAt === todayISO) {
     return false;
   }
 
-  const todayStats = getTodayStats(entries, now);
-  const hasHistory = entries.length > 0;
-
-  return todayStats.count > 0 || hasHistory;
+  return true;
 }
 
 export function getNightCloseCopy(params: {
@@ -171,7 +162,7 @@ export function getNightCloseCopy(params: {
 }
 
 export function getTodayISO(now: Date = new Date()): string {
-  return toDateKey(now);
+  return getLocalDayKey(now);
 }
 
 export function getDayDiffFromToday(dateISO: string, now: Date = new Date()): number | null {
@@ -180,6 +171,6 @@ export function getDayDiffFromToday(dateISO: string, now: Date = new Date()): nu
     return null;
   }
 
-  const today = new Date(`${toDateKey(now)}T00:00:00`);
+  const today = new Date(`${getLocalDayKey(now)}T00:00:00`);
   return Math.floor((today.getTime() - parsed.getTime()) / DAY_MS);
 }

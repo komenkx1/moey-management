@@ -23,12 +23,16 @@ import {
   createBackupPayload,
   downloadBackupFile,
   getStorageHealth,
+  incrementRecoveryCount,
   importBackupFromText,
   loadEntries,
   loadRules,
+  readNightCloseMarker,
   saveEntries,
-  saveRules
+  saveRules,
+  writeNightCloseMarker
 } from "@kemana/storage";
+import LastEntryGapIndicator from "./LastEntryGapIndicator";
 import NightCloseBar from "./NightCloseBar";
 import NightClosePanel from "./NightClosePanel";
 import {
@@ -40,7 +44,7 @@ import {
   shouldShowNightClose
 } from "./night-close";
 import SmartRecallBar from "./SmartRecallBar";
-import { getSmartRecallPrompt } from "./recall";
+import { getLastEntryTimestamp, getSmartRecallPrompt } from "./recall";
 
 interface BulkPreviewLine {
   line: string;
@@ -76,7 +80,6 @@ const FILTER_OPTIONS: Array<{ value: DateFilterPreset; label: string }> = [
 ];
 const LAST_OPEN_AT_KEY = "kemana.lastOpenAt";
 const RECALL_DISMISSED_SESSION_KEY = "kemana.dismissedRecallUntil";
-const NIGHT_CLOSE_CLOSED_AT_KEY = "kemana.nightCloseClosedAt";
 
 interface TopCategorySummary {
   category: Category;
@@ -655,7 +658,7 @@ export default function HomePage() {
     setRecallDismissedInSession(Boolean(window.sessionStorage.getItem(RECALL_DISMISSED_SESSION_KEY)));
     setIsRecallSessionReady(true);
 
-    setNightCloseClosedAt(window.localStorage.getItem(NIGHT_CLOSE_CLOSED_AT_KEY));
+    setNightCloseClosedAt(readNightCloseMarker());
     setIsNightCloseReady(true);
   }, []);
 
@@ -774,6 +777,7 @@ export default function HomePage() {
       lastAppOpenAt
     });
   }, [entries, isStorageReady, isRecallSessionReady, lastAppOpenAt, recallDismissedInSession]);
+  const lastEntryAt = useMemo(() => getLastEntryTimestamp(entries), [entries]);
   const quickInputPlaceholder = useMemo(() => {
     if (smartRecallPrompt || recallInputPrimed) {
       return "barusan bayar apa?";
@@ -927,14 +931,26 @@ export default function HomePage() {
     window.sessionStorage.setItem(RECALL_DISMISSED_SESSION_KEY, String(Date.now()));
   }
 
-  function handleRecallAddRecent() {
+  function primeQuickInputForRecall(options?: { dismissSession?: boolean }) {
+    const dismissSession = options?.dismissSession ?? true;
     setRecallInputPrimed(true);
-    dismissRecallForSession();
+    if (dismissSession) {
+      dismissRecallForSession();
+    }
     setQuickError(null);
     setShowQuickWarningDetails(false);
     window.requestAnimationFrame(() => {
       quickInputRef.current?.focus();
     });
+  }
+
+  function handleRecallAddRecent() {
+    primeQuickInputForRecall();
+  }
+
+  function handleGlobalRecoveryAddRecent() {
+    incrementRecoveryCount();
+    primeQuickInputForRecall({ dismissSession: false });
   }
 
   function handleRecallDismiss() {
@@ -971,7 +987,7 @@ export default function HomePage() {
   function markNightCloseDone(showConfirmation: boolean) {
     const todayISO = getTodayISO();
     setNightCloseClosedAt(todayISO);
-    window.localStorage.setItem(NIGHT_CLOSE_CLOSED_AT_KEY, todayISO);
+    writeNightCloseMarker(todayISO);
     setNightClosePanelOpen(false);
     if (showConfirmation) {
       setNightCloseConfirmation("Hari ditutup ✅");
@@ -988,10 +1004,7 @@ export default function HomePage() {
 
   function handleNightCloseAddEntry() {
     setNightClosePanelOpen(false);
-    setRecallInputPrimed(true);
-    window.requestAnimationFrame(() => {
-      quickInputRef.current?.focus();
-    });
+    primeQuickInputForRecall({ dismissSession: false });
   }
 
   function buildEntry(raw: string, source: EntrySource): Entry | null {
@@ -1190,6 +1203,16 @@ export default function HomePage() {
       {storageWarning ? <div className="storage-warning">{storageWarning}</div> : null}
 
       <section className="composer">
+        <div className="composer-context-row">
+          <button
+            className="btn secondary btn-sm recovery-cta"
+            type="button"
+            onClick={handleGlobalRecoveryAddRecent}
+          >
+            Tambah yang barusan
+          </button>
+          <LastEntryGapIndicator lastEntryAt={lastEntryAt} />
+        </div>
         {smartRecallPrompt ? (
           <SmartRecallBar
             prompt={smartRecallPrompt}
@@ -1208,6 +1231,11 @@ export default function HomePage() {
               setShowQuickWarningDetails(false);
             }}
             placeholder={quickInputPlaceholder}
+            onBlur={() => {
+              if (!quickInput.trim()) {
+                setRecallInputPrimed(false);
+              }
+            }}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();

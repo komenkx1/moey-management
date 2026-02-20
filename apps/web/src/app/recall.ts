@@ -1,4 +1,5 @@
 import type { Entry } from "@kemana/core/types";
+import { getLocalDayKey } from "@kemana/storage";
 
 const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
@@ -9,13 +10,6 @@ export interface SmartRecallPrompt {
   kind: SmartRecallKind;
   title: string;
   subtitle?: string;
-}
-
-function toDateKey(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }
 
 function formatHourMinute(timestamp: number): string {
@@ -60,7 +54,7 @@ export function getSmartRecallPrompt(params: {
     };
   }
 
-  const todayKey = toDateKey(nowDate);
+  const todayKey = getLocalDayKey(nowDate);
   const hasTodayEntry = entries.some((entry) => entry.date === todayKey);
   if (!hasTodayEntry && nowDate.getHours() >= 12) {
     return {
