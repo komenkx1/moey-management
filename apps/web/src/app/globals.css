@@ -1,7 +1,7 @@
 :root {
   color-scheme: light;
   --app-bg: #f6f4ef;
-  --safe-header-offset: env(safe-area-inset-top);
+  --safe-header-offset: 0px;
 }
 
 body[data-ios-standalone="true"] {
@@ -46,6 +46,10 @@ select {
   margin: 0 auto;
   max-width: 760px;
   padding: 20px 16px 18px;
+}
+
+.page.safe-top {
+  padding-top: calc(20px + var(--safe-header-offset));
 }
 
 .title {
