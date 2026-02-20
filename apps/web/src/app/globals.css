@@ -1069,10 +1069,8 @@ select {
 }
 
 .pwa-install-banner {
-  position: fixed;
-  top: calc(env(safe-area-inset-top) + 10px);
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
+  margin: calc(env(safe-area-inset-top) + 10px) auto 8px;
   z-index: 42;
   width: min(640px, calc(100% - 18px));
   border: 1px solid #d4d4ce;

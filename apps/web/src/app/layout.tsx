@@ -36,8 +36,8 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body>
-        {children}
         <PwaInstallBanner />
+        {children}
         <ThemeColorSync />
         <SWRegister />
       </body>
