@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import PwaInstallBanner from "@/components/PwaInstallBanner";
+import SafeAreaSync from "./safe-area-sync";
 import SWRegister from "./sw-register";
 import ThemeColorSync from "./theme-color";
 import "./globals.css";
@@ -36,6 +37,7 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body>
+        <SafeAreaSync />
         <PwaInstallBanner />
         {children}
         <ThemeColorSync />
