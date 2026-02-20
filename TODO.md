@@ -29,6 +29,9 @@
 - Instrumentasi debug ack submit sudah aktif (`DEBUG_PERF`, storage `kemana.perf.quickAddAck.v1`).
 - Benchmark otomatis perceived ack sudah aktif (`apps/web/scripts/ack-perceived-benchmark.mjs`).
 - Validasi benchmark ack next-paint pada list berat (`300` dan `1000` transaksi) lulus dengan `p95 < 100ms` (headless, tanpa devtools).
+- Performa list dituning: single-expand aktif, expanded UI lazy-mounted, collapsed row dimemoisasi (lebih ringan untuk list besar).
+- UX edit tanggal disempurnakan: simpan eksplisit via tombol `Simpan`, helper text di bawah input date, dan overflow input date iOS diperbaiki.
+- Toast perpindahan tanggal kini menjelaskan saat entry berada di luar filter aktif (tanpa auto-switch filter agar batch edit tidak terganggu).
 - Safe-area iOS standalone sudah dituning untuk hindari bentrok judul dengan jam/status bar.
 - Fokus sisa Phase 1: validasi metrik latency/habit dan migrasi storage ke Dexie (tanpa ubah domain contract).
 
@@ -98,6 +101,7 @@ Status:
 - [x] Tambahkan instrumentation ack submit debug-only (`DEBUG_PERF`, key `kemana.perf.quickAddAck.v1`).
 - [x] Tuning performa interaksi add agar target ack `< 100ms` tercapai.
 - [x] Tambahkan benchmark otomatis ack perceived (next paint) untuk skenario berat dan mode tanpa devtools.
+- [x] Optimasi render list besar: single-expand + lazy-mount expanded row + memo collapsed row.
 - [ ] Polish performa interaksi edit agar tetap smooth (non-blocking untuk MVP).
 
 ## 2.7 Hari 7 - Stabilization dan Dogfooding

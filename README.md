@@ -14,8 +14,10 @@ KeMana adalah aplikasi pencatatan pengeluaran single-device, local-first, dengan
 - Group by date + filter rentang (`Hari ini/7 hari/30 hari/Semua`).
 - Refactor `page.tsx`: UI diekstrak ke `src/components/kemana/*`, page tetap sebagai orchestration state/handler.
 - Perceived performance Quick Add dituning (reuse parse preview + insert dulu + persist storage di background).
+- Performa list dituning: single-expand (1 row aktif), expanded UI lazy-mounted, dan collapsed row dimemoisasi untuk list besar.
 - Debug instrumentation ack submit tersedia via `localStorage.DEBUG_PERF=true` (sample di `kemana.perf.quickAddAck.v1`).
 - Benchmark otomatis ack perceived tersedia (`apps/web/scripts/ack-perceived-benchmark.mjs`) dan sudah lulus skenario list berat (`300`/`1000`, mode tanpa devtools, `p95 < 100ms`).
+- UX edit tanggal diperjelas: perubahan diterapkan saat tombol `Simpan`, ada helper text, input date iOS tidak overflow card, dan toast memberi konteks saat entry pindah keluar filter aktif.
 - PWA update flow aman (`Update tersedia` -> `Muat ulang`).
 - PWA install banner:
   - otomatis hidden saat app dibuka dalam mode standalone/homescreen

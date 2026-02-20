@@ -22,6 +22,7 @@
   - instrumentation ack time debug-only (`DEBUG_PERF=true`, key `kemana.perf.quickAddAck.v1`).
 - Benchmark otomatis perceived ack sudah tersedia via `apps/web/scripts/ack-perceived-benchmark.mjs`.
 - Hasil benchmark terbaru (headless, devtools off): list `300` dan `1000` transaksi lulus target `p95 < 100ms` untuk metrik next-paint ack.
+- Performa list besar ditingkatkan melalui single-expand, lazy-mount expanded content, dan memoisasi row collapsed.
 - Teaching UX adaptif:
   - error merah parser hanya setelah submit gagal (bukan saat mengetik)
   - hint edukasi kontekstual muncul saat user mengetik (format cepat/merchant/sum/qty) tanpa modal.
@@ -29,6 +30,10 @@
 - Date edit UX sudah lebih jelas:
   - setelah ubah tanggal, muncul feedback `Dipindah ke ...` + tombol `Lihat`
   - auto scroll + highlight row untuk mengurangi kesan data hilang.
+- Date edit UX terbaru:
+  - perubahan tanggal memakai konfirmasi eksplisit tombol `Simpan` (mengurangi kejutan saat batch edit).
+  - helper text ditampilkan di bawah input date.
+  - toast menandai jika entry dipindah ke tanggal yang berada di luar filter aktif, tanpa auto-switch filter.
 - Local-first persistence aktif via localStorage + guard hydration (mencegah data ketimpa kosong di dev refresh).
 - Smart Recall aktif (memory trigger non-blocking):
   - tracking `last entry` + `last app open`.

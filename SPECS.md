@@ -30,10 +30,12 @@
 - [x] Storage guard (corrupt JSON handling + storage version ringan).
 - [x] Util harian `getLocalDayKey(date)` dipakai konsisten untuk marker Night Close dan metrik habit lokal.
 - [x] Refactor `page.tsx` menjadi orchestration dengan ekstraksi komponen `src/components/kemana/*` tanpa ubah UI/behavior.
+- [x] Optimasi list render besar: single-expand (satu row aktif), expanded panel lazy-mounted, row collapsed dimemoisasi.
 - [x] PWA install banner non-blocking (hidden di standalone, Android prompt native, iOS instruksi A2HS).
 - [x] Jalur submit Quick Add dituning untuk ack cepat (reuse parse preview + persist entries di background task).
 - [x] Instrumentasi debug ack submit tersedia via `DEBUG_PERF` (`kemana.perf.quickAddAck.v1`).
 - [x] Benchmark otomatis ack perceived next-paint tersedia dan lulus skenario list berat (`300`/`1000`, headless no-devtools, `p95 < 100ms`).
+- [x] UX edit tanggal diperbarui: simpan eksplisit via tombol `Simpan`, helper text pada date editor, dan pesan toast saat entry pindah ke tanggal di luar filter aktif.
 - [x] Tuning safe-area top iOS standalone agar header tidak overlap status bar.
 - [x] Split UX lebih eksplisit (status split, `Buat/Edit Split`, `Batalkan split`, `Batal` editor).
 - [x] Parser regression tests aktif (`26` test lulus).
