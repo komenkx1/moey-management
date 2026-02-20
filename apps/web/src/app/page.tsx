@@ -1812,6 +1812,7 @@ function EntryRow({
   const [customDraft, setCustomDraft] = useState<Record<string, string>>({});
   const [isCustomDirty, setIsCustomDirty] = useState(false);
   const [showItemBreakdown, setShowItemBreakdown] = useState(false);
+  const [isAssumedThousandsReviewing, setIsAssumedThousandsReviewing] = useState(false);
   const [customSubmitStatus, setCustomSubmitStatus] = useState<{
     type: "less" | "more" | "ok";
     diff: number;
@@ -1824,6 +1825,7 @@ function EntryRow({
     setTextDraft(entry.text);
     setAmountDraft(String(entry.amount));
     setDateDraft(entry.date);
+    setIsAssumedThousandsReviewing(false);
   }, [entry.text, entry.amount, entry.date]);
 
   useEffect(() => {
@@ -1923,11 +1925,21 @@ function EntryRow({
     }
     const nextText = textDraft.trim() || "Pengeluaran";
 
-    onUpdate((current) => ({
-      ...current,
-      text: nextText,
-      amount: numericAmount
-    }), "Perubahan disimpan");
+    onUpdate((current) => {
+      const shouldClearAssumedThousands =
+        isAssumedThousandsReviewing || numericAmount !== current.amount;
+      const nextWarnings = shouldClearAssumedThousands
+        ? current.parseWarnings?.filter((warning) => warning.code !== "ASSUMED_THOUSANDS")
+        : current.parseWarnings;
+
+      return {
+        ...current,
+        text: nextText,
+        amount: numericAmount,
+        parseWarnings: nextWarnings && nextWarnings.length > 0 ? nextWarnings : undefined
+      };
+    }, "Perubahan disimpan");
+    setIsAssumedThousandsReviewing(false);
   }
 
   function saveDateEdit() {
@@ -2165,7 +2177,14 @@ function EntryRow({
                   <li key={`${warning.code}-${index}`}>
                     {warningDetail(warning)}
                     {warning.code === "ASSUMED_THOUSANDS" ? (
-                      <button className="btn secondary btn-sm" type="button" onClick={() => amountInputRef.current?.focus()}>
+                      <button
+                        className="btn secondary btn-sm"
+                        type="button"
+                        onClick={() => {
+                          setIsAssumedThousandsReviewing(true);
+                          amountInputRef.current?.focus();
+                        }}
+                      >
                         Edit nominal
                       </button>
                     ) : null}
