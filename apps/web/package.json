@@ -1,6 +1,6 @@
 {
   "name": "kemana-web",
-  "version": "1.0.62",
+  "version": "1.0.7",
   "private": true,
   "scripts": {
     "dev": "next dev",
