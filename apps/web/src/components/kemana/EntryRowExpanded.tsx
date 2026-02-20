@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatAmountCompact, formatAmountIDR } from "@kemana/core/format";
 import { buildCustomSplit, buildEqualSplit } from "@kemana/core/split";
 import {
@@ -11,12 +11,10 @@ import {
   type PaymentMethod
 } from "@kemana/core/types";
 import {
-  formatItemPillText,
   normalizeDateInput,
   parseItemBreakdownFromSubtitle,
   paymentMethodLabel,
   splitDisplayText,
-  splitSubtitleItems,
   warningDetail
 } from "@/lib/kemana-utils";
 import EntryRowCollapsed from "./EntryRowCollapsed";
@@ -24,26 +22,23 @@ import SplitEditor from "./SplitEditor";
 
 interface EntryRowExpandedProps {
   entry: Entry;
-  isHighlighted?: boolean;
-  shouldAutoExpand?: boolean;
-  onAutoExpandHandled?: () => void;
-  onDelete: () => void;
-  onUpdate: (updater: (entry: Entry) => Entry, toastMessage?: string) => void;
+  expandedPanelId: string;
+  onToggleExpand: (entryId: string) => void;
+  onDelete: (entryId: string) => void;
+  onUpdate: (entryId: string, updater: (entry: Entry) => Entry, toastMessage?: string) => void;
   onDateChanged?: (entryId: string, nextDateISO: string) => void;
-  onCategoryChange: (category: Category) => void;
+  onCategoryChange: (entry: Entry, category: Category) => void;
 }
 
 function EntryRowExpanded({
   entry,
-  isHighlighted,
-  shouldAutoExpand,
-  onAutoExpandHandled,
+  expandedPanelId,
+  onToggleExpand,
   onDelete,
   onUpdate,
   onDateChanged,
   onCategoryChange
 }: EntryRowExpandedProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
   const [textDraft, setTextDraft] = useState(entry.text);
   const [amountDraft, setAmountDraft] = useState(String(entry.amount));
   const [dateEditorOpen, setDateEditorOpen] = useState(false);
@@ -71,14 +66,6 @@ function EntryRowExpanded({
     setDateDraft(entry.date);
     setIsAssumedThousandsReviewing(false);
   }, [entry.text, entry.amount, entry.date]);
-
-  useEffect(() => {
-    if (!shouldAutoExpand) {
-      return;
-    }
-    setIsExpanded(true);
-    onAutoExpandHandled?.();
-  }, [shouldAutoExpand, onAutoExpandHandled]);
 
   useEffect(() => {
     const wasSplitOpen = prevSplitOpenRef.current;
@@ -123,23 +110,20 @@ function EntryRowExpanded({
   );
 
   const currentPaymentMethod: PaymentMethod = entry.paymentMethod ?? "Unknown";
-  const splitCount = entry.split?.shares?.length ?? null;
-  const warningCount = entry.parseWarnings?.length ?? 0;
   const hasSplit = Boolean(entry.split && entry.split.shares.length > 0);
   const splitStateLabel = hasSplit
     ? `${entry.split?.shares.length ?? 0} orang • ${entry.split?.mode === "custom" ? "Custom" : "Equal"}`
     : "Belum diatur";
   const splitToggleLabel = splitOpen ? "Selesai" : hasSplit ? "Edit Split" : "Buat Split";
-  const hasSelectedPaymentMethod = currentPaymentMethod !== "Unknown";
-  const expandedPanelId = `row-expanded-${entry.id}`;
-  const displayText = useMemo(() => splitDisplayText(entry.text), [entry.text]);
   const subtitleBreakdown = useMemo(
-    () => (displayText.subtitle ? parseItemBreakdownFromSubtitle(displayText.subtitle) : null),
-    [displayText.subtitle]
-  );
-  const subtitleItems = useMemo(
-    () => (displayText.subtitle ? splitSubtitleItems(displayText.subtitle) : null),
-    [displayText.subtitle]
+    () => {
+      const displayText = splitDisplayText(entry.text);
+      if (!displayText.subtitle) {
+        return null;
+      }
+      return parseItemBreakdownFromSubtitle(displayText.subtitle);
+    },
+    [entry.text]
   );
   const splitSummary = useMemo(() => {
     if (!entry.split || entry.split.shares.length <= 1) {
@@ -169,7 +153,7 @@ function EntryRowExpanded({
     }
     const nextText = textDraft.trim() || "Pengeluaran";
 
-    onUpdate((current) => {
+    onUpdate(entry.id, (current) => {
       const shouldClearAssumedThousands =
         isAssumedThousandsReviewing || numericAmount !== current.amount;
       const nextWarnings = shouldClearAssumedThousands
@@ -197,7 +181,7 @@ function EntryRowExpanded({
       return;
     }
 
-    onUpdate((current) => ({
+    onUpdate(entry.id, (current) => ({
       ...current,
       date: normalizedDate
     }));
@@ -212,7 +196,7 @@ function EntryRowExpanded({
     }
 
     const shares = buildEqualSplit(entry.amount, people);
-    onUpdate((current) => ({
+    onUpdate(entry.id, (current) => ({
       ...current,
       split: {
         mode: "equal",
@@ -247,7 +231,7 @@ function EntryRowExpanded({
       return;
     }
 
-    onUpdate((current) => ({
+    onUpdate(entry.id, (current) => ({
       ...current,
       split: {
         mode: "custom",
@@ -269,7 +253,7 @@ function EntryRowExpanded({
     if (!entry.split) {
       return;
     }
-    onUpdate((current) => ({
+    onUpdate(entry.id, (current) => ({
       ...current,
       split: undefined
     }), "Split dibatalkan");
@@ -280,211 +264,187 @@ function EntryRowExpanded({
   }
 
   return (
-    <article
-      id={`entry-${entry.id}`}
-      data-entry-id={entry.id}
-      className={`row ${isExpanded ? "expanded" : ""} ${isHighlighted ? "highlight" : ""}`}
-    >
+    <>
       <EntryRowCollapsed
         entry={entry}
-        isExpanded={isExpanded}
+        isExpanded
         expandedPanelId={expandedPanelId}
-        onToggleExpand={() => setIsExpanded((prev) => !prev)}
-        displayText={displayText}
-        subtitleBreakdown={subtitleBreakdown}
-        subtitleItems={subtitleItems}
-        currentPaymentMethod={currentPaymentMethod}
-        hasSelectedPaymentMethod={hasSelectedPaymentMethod}
-        splitCount={splitCount}
-        warningCount={warningCount}
+        onToggleExpand={onToggleExpand}
       />
 
-      {isExpanded ? (
-        <div id={expandedPanelId} className="row-expanded">
-          <div className="inline-grid">
-            <input className="input" value={textDraft} onChange={(event) => setTextDraft(event.target.value)} />
-            <input
-              ref={amountInputRef}
-              className="input"
-              value={amountDraft}
-              onChange={(event) => setAmountDraft(event.target.value)}
-            />
-            <button className="btn secondary btn-sm" type="button" onClick={saveInlineEdit}>
-              Simpan
+      <div id={expandedPanelId} className="row-expanded">
+        <div className="inline-grid">
+          <input className="input" value={textDraft} onChange={(event) => setTextDraft(event.target.value)} />
+          <input
+            ref={amountInputRef}
+            className="input"
+            value={amountDraft}
+            onChange={(event) => setAmountDraft(event.target.value)}
+          />
+          <button className="btn secondary btn-sm" type="button" onClick={saveInlineEdit}>
+            Simpan
+          </button>
+        </div>
+
+        <div className="date-inline-editor">
+          <div className="hint subtle">Tanggal: {entry.date}</div>
+          {!dateEditorOpen ? (
+            <button className="btn secondary btn-sm" type="button" onClick={() => setDateEditorOpen(true)}>
+              Ubah tanggal
             </button>
-          </div>
-
-          <div className="date-inline-editor">
-            <div className="hint subtle">Tanggal: {entry.date}</div>
-            {!dateEditorOpen ? (
-              <button className="btn secondary btn-sm" type="button" onClick={() => setDateEditorOpen(true)}>
-                Ubah tanggal
-              </button>
-            ) : (
-              <div className="date-inline-controls">
-                <input
-                  className="input"
-                  type="date"
-                  value={dateDraft}
-                  onChange={(event) => setDateDraft(event.target.value)}
-                />
-                <div className="row-actions compact">
-                  <button className="btn secondary btn-sm" type="button" onClick={saveDateEdit}>
-                    Simpan tanggal
-                  </button>
-                  <button
-                    className="btn ghost btn-sm"
-                    type="button"
-                    onClick={() => {
-                      setDateDraft(entry.date);
-                      setDateEditorOpen(false);
-                    }}
-                  >
-                    Batal
-                  </button>
-                </div>
+          ) : (
+            <div className="date-inline-controls">
+              <input
+                className="input"
+                type="date"
+                value={dateDraft}
+                onChange={(event) => setDateDraft(event.target.value)}
+              />
+              <div className="row-actions compact">
+                <button className="btn secondary btn-sm" type="button" onClick={saveDateEdit}>
+                  Simpan tanggal
+                </button>
+                <button
+                  className="btn ghost btn-sm"
+                  type="button"
+                  onClick={() => {
+                    setDateDraft(entry.date);
+                    setDateEditorOpen(false);
+                  }}
+                >
+                  Batal
+                </button>
               </div>
-            )}
-          </div>
+            </div>
+          )}
+        </div>
 
-          <div className="chip-group">
-            {CATEGORIES.map((category) => (
+        <div className="chip-group">
+          {CATEGORIES.map((category) => (
+            <button
+              key={category}
+              type="button"
+              className={`chip ${entry.category === category ? "active" : ""}`}
+              onClick={() => onCategoryChange(entry, category)}
+            >
+              {category}
+            </button>
+          ))}
+        </div>
+
+        <div className="field-section">
+          <div className="hint subtle">Metode bayar (opsional)</div>
+          <div className="chip-group compact">
+            {PAYMENT_METHODS.map((method) => (
               <button
-                key={category}
+                key={method}
                 type="button"
-                className={`chip ${entry.category === category ? "active" : ""}`}
-                onClick={() => onCategoryChange(category)}
+                className={`chip secondary ${currentPaymentMethod === method ? "active" : ""}`}
+                onClick={() =>
+                  onUpdate(entry.id, (current) => ({
+                    ...current,
+                    paymentMethod: method
+                  }), "Metode bayar diperbarui")
+                }
               >
-                {category}
+                {paymentMethodLabel(method)}
               </button>
             ))}
           </div>
-
-          <div className="field-section">
-            <div className="hint subtle">Metode bayar (opsional)</div>
-            <div className="chip-group compact">
-              {PAYMENT_METHODS.map((method) => (
-                <button
-                  key={method}
-                  type="button"
-                  className={`chip secondary ${currentPaymentMethod === method ? "active" : ""}`}
-                  onClick={() =>
-                    onUpdate((current) => ({
-                      ...current,
-                      paymentMethod: method
-                    }), "Metode bayar diperbarui")
-                  }
-                >
-                  {paymentMethodLabel(method)}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {entry.parseWarnings?.length ? (
-            <div className="warning-box">
-              <div className="hint">Perlu cek</div>
-              <ul className="warning-list">
-                {entry.parseWarnings.map((warning, index) => (
-                  <li key={`${warning.code}-${index}`}>
-                    {warningDetail(warning)}
-                    {warning.code === "ASSUMED_THOUSANDS" ? (
-                      <button
-                        className="btn secondary btn-sm"
-                        type="button"
-                        onClick={() => {
-                          setIsAssumedThousandsReviewing(true);
-                          amountInputRef.current?.focus();
-                        }}
-                      >
-                        Edit nominal
-                      </button>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          <SplitEditor
-            splitStateLabel={splitStateLabel}
-            splitToggleLabel={splitToggleLabel}
-            splitOpen={splitOpen}
-            hasSplit={hasSplit}
-            splitMode={splitMode}
-            peopleInput={peopleInput}
-            people={people}
-            customDraft={customDraft}
-            isCustomDirty={isCustomDirty}
-            customSubmitStatus={customSubmitStatus}
-            splitSummary={splitSummary}
-            showSplitSummary={splitMode !== "custom" || !isCustomDirty}
-            onToggleSplitOpen={() => setSplitOpen((prev) => !prev)}
-            onCancelSplitEditPanel={cancelSplitEditPanel}
-            onClearAppliedSplit={clearAppliedSplit}
-            onDelete={onDelete}
-            onPeopleInputChange={setPeopleInput}
-            onSetSplitModeEqual={() => {
-              setSplitMode("equal");
-              setIsCustomDirty(false);
-              setCustomSubmitStatus(null);
-            }}
-            onSetSplitModeCustom={() => setSplitMode("custom")}
-            onCustomDraftChange={(person, value) => {
-              setIsCustomDirty(true);
-              setCustomSubmitStatus(null);
-              setCustomDraft((prev) => ({
-                ...prev,
-                [person]: value
-              }));
-            }}
-            onApplyEqualSplit={applyEqualSplit}
-            onApplyCustomSplit={applyCustomSplit}
-          />
-
-          {subtitleBreakdown ? (
-            <div className="item-breakdown-wrap">
-              <button
-                className="btn secondary btn-sm"
-                type="button"
-                onClick={() => setShowItemBreakdown((prev) => !prev)}
-              >
-                {showItemBreakdown ? "Sembunyikan item" : "Lihat item"}
-              </button>
-              {showItemBreakdown ? (
-                <div className="breakdown">
-                  {subtitleBreakdown.map((item, index) => (
-                    <div key={`${item.raw}-${index}`} className="breakdown-row">
-                      <span>{item.label || item.raw}</span>
-                      <span className="breakdown-meta">
-                        {item.qty ? `×${item.qty}` : ""}
-                        {item.amount !== undefined ? ` ${item.qty ? "• " : ""}Rp${formatAmountCompact(item.amount)}` : ""}
-                      </span>
-                    </div>
-                  ))}
-                  <div className="breakdown-total">
-                    <span>total</span>
-                    <span>Rp{formatAmountIDR(entry.amount)}</span>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
         </div>
-      ) : null}
-    </article>
+
+        {entry.parseWarnings?.length ? (
+          <div className="warning-box">
+            <div className="hint">Perlu cek</div>
+            <ul className="warning-list">
+              {entry.parseWarnings.map((warning, index) => (
+                <li key={`${warning.code}-${index}`}>
+                  {warningDetail(warning)}
+                  {warning.code === "ASSUMED_THOUSANDS" ? (
+                    <button
+                      className="btn secondary btn-sm"
+                      type="button"
+                      onClick={() => {
+                        setIsAssumedThousandsReviewing(true);
+                        amountInputRef.current?.focus();
+                      }}
+                    >
+                      Edit nominal
+                    </button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
+        <SplitEditor
+          splitStateLabel={splitStateLabel}
+          splitToggleLabel={splitToggleLabel}
+          splitOpen={splitOpen}
+          hasSplit={hasSplit}
+          splitMode={splitMode}
+          peopleInput={peopleInput}
+          people={people}
+          customDraft={customDraft}
+          isCustomDirty={isCustomDirty}
+          customSubmitStatus={customSubmitStatus}
+          splitSummary={splitSummary}
+          showSplitSummary={splitMode !== "custom" || !isCustomDirty}
+          onToggleSplitOpen={() => setSplitOpen((prev) => !prev)}
+          onCancelSplitEditPanel={cancelSplitEditPanel}
+          onClearAppliedSplit={clearAppliedSplit}
+          onDelete={() => onDelete(entry.id)}
+          onPeopleInputChange={setPeopleInput}
+          onSetSplitModeEqual={() => {
+            setSplitMode("equal");
+            setIsCustomDirty(false);
+            setCustomSubmitStatus(null);
+          }}
+          onSetSplitModeCustom={() => setSplitMode("custom")}
+          onCustomDraftChange={(person, value) => {
+            setIsCustomDirty(true);
+            setCustomSubmitStatus(null);
+            setCustomDraft((prev) => ({
+              ...prev,
+              [person]: value
+            }));
+          }}
+          onApplyEqualSplit={applyEqualSplit}
+          onApplyCustomSplit={applyCustomSplit}
+        />
+
+        {subtitleBreakdown ? (
+          <div className="item-breakdown-wrap">
+            <button
+              className="btn secondary btn-sm"
+              type="button"
+              onClick={() => setShowItemBreakdown((prev) => !prev)}
+            >
+              {showItemBreakdown ? "Sembunyikan item" : "Lihat item"}
+            </button>
+            {showItemBreakdown ? (
+              <div className="breakdown">
+                {subtitleBreakdown.map((item, index) => (
+                  <div key={`${item.raw}-${index}`} className="breakdown-row">
+                    <span>{item.label || item.raw}</span>
+                    <span className="breakdown-meta">
+                      {item.qty ? `×${item.qty}` : ""}
+                      {item.amount !== undefined ? ` ${item.qty ? "• " : ""}Rp${formatAmountCompact(item.amount)}` : ""}
+                    </span>
+                  </div>
+                ))}
+                <div className="breakdown-total">
+                  <span>total</span>
+                  <span>Rp{formatAmountIDR(entry.amount)}</span>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </>
   );
 }
 
-function areEntryRowExpandedPropsEqual(
-  previousProps: EntryRowExpandedProps,
-  nextProps: EntryRowExpandedProps
-): boolean {
-  return (
-    previousProps.entry === nextProps.entry &&
-    previousProps.isHighlighted === nextProps.isHighlighted &&
-    previousProps.shouldAutoExpand === nextProps.shouldAutoExpand
-  );
-}
-
-export default memo(EntryRowExpanded, areEntryRowExpandedPropsEqual);
+export default EntryRowExpanded;

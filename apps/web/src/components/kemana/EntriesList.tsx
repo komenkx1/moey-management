@@ -1,9 +1,11 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
 import type { Category, Entry } from "@kemana/core/types";
 import { formatAmountIDR } from "@kemana/core/format";
 import { formatDayLabel } from "@/lib/kemana-utils";
 import EmptyState from "./EmptyState";
+import EntryRowCollapsed from "./EntryRowCollapsed";
 import EntryRowExpanded from "./EntryRowExpanded";
 
 interface EntriesListProps {
@@ -35,6 +37,46 @@ export default function EntriesList({
   onDateChanged,
   onCategoryChange
 }: EntriesListProps) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!autoExpandedEntryId) {
+      return;
+    }
+    setExpandedId(autoExpandedEntryId);
+    onAutoExpandHandled(autoExpandedEntryId);
+  }, [autoExpandedEntryId, onAutoExpandHandled]);
+
+  useEffect(() => {
+    if (!expandedId) {
+      return;
+    }
+
+    const stillVisible = filteredEntries.some((entry) => entry.id === expandedId);
+    if (!stillVisible) {
+      setExpandedId(null);
+    }
+  }, [expandedId, filteredEntries]);
+
+  const toggleExpand = useCallback((entryId: string) => {
+    setExpandedId((current) => (current === entryId ? null : entryId));
+  }, []);
+
+  const handleDelete = useCallback(
+    (entryId: string) => {
+      setExpandedId((current) => (current === entryId ? null : current));
+      onDelete(entryId);
+    },
+    [onDelete]
+  );
+
+  const handleUpdate = useCallback(
+    (entryId: string, updater: (entry: Entry) => Entry, toastMessage?: string) => {
+      onUpdate(entryId, updater, toastMessage);
+    },
+    [onUpdate]
+  );
+
   return (
     <section className="list">
       {filteredEntries.length === 0 ? (
@@ -47,19 +89,38 @@ export default function EntriesList({
               <div className="day-total">Rp{formatAmountIDR(dailyTotal[dateISO] ?? 0)}</div>
             </div>
             <div className="day-list">
-              {(groupedEntries[dateISO] ?? []).map((entry) => (
-                <EntryRowExpanded
-                  key={entry.id}
-                  entry={entry}
-                  isHighlighted={highlightEntryId === entry.id}
-                  shouldAutoExpand={autoExpandedEntryId === entry.id}
-                  onAutoExpandHandled={() => onAutoExpandHandled(entry.id)}
-                  onDelete={() => onDelete(entry.id)}
-                  onUpdate={(updater, toastMessage) => onUpdate(entry.id, updater, toastMessage)}
-                  onDateChanged={onDateChanged}
-                  onCategoryChange={(category) => onCategoryChange(entry, category)}
-                />
-              ))}
+              {(groupedEntries[dateISO] ?? []).map((entry) => {
+                const isExpanded = expandedId === entry.id;
+                const expandedPanelId = `row-expanded-${entry.id}`;
+
+                return (
+                  <article
+                    key={entry.id}
+                    id={`entry-${entry.id}`}
+                    data-entry-id={entry.id}
+                    className={`row ${isExpanded ? "expanded" : ""} ${highlightEntryId === entry.id ? "highlight" : ""}`}
+                  >
+                    {isExpanded ? (
+                      <EntryRowExpanded
+                        entry={entry}
+                        expandedPanelId={expandedPanelId}
+                        onToggleExpand={toggleExpand}
+                        onDelete={handleDelete}
+                        onUpdate={handleUpdate}
+                        onDateChanged={onDateChanged}
+                        onCategoryChange={onCategoryChange}
+                      />
+                    ) : (
+                      <EntryRowCollapsed
+                        entry={entry}
+                        isExpanded={false}
+                        expandedPanelId={expandedPanelId}
+                        onToggleExpand={toggleExpand}
+                      />
+                    )}
+                  </article>
+                );
+              })}
             </div>
           </section>
         ))

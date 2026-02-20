@@ -1,41 +1,48 @@
 "use client";
 
+import { memo, useMemo } from "react";
 import { formatAmountIDR } from "@kemana/core/format";
 import type { Entry, PaymentMethod } from "@kemana/core/types";
-import { formatItemPillText, paymentMethodLabel, type ItemLine } from "@/lib/kemana-utils";
+import {
+  formatItemPillText,
+  parseItemBreakdownFromSubtitle,
+  paymentMethodLabel,
+  splitDisplayText,
+  splitSubtitleItems
+} from "@/lib/kemana-utils";
 
 interface EntryRowCollapsedProps {
   entry: Entry;
   isExpanded: boolean;
   expandedPanelId: string;
-  onToggleExpand: () => void;
-  displayText: { title: string; subtitle?: string };
-  subtitleBreakdown: ItemLine[] | null;
-  subtitleItems: string[] | null;
-  currentPaymentMethod: PaymentMethod;
-  hasSelectedPaymentMethod: boolean;
-  splitCount: number | null;
-  warningCount: number;
+  onToggleExpand: (entryId: string) => void;
 }
 
-export default function EntryRowCollapsed({
+function EntryRowCollapsed({
   entry,
   isExpanded,
   expandedPanelId,
-  onToggleExpand,
-  displayText,
-  subtitleBreakdown,
-  subtitleItems,
-  currentPaymentMethod,
-  hasSelectedPaymentMethod,
-  splitCount,
-  warningCount
+  onToggleExpand
 }: EntryRowCollapsedProps) {
+  const displayText = useMemo(() => splitDisplayText(entry.text), [entry.text]);
+  const subtitleBreakdown = useMemo(
+    () => (displayText.subtitle ? parseItemBreakdownFromSubtitle(displayText.subtitle) : null),
+    [displayText.subtitle]
+  );
+  const subtitleItems = useMemo(
+    () => (displayText.subtitle ? splitSubtitleItems(displayText.subtitle) : null),
+    [displayText.subtitle]
+  );
+  const currentPaymentMethod: PaymentMethod = entry.paymentMethod ?? "Unknown";
+  const hasSelectedPaymentMethod = currentPaymentMethod !== "Unknown";
+  const splitCount = entry.split?.shares?.length ?? null;
+  const warningCount = entry.parseWarnings?.length ?? 0;
+
   return (
     <button
       className="row-hit"
       type="button"
-      onClick={onToggleExpand}
+      onClick={() => onToggleExpand(entry.id)}
       aria-expanded={isExpanded}
       aria-controls={expandedPanelId}
     >
@@ -79,3 +86,17 @@ export default function EntryRowCollapsed({
     </button>
   );
 }
+
+function areEntryRowCollapsedPropsEqual(
+  previousProps: EntryRowCollapsedProps,
+  nextProps: EntryRowCollapsedProps
+): boolean {
+  return (
+    previousProps.entry === nextProps.entry &&
+    previousProps.isExpanded === nextProps.isExpanded &&
+    previousProps.expandedPanelId === nextProps.expandedPanelId &&
+    previousProps.onToggleExpand === nextProps.onToggleExpand
+  );
+}
+
+export default memo(EntryRowCollapsed, areEntryRowCollapsedPropsEqual);
