@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, type ChangeEvent } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { parseQuickAdd } from "@kemana/core/parser";
 import { inferCategory, updateCategoryRule } from "@kemana/core/rules";
 import {
   Category,
-  CategoryRules,
   Entry,
   EntrySource
 } from "@kemana/core/types";
@@ -30,6 +30,12 @@ import NightCloseBar from "@/components/kemana/NightCloseBar";
 import NightClosePanel from "@/components/kemana/NightClosePanel";
 import QuickAddComposer from "@/components/kemana/QuickAddComposer";
 import SummaryHeader from "@/components/kemana/SummaryHeader";
+import {
+  type ActionToastState,
+  type MovedToastState,
+  type UndoToastState,
+  useKemanaStore
+} from "@/store/use-kemana-store";
 import {
   FILTER_OPTIONS,
   DateFilterPreset,
@@ -63,57 +69,124 @@ interface BulkPreviewLine {
   reason?: string;
 }
 
-interface UndoToastState {
-  entry: Entry;
-  index: number;
-  expiresAt: number;
-}
-
-interface ActionToastState {
-  message: string;
-  expiresAt: number;
-}
-
-interface MovedToastState {
-  entryId: string;
-  targetDate: string;
-  label: string;
-  movedOutOfFilter: boolean;
-  expiresAt: number;
-}
-
 const LAST_OPEN_AT_KEY = "kemana.lastOpenAt";
 const RECALL_DISMISSED_SESSION_KEY = "kemana.dismissedRecallUntil";
 
 export default function HomePage() {
   const appVersion = process.env.NEXT_PUBLIC_APP_VERSION ?? "dev";
-  const [isStorageReady, setIsStorageReady] = useState(false);
-  const [entries, setEntries] = useState<Entry[]>([]);
-  const [rules, setRules] = useState<CategoryRules>([]);
-  const [storageWarning, setStorageWarning] = useState<string | null>(null);
-  const [backupMessage, setBackupMessage] = useState<string | null>(null);
-  const [replaceOnImport, setReplaceOnImport] = useState(false);
-  const [dateFilter, setDateFilter] = useState<DateFilterPreset>("today");
-  const [autoExpandedEntryId, setAutoExpandedEntryId] = useState<string | null>(null);
-  const [actionToast, setActionToast] = useState<ActionToastState | null>(null);
-  const [movedToast, setMovedToast] = useState<MovedToastState | null>(null);
-  const [pendingScrollToId, setPendingScrollToId] = useState<string | null>(null);
-  const [highlightEntryId, setHighlightEntryId] = useState<string | null>(null);
-  const [quickInput, setQuickInput] = useState("");
-  const [debouncedQuickInput, setDebouncedQuickInput] = useState("");
-  const [lastAppOpenAt, setLastAppOpenAt] = useState<number | null>(null);
-  const [recallDismissedInSession, setRecallDismissedInSession] = useState(false);
-  const [isRecallSessionReady, setIsRecallSessionReady] = useState(false);
-  const [recallInputPrimed, setRecallInputPrimed] = useState(false);
-  const [nightCloseClosedAt, setNightCloseClosedAt] = useState<string | null>(null);
-  const [isNightCloseReady, setIsNightCloseReady] = useState(false);
-  const [nightClosePanelOpen, setNightClosePanelOpen] = useState(false);
-  const [nightCloseConfirmation, setNightCloseConfirmation] = useState<string | null>(null);
-  const [quickError, setQuickError] = useState<string | null>(null);
-  const [showQuickWarningDetails, setShowQuickWarningDetails] = useState(false);
-  const [bulkOpen, setBulkOpen] = useState(false);
-  const [bulkInput, setBulkInput] = useState("");
-  const [undoToast, setUndoToast] = useState<UndoToastState | null>(null);
+  const {
+    isStorageReady,
+    entries,
+    rules,
+    storageWarning,
+    backupMessage,
+    replaceOnImport,
+    dateFilter,
+    autoExpandedEntryId,
+    actionToast,
+    movedToast,
+    pendingScrollToId,
+    highlightEntryId,
+    quickInput,
+    debouncedQuickInput,
+    lastAppOpenAt,
+    recallDismissedInSession,
+    isRecallSessionReady,
+    recallInputPrimed,
+    nightCloseClosedAt,
+    isNightCloseReady,
+    nightClosePanelOpen,
+    nightCloseConfirmation,
+    quickError,
+    showQuickWarningDetails,
+    bulkOpen,
+    bulkInput,
+    undoToast,
+    setIsStorageReady,
+    setEntries,
+    setRules,
+    setStorageWarning,
+    setBackupMessage,
+    setReplaceOnImport,
+    setDateFilter,
+    setAutoExpandedEntryId,
+    setActionToast,
+    setMovedToast,
+    setPendingScrollToId,
+    setHighlightEntryId,
+    setQuickInput,
+    setDebouncedQuickInput,
+    setLastAppOpenAt,
+    setRecallDismissedInSession,
+    setIsRecallSessionReady,
+    setRecallInputPrimed,
+    setNightCloseClosedAt,
+    setIsNightCloseReady,
+    setNightClosePanelOpen,
+    setNightCloseConfirmation,
+    setQuickError,
+    setShowQuickWarningDetails,
+    setBulkOpen,
+    setBulkInput,
+    setUndoToast
+  } = useKemanaStore(
+    useShallow((state) => ({
+      isStorageReady: state.isStorageReady,
+      entries: state.entries,
+      rules: state.rules,
+      storageWarning: state.storageWarning,
+      backupMessage: state.backupMessage,
+      replaceOnImport: state.replaceOnImport,
+      dateFilter: state.dateFilter,
+      autoExpandedEntryId: state.autoExpandedEntryId,
+      actionToast: state.actionToast,
+      movedToast: state.movedToast,
+      pendingScrollToId: state.pendingScrollToId,
+      highlightEntryId: state.highlightEntryId,
+      quickInput: state.quickInput,
+      debouncedQuickInput: state.debouncedQuickInput,
+      lastAppOpenAt: state.lastAppOpenAt,
+      recallDismissedInSession: state.recallDismissedInSession,
+      isRecallSessionReady: state.isRecallSessionReady,
+      recallInputPrimed: state.recallInputPrimed,
+      nightCloseClosedAt: state.nightCloseClosedAt,
+      isNightCloseReady: state.isNightCloseReady,
+      nightClosePanelOpen: state.nightClosePanelOpen,
+      nightCloseConfirmation: state.nightCloseConfirmation,
+      quickError: state.quickError,
+      showQuickWarningDetails: state.showQuickWarningDetails,
+      bulkOpen: state.bulkOpen,
+      bulkInput: state.bulkInput,
+      undoToast: state.undoToast,
+      setIsStorageReady: state.setIsStorageReady,
+      setEntries: state.setEntries,
+      setRules: state.setRules,
+      setStorageWarning: state.setStorageWarning,
+      setBackupMessage: state.setBackupMessage,
+      setReplaceOnImport: state.setReplaceOnImport,
+      setDateFilter: state.setDateFilter,
+      setAutoExpandedEntryId: state.setAutoExpandedEntryId,
+      setActionToast: state.setActionToast,
+      setMovedToast: state.setMovedToast,
+      setPendingScrollToId: state.setPendingScrollToId,
+      setHighlightEntryId: state.setHighlightEntryId,
+      setQuickInput: state.setQuickInput,
+      setDebouncedQuickInput: state.setDebouncedQuickInput,
+      setLastAppOpenAt: state.setLastAppOpenAt,
+      setRecallDismissedInSession: state.setRecallDismissedInSession,
+      setIsRecallSessionReady: state.setIsRecallSessionReady,
+      setRecallInputPrimed: state.setRecallInputPrimed,
+      setNightCloseClosedAt: state.setNightCloseClosedAt,
+      setIsNightCloseReady: state.setIsNightCloseReady,
+      setNightClosePanelOpen: state.setNightClosePanelOpen,
+      setNightCloseConfirmation: state.setNightCloseConfirmation,
+      setQuickError: state.setQuickError,
+      setShowQuickWarningDetails: state.setShowQuickWarningDetails,
+      setBulkOpen: state.setBulkOpen,
+      setBulkInput: state.setBulkInput,
+      setUndoToast: state.setUndoToast
+    }))
+  );
   const quickInputRef = useRef<HTMLInputElement>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
   const pendingUndoRef = useRef<UndoToastState | null>(null);
