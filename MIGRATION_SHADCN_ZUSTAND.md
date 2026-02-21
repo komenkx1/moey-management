@@ -22,7 +22,6 @@ Referensi commit terbaru:
 
 ### Belum selesai
 - Migrasi toast undo ke Sonner.
-- Migrasi state management dari `useState` besar di `apps/web/src/app/page.tsx` ke Zustand bertahap.
 
 ## 2) Tujuan Migrasi Zustand
 
@@ -174,6 +173,7 @@ npx playwright test --grep "Delete entry + Undo"
 - [x] UI primitives migration (composer/chip/filter/warning)
 - [x] Split editor pindah ke `Sheet`
 - [ ] Sonner untuk undo/action toast
-- [ ] Zustand scaffold
-- [ ] Zustand adopsi bertahap per slice
-- [ ] Final cleanup `useState` yang redundant di `page.tsx`
+- [x] Zustand scaffold
+- [x] Zustand adopsi awal pada `page.tsx` (state utama pindah dari `useState` ke store)
+- [x] Final cleanup `useState` yang redundant di `page.tsx`
+- [x] Store dipecah jadi beberapa slice file (`data/ui/composer/habit`)
