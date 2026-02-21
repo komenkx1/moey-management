@@ -67,14 +67,15 @@
   - animasi open/close panel sudah dihaluskan.
 - Util harian konsisten sudah dipusatkan via `getLocalDayKey(date)` untuk marker Night Close dan metrik habit lokal.
 - Test parser: `26` test lulus (`vitest`).
+- Dexie/IndexedDB diaktifkan sebagai storage utama (menggantikan localStorage + script migrasi v1 selesai).
 
 ### Sedang Berjalan
+- Cek migrasi UI (shadcn + Zustand) untuk fase berikutnya.
 - Polishing UX dense layout, microcopy, dan indikator status online/offline.
 - Validasi dampak habit loop (Smart Recall + Night Close) pada konsistensi catat harian creator.
 - Dokumentasi deployment/release untuk flow solo dev + GitHub/Vercel.
 
 ### Belum Diaktifkan (Tetap Sesuai Desain)
-- Dexie/IndexedDB sebagai storage utama (masih localStorage untuk validasi cepat).
 - Backend Supabase, RLS, auth, sync queue, conflict resolution.
 - OCR upload/scan flow.
 

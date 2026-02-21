@@ -1,9 +1,9 @@
 # MIGRATION_SHADCN_ZUSTAND.md
 
-Status dokumen: belum dieksekusi, terakhir ditinjau 18 Feb 2026.
+Status dokumen: **Siap dieksekusi**. Prasyarat arsitektur (Dexie IndexedDB) dan validasi baseline (tests & build) telah lulus per 21 Feb 2026.
 
 ## Tujuan
-Migrasi UI KeMana dilakukan **setelah dogfooding selesai**, secara bertahap, tanpa rewrite total.
+Migrasi UI KeMana dilakukan **setelah dogfooding selesai** dan storage lokal beralih ke struktur async (Dexie). Proses migrasi bersifat bertahap tanpa rewrite total.
 
 Fokus migrasi:
 - Setup Tailwind + shadcn/ui incremental.
@@ -24,7 +24,7 @@ Prinsip yang tidak boleh berubah:
 ### 1.1 Environment minimum
 - Node 22 aktif (`nvm use 22`).
 - Package manager konsisten (npm).
-- Project build dan test saat ini harus hijau sebelum migrasi.
+- Project build dan test saat ini harus hijau sebelum migrasi (✨ **LULUS: Dexie migration tests passed**).
 
 ### 1.2 Cek Tailwind sudah ada/belum
 Jalankan (hanya check):
