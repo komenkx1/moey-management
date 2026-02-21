@@ -267,4 +267,162 @@ test.describe("Kemana App E2E", () => {
         await expect(summaryCard).toContainText("50.000");
         await expect(summaryCard).toContainText("2 transaksi");
     });
+    // ─── Inline Edit ─────────────────────────────────────────────
+
+    test("Inline edit: ubah judul dan nominal dari panel expanded", async ({ page }) => {
+        await quickAdd(page, "makan 20k");
+        await ensureExpanded(page);
+
+        // Edit Title
+        const titleInput = page.locator(".row-expanded input.input").first();
+        await titleInput.fill("makan siang");
+
+        // Edit Amount
+        const amountInput = page.locator(".row-expanded input.input").nth(1);
+        await amountInput.fill("25000");
+
+        // Save
+        await page.click("button:has-text('Simpan')");
+
+        // Wait for update (it might collapse or stay expanded depending on state, let's just check the text)
+        await ensureCollapsed(page);
+        const entry = page.locator("article[data-entry-id]").first();
+        await expect(entry).toContainText("makan siang");
+        await expect(entry).toContainText("25.000");
+    });
+
+    // ─── Assumed Thousands Warning ──────────────────────────────
+
+    test("Warning: angka ambigu (15) memunculkan warning Asumsi Ribuan", async ({ page }) => {
+        await quickAdd(page, "gaji 15");
+
+        // Should show !1 warning on collapsed row
+        await ensureCollapsed(page);
+        const entry = page.locator("article[data-entry-id]").first();
+        await expect(entry.locator(".row-meta")).toContainText("!1");
+
+        // Expand to see details and warning chip
+        await ensureExpanded(page);
+
+        // Warning should be present
+        const warningItem = page.locator("li:has-text('Nominal diasumsikan ribuan')");
+        await expect(warningItem).toBeVisible();
+
+        // Resolve it: click Edit, fill explicit value, save
+        await warningItem.locator("button:has-text('Edit nominal')").click();
+        const amountInput = page.locator(".row-expanded input.input").nth(1);
+        await amountInput.fill("15000");
+        await page.locator("button:has-text('Simpan')").click();
+
+        // Warning should be resolved
+        await ensureCollapsed(page);
+        await expect(entry.locator(".row-meta")).not.toContainText("!1");
+    });
+
+    // ─── Night Close ─────────────────────────────────────────────
+
+    test("Night Close: buat laporan tutup hari", async ({ page }) => {
+        await quickAdd(page, "kopi 15k");
+
+        // Click the Review button in the night close bar
+        await page.locator("button:has-text('Review')").click();
+
+        // The panel should open
+        await expect(page.locator(".night-close-panel-title")).toBeVisible();
+
+        // Click close day
+        await page.locator("button:has-text('Selesai (tandai beres)')").click();
+
+        // Wait for it to close (the panel should disappear)
+        await expect(page.locator(".night-close-panel-title")).not.toBeVisible();
+    });
+
+    // ─── Smart Recall ────────────────────────────────────────────
+
+    test("Smart Recall: muncul prompt karena ada gap waktu (5 jam)", async ({ page }) => {
+        // Prepare a backup with an entry created 5 hours ago (> 3h gap triggers prompt)
+        const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000);
+        const todayDate = new Date().toISOString().split("T")[0];
+        const mockBackup = {
+            entries: [
+                { id: "test-recall-1", text: "kopi pagi", amount: 15000, date: todayDate, category: "Makan", createdAt: fiveHoursAgo.toISOString(), updatedAt: fiveHoursAgo.toISOString() }
+            ],
+            rules: []
+        };
+
+        const buffer = Buffer.from(JSON.stringify(mockBackup));
+
+        // Import the backup via file chooser
+        const fileChooserPromise = page.waitForEvent("filechooser");
+        await page.locator("button:has-text('Import Backup')").click();
+        const fileChooser = await fileChooserPromise;
+        await fileChooser.setFiles({
+            name: "kemana-backup.json",
+            mimeType: "application/json",
+            buffer: buffer
+        });
+
+        // Wait for import to settle
+        await page.waitForTimeout(1000);
+
+        // Reload to trigger recall based on the new IndexedDB state
+        await page.reload();
+        await waitForApp(page);
+
+        // Prompt should be visible (gap > 3 hours → "Terakhir kamu catat jam ...")
+        const recallPrompt = page.locator(".smart-recall");
+        await expect(recallPrompt).toBeVisible({ timeout: 10000 });
+        await expect(recallPrompt).toContainText("Terakhir kamu catat jam");
+
+        // Click "Tambah yang barusan" to add an entry
+        await recallPrompt.locator("button:has-text('Tambah yang barusan')").click();
+        const input = page.locator("section.composer input.input");
+        await input.fill("gaji 5jt");
+        await input.press("Enter");
+
+        // Prompt should disappear after submitting (new entry closes the gap)
+        await page.waitForTimeout(500);
+        await expect(page.locator(".smart-recall")).not.toBeVisible();
+    });
+
+    // ─── Import Backup ───────────────────────────────────────────
+
+    test("Import Backup: parse JSON file dan kembalikan data", async ({ page }) => {
+        // Create an empty state first
+        await expect(page.locator("article[data-entry-id]")).toHaveCount(0);
+
+        // Prepare dummy backup in the correct format: { entries: [...], rules: [...] }
+        const todayDate = new Date().toISOString().split("T")[0];
+        const now = new Date().toISOString();
+        const mockBackup = {
+            entries: [
+                { id: "test-import-1", text: "import kopi", amount: 15000, date: todayDate, category: "Makan", createdAt: now, updatedAt: now },
+                { id: "test-import-2", text: "import tiket", amount: 50000, date: todayDate, category: "Transport", createdAt: now, updatedAt: now }
+            ],
+            rules: []
+        };
+
+        // Create file buffer
+        const buffer = Buffer.from(JSON.stringify(mockBackup));
+
+        // Use Playwright's setInputFiles
+        const fileChooserPromise = page.waitForEvent("filechooser");
+        await page.locator("button:has-text('Import Backup')").click();
+        const fileChooser = await fileChooserPromise;
+        await fileChooser.setFiles({
+            name: "kemana-backup.json",
+            mimeType: "application/json",
+            buffer: buffer
+        });
+
+        // Check for success toast
+        await expect(page.locator(".action-toast")).toContainText("Import backup berhasil", { timeout: 10000 });
+
+        // Switch to "Semua" to ensure we see all dates
+        await page.locator("section.range-filter .chip:has-text('Semua')").click();
+
+        // Wait for list to reflect imports
+        await expect(page.locator("article[data-entry-id]")).toHaveCount(2, { timeout: 10000 });
+        await expect(page.locator("article[data-entry-id]").nth(0)).toContainText("import");
+    });
 });
