@@ -68,11 +68,11 @@
 - Util harian konsisten sudah dipusatkan via `getLocalDayKey(date)` untuk marker Night Close dan metrik habit lokal.
 - Test parser: `26` test lulus (`vitest`).
 - Dexie/IndexedDB diaktifkan sebagai storage utama (menggantikan localStorage + script migrasi v1 selesai).
-- Tailwind + shadcn migration phase sudah berjalan baik (composer/filter/chips/split sheet sudah dipindahkan ke primitive shadcn).
+- Tailwind v4 + shadcn migration phase selesai (semua control utama memakai primitive shadcn).
+- Eksekusi fase migrasi Zustand incremental selesai (orchestration state `page.tsx` dipecah menjadi store slices tanpa regresi).
+- Sonner migration selesai untuk undo/action toast beserta deduplikasi notifikasi.
 
 ### Sedang Berjalan
-- Eksekusi fase migrasi Zustand incremental sesuai `MIGRATION_SHADCN_ZUSTAND.md` (slice-by-slice, no regression).
-- Sonner migration untuk undo/action toast setelah store Zustand stabil.
 - Polishing UX dense layout, microcopy, dan indikator status online/offline.
 - Validasi dampak habit loop (Smart Recall + Night Close) pada konsistensi catat harian creator.
 - Dokumentasi deployment/release untuk flow solo dev + GitHub/Vercel.

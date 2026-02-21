@@ -2,7 +2,7 @@
 
 KeMana adalah aplikasi pencatatan pengeluaran single-device, local-first, dengan fokus input cepat: "Biar tau uangmu kemana".
 
-## Progress Terkini (20 Feb 2026)
+## Progress Terkini (22 Feb 2026)
 
 - Smart Recall prompt non-blocking (memory trigger).
 - Global recovery CTA `Tambah yang barusan` selalu tersedia di composer.
@@ -24,6 +24,9 @@ KeMana adalah aplikasi pencatatan pengeluaran single-device, local-first, dengan
   - Android/Chromium pakai `beforeinstallprompt`
   - iOS menampilkan instruksi `Share -> Add to Home Screen`
 - Safe-area iOS standalone disesuaikan agar judul tidak bentrok area jam/status bar.
+- Migrasi state ke Zustand untuk orchestration terpusat dan perbaikan re-render.
+- Migrasi komponen UI ke shadcn/ui dan Tailwind CSS v4.
+- Toast notifikasi dimigrasikan ke ekosistem Sonner.
 
 ## Menjalankan Lokal
 

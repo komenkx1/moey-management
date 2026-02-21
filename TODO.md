@@ -33,8 +33,9 @@
 - UX edit tanggal disempurnakan: simpan eksplisit via tombol `Simpan`, helper text di bawah input date, dan overflow input date iOS diperbaiki.
 - Toast perpindahan tanggal kini menjelaskan saat entry berada di luar filter aktif (tanpa auto-switch filter agar batch edit tidak terganggu).
 - Safe-area iOS standalone sudah dituning untuk hindari bentrok judul dengan jam/status bar.
-- Tailwind + shadcn phase progress: controls composer/filter/chips/warning/split editor sudah bermigrasi ke primitive shadcn.
-- Dokumen rencana migrasi Zustand sudah dirapikan dan dijadikan acuan eksekusi di `MIGRATION_SHADCN_ZUSTAND.md`.
+- Migrasi UI ke shadcn primitives selesai sepenuhnya (Tailwind v4).
+- Migrasi state page orchestration ke Zustand selesai (dibagi per domain slice sesuai `MIGRATION_SHADCN_ZUSTAND.md`).
+- Migrasi toast ke Sonner selesai dengan deduplikasi action/undo.
 - Fokus sisa Phase 1: validasi metrik latency/habit dan stabilisasi alur Dexie (tanpa ubah domain contract).
 
 ## 1. Prinsip Eksekusi
