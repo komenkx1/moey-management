@@ -1,6 +1,6 @@
 # KeMana MVP Masterplan
 
-## 0. Progress Snapshot (Per 20 Februari 2026)
+## 0. Progress Snapshot (Per 21 Februari 2026)
 ### Sudah Selesai (Phase 0/1)
 - Arsitektur repo aktif: `apps/web`, `packages/core`, `packages/storage` (core logic terpisah dari UI Next.js).
 - Quick Add parser production-ready untuk pola utama:
@@ -68,9 +68,11 @@
 - Util harian konsisten sudah dipusatkan via `getLocalDayKey(date)` untuk marker Night Close dan metrik habit lokal.
 - Test parser: `26` test lulus (`vitest`).
 - Dexie/IndexedDB diaktifkan sebagai storage utama (menggantikan localStorage + script migrasi v1 selesai).
+- Tailwind + shadcn migration phase sudah berjalan baik (composer/filter/chips/split sheet sudah dipindahkan ke primitive shadcn).
 
 ### Sedang Berjalan
-- Cek migrasi UI (shadcn + Zustand) untuk fase berikutnya.
+- Eksekusi fase migrasi Zustand incremental sesuai `MIGRATION_SHADCN_ZUSTAND.md` (slice-by-slice, no regression).
+- Sonner migration untuk undo/action toast setelah store Zustand stabil.
 - Polishing UX dense layout, microcopy, dan indikator status online/offline.
 - Validasi dampak habit loop (Smart Recall + Night Close) pada konsistensi catat harian creator.
 - Dokumentasi deployment/release untuk flow solo dev + GitHub/Vercel.

@@ -1,6 +1,6 @@
 # KeMana MVP Specs
 
-## 0. Status Implementasi (Per 20 Februari 2026)
+## 0. Status Implementasi (Per 21 Februari 2026)
 - [x] Quick Add parser + warning system terstruktur.
 - [x] Quick Add inline addition (`+`) dengan total otomatis.
 - [x] Quick Add qty-aware parsing (`3x 15k`, `x3 15k`, `15k x3`, `3 x 15k`).
@@ -11,7 +11,7 @@
 - [x] Teaching hint adaptif (muncul hanya saat user buntu, tidak permanen).
 - [x] Teaching hint kontekstual aktif berdasarkan pola input (format cepat/merchant/sum/qty).
 - [x] Breakdown display per item di expanded row (display-only, tanpa schema baru).
-- [x] Local persistence single-device (localStorage).
+- [x] Local persistence single-device (Dexie/IndexedDB + migrasi dari localStorage).
 - [x] PWA minimal + offline badge + safe update banner.
 - [x] Adaptive iOS PWA status bar blending (best-effort via `viewport-fit=cover` + dynamic `theme-color`).
 - [x] Feedback pindah tanggal (`Dipindah ke ...`, tombol `Lihat`, scroll + highlight row).
@@ -39,7 +39,7 @@
 - [x] Tuning safe-area top iOS standalone agar header tidak overlap status bar.
 - [x] Split UX lebih eksplisit (status split, `Buat/Edit Split`, `Batalkan split`, `Batal` editor).
 - [x] Parser regression tests aktif (`26` test lulus).
-- [ ] Dexie migration (target berikutnya, belum aktif).
+- [x] Dexie migration aktif (dengan one-time migration lokal dari localStorage).
 - [ ] Backend/auth/sync/RLS (tetap Phase 2, belum implementasi).
 
 ## 1. Acceptance Criteria per Fitur

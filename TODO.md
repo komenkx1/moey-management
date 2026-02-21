@@ -1,9 +1,9 @@
 # TODO Eksekusi MVP KeMana (Single-Device First)
 
-## 0. Progress Update (Per 20 Februari 2026)
+## 0. Progress Update (Per 21 Februari 2026)
 - Phase 1 core UX sudah usable untuk dogfooding single-device.
 - Parser + split + rules sudah dipisah ke `packages/core`.
-- Storage adapter local-first aktif di `packages/storage` (localStorage).
+- Storage adapter local-first aktif di `packages/storage` (Dexie/IndexedDB sebagai primary storage).
 - PWA minimal + offline/update flow sudah aktif.
 - Composer sudah lebih tenang: teaching hint adaptif kontekstual, error merah hanya setelah submit.
 - Parser qty-aware sudah aktif (`3x 15k`, `x3 15k`, `15k x3`, `3 x 15k`) dan token qty dipertahankan di text.
@@ -33,7 +33,9 @@
 - UX edit tanggal disempurnakan: simpan eksplisit via tombol `Simpan`, helper text di bawah input date, dan overflow input date iOS diperbaiki.
 - Toast perpindahan tanggal kini menjelaskan saat entry berada di luar filter aktif (tanpa auto-switch filter agar batch edit tidak terganggu).
 - Safe-area iOS standalone sudah dituning untuk hindari bentrok judul dengan jam/status bar.
-- Fokus sisa Phase 1: validasi metrik latency/habit dan migrasi storage ke Dexie (tanpa ubah domain contract).
+- Tailwind + shadcn phase progress: controls composer/filter/chips/warning/split editor sudah bermigrasi ke primitive shadcn.
+- Dokumen rencana migrasi Zustand sudah dirapikan dan dijadikan acuan eksekusi di `MIGRATION_SHADCN_ZUSTAND.md`.
+- Fokus sisa Phase 1: validasi metrik latency/habit dan stabilisasi alur Dexie (tanpa ubah domain contract).
 
 ## 1. Prinsip Eksekusi
 - Fokus pengiriman 7 hari: Quick Add -> List -> Edit -> Split -> Bulk Paste.
@@ -84,7 +86,7 @@ Status:
 - [ ] Buat struktur target monorepo (`/apps/web`, `/apps/mobile`, `/packages/core`, `/packages/infra`).
 - [x] Pindahkan pure core logic dari `/apps/web/src/core/*` ke `/packages/core` tanpa ubah perilaku.
 - [x] Setup TypeScript references/workspace seperlunya setelah UX baseline terbukti.
-- [ ] Migrasi storage dari localStorage ke Dexie dengan one-time migration lokal.
+- [x] Migrasi storage dari localStorage ke Dexie dengan one-time migration lokal.
 
 ## 2.5 Hari 5 - Split Equal + Custom
 - [x] Implement equal split calculator (integer, deterministic remainder).
