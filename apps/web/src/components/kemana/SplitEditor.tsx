@@ -1,6 +1,16 @@
 "use client";
 
 import { formatAmountIDR } from "@kemana/core/format";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle
+} from "@/components/ui/sheet";
 
 interface CustomSubmitStatus {
   type: "less" | "more" | "ok";
@@ -63,98 +73,127 @@ export default function SplitEditor({
 }: SplitEditorProps) {
   return (
     <>
-      <hr className="section-divider" />
+      <Separator className="section-divider" />
       <div className="split-entry-header">
         <div className="split-entry-info">
           <div className="split-entry-title">Split bill</div>
           <div className="split-entry-meta">{splitStateLabel}</div>
         </div>
         <div className="row-actions compact split-entry-actions">
-          <button
+          <Button
             className={`btn btn-sm ${splitOpen || hasSplit ? "secondary" : ""}`}
+            variant={splitOpen || hasSplit ? "secondary" : "default"}
+            size="sm"
             type="button"
-            onClick={onToggleSplitOpen}
+            onClick={splitOpen ? onCancelSplitEditPanel : onToggleSplitOpen}
           >
             {splitToggleLabel}
-          </button>
-          {splitOpen ? (
-            <button className="btn secondary btn-sm" type="button" onClick={onCancelSplitEditPanel}>
-              Batal
-            </button>
-          ) : null}
+          </Button>
           {hasSplit ? (
-            <button className="btn ghost btn-sm danger" type="button" onClick={onClearAppliedSplit}>
+            <Button className="btn ghost btn-sm danger" variant="ghost" size="sm" type="button" onClick={onClearAppliedSplit}>
               Batalkan split
-            </button>
+            </Button>
           ) : null}
-          <button className="btn ghost btn-sm danger" type="button" onClick={onDelete}>
+          <Button className="btn ghost btn-sm danger" variant="ghost" size="sm" type="button" onClick={onDelete}>
             Hapus
-          </button>
+          </Button>
         </div>
       </div>
 
-      {splitOpen ? (
-        <div className="split-box">
-          <div className="hint">People (pisahkan koma)</div>
-          <input className="input" value={peopleInput} onChange={(event) => onPeopleInputChange(event.target.value)} />
-          <div className="row-actions compact">
-            <button
-              className={`btn btn-sm ${splitMode === "equal" ? "" : "secondary"}`}
-              type="button"
-              onClick={onSetSplitModeEqual}
-            >
-              Equal
-            </button>
-            <button
-              className={`btn btn-sm ${splitMode === "custom" ? "" : "secondary"}`}
-              type="button"
-              onClick={onSetSplitModeCustom}
-            >
-              Custom
-            </button>
-          </div>
+      <Sheet
+        open={splitOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            onCancelSplitEditPanel();
+          }
+        }}
+      >
+        <SheetContent
+          side="bottom"
+          showCloseButton={false}
+          className="split-sheet-content"
+          aria-label="Atur split bill"
+        >
+          <SheetHeader className="split-sheet-header">
+            <SheetTitle>Split bill</SheetTitle>
+            <SheetDescription>{splitStateLabel}</SheetDescription>
+          </SheetHeader>
 
-          {splitMode === "custom" ? (
-            <>
-              <div className="inline-grid">
-                {people.map((person) => (
-                  <div key={person}>
-                    <div className="hint">{person}</div>
-                    <input
-                      className="input"
-                      value={customDraft[person] ?? ""}
-                      onChange={(event) => onCustomDraftChange(person, event.target.value)}
-                      placeholder="Nominal"
-                    />
-                  </div>
-                ))}
-              </div>
-              <div className={`split-status ${customSubmitStatus?.type ?? "pending"}`}>
-                {customSubmitStatus
-                  ? customSubmitStatus.type === "less"
-                    ? `Kurang Rp${formatAmountIDR(Math.abs(customSubmitStatus.diff))}`
-                    : customSubmitStatus.type === "more"
-                      ? `Lebih Rp${formatAmountIDR(customSubmitStatus.diff)}`
-                      : "Sudah pas"
-                  : "Draft belum diterapkan"}
-              </div>
-              {isCustomDirty ? <div className="hint subtle">Klik Terapkan Custom untuk lihat hasil</div> : null}
-            </>
-          ) : null}
+          <div className="split-box split-box-sheet">
+            <div className="hint">People (pisahkan koma)</div>
+            <Input className="input" value={peopleInput} onChange={(event) => onPeopleInputChange(event.target.value)} />
+            <div className="row-actions compact">
+              <Button
+                className={`btn btn-sm ${splitMode === "equal" ? "" : "secondary"}`}
+                variant={splitMode === "equal" ? "default" : "secondary"}
+                size="sm"
+                type="button"
+                onClick={onSetSplitModeEqual}
+              >
+                Equal
+              </Button>
+              <Button
+                className={`btn btn-sm ${splitMode === "custom" ? "" : "secondary"}`}
+                variant={splitMode === "custom" ? "default" : "secondary"}
+                size="sm"
+                type="button"
+                onClick={onSetSplitModeCustom}
+              >
+                Custom
+              </Button>
+            </div>
 
-          <div className="row-actions compact">
-            {splitMode === "equal" ? (
-              <button className="btn btn-sm" type="button" onClick={onApplyEqualSplit}>
-                Terapkan Equal
-              </button>
-            ) : (
-              <button className="btn btn-sm" type="button" onClick={onApplyCustomSplit}>
-                Terapkan Custom
-              </button>
-            )}
+            {splitMode === "custom" ? (
+              <>
+                <div className="inline-grid">
+                  {people.map((person) => (
+                    <div key={person}>
+                      <div className="hint">{person}</div>
+                      <Input
+                        className="input"
+                        value={customDraft[person] ?? ""}
+                        onChange={(event) => onCustomDraftChange(person, event.target.value)}
+                        placeholder="Nominal"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className={`split-status ${customSubmitStatus?.type ?? "pending"}`}>
+                  {customSubmitStatus
+                    ? customSubmitStatus.type === "less"
+                      ? `Kurang Rp${formatAmountIDR(Math.abs(customSubmitStatus.diff))}`
+                      : customSubmitStatus.type === "more"
+                        ? `Lebih Rp${formatAmountIDR(customSubmitStatus.diff)}`
+                        : "Sudah pas"
+                    : "Draft belum diterapkan"}
+                </div>
+                {isCustomDirty ? <div className="hint subtle">Klik Terapkan Custom untuk lihat hasil</div> : null}
+              </>
+            ) : null}
+
+            <div className="row-actions compact split-sheet-actions">
+              <Button
+                className="btn secondary btn-sm"
+                variant="secondary"
+                size="sm"
+                type="button"
+                onClick={onCancelSplitEditPanel}
+              >
+                Batal
+              </Button>
+              {splitMode === "equal" ? (
+                <Button className="btn btn-sm" size="sm" type="button" onClick={onApplyEqualSplit}>
+                  Terapkan Equal
+                </Button>
+              ) : (
+                <Button className="btn btn-sm" size="sm" type="button" onClick={onApplyCustomSplit}>
+                  Terapkan Custom
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
-      ) : null}
+        </SheetContent>
+      </Sheet>
 
       {splitSummary && showSplitSummary ? (
         <div className="summary">
@@ -164,10 +203,10 @@ export default function SplitEditor({
           ))}
           {splitSummary.settlementLines.length > 0
             ? splitSummary.settlementLines.map((line, index) => (
-                <div key={`settlement-${index}`} className="hint subtle">
-                  {line}
-                </div>
-              ))
+              <div key={`settlement-${index}`} className="hint subtle">
+                {line}
+              </div>
+            ))
             : null}
         </div>
       ) : null}

@@ -846,7 +846,8 @@ select {
 
 .section-divider {
   border: 0;
-  border-top: 1px solid #e6e6e1;
+  height: 1px;
+  background: #e6e6e1;
   margin: 12px 0 10px;
 }
 
@@ -884,6 +885,28 @@ select {
   border-radius: 10px;
   padding: 12px;
   background: #fbfbf8;
+}
+
+.split-box.split-box-sheet {
+  margin-top: 0;
+}
+
+.split-sheet-content {
+  gap: 0;
+  padding: 0;
+  max-height: min(84dvh, 760px);
+  overflow-y: auto;
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+}
+
+.split-sheet-header {
+  gap: 2px;
+  padding: 12px 14px 8px;
+}
+
+.split-sheet-actions {
+  justify-content: flex-end;
 }
 
 .split-status {
