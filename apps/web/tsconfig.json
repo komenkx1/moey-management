@@ -33,6 +33,9 @@
       ],
       "@kemana/storage/*": [
         "../../packages/storage/*"
+      ],
+      "dexie": [
+        "./node_modules/dexie"
       ]
     },
     "plugins": [

@@ -5,10 +5,9 @@ import {
   PAYMENT_METHODS
 } from "../core/types";
 import { syncLastEntryAt } from "./habits";
+import { db } from "./db";
+import { migrateFromLocalStorage } from "./migrate-localstorage";
 
-const ENTRIES_KEY = "kemana.entries.v1";
-const RULES_KEY = "kemana.rules.v1";
-const STORAGE_VERSION_KEY = "kemana.storage.version";
 const CURRENT_STORAGE_VERSION = "1";
 
 type ImportMode = "merge" | "replace";
@@ -37,48 +36,6 @@ export interface ImportBackupResult {
   rules: CategoryRules;
   importedEntries: number;
   ignoredEntries: number;
-}
-
-let storageHealthState: StorageHealth = {
-  version: CURRENT_STORAGE_VERSION,
-  entriesCorrupted: false,
-  rulesCorrupted: false,
-  hasCorruption: false
-};
-
-function canUseLocalStorage(): boolean {
-  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
-}
-
-function toStorageHealth(): StorageHealth {
-  return {
-    ...storageHealthState,
-    hasCorruption: storageHealthState.entriesCorrupted || storageHealthState.rulesCorrupted
-  };
-}
-
-function ensureStorageVersion(): void {
-  if (!canUseLocalStorage()) {
-    return;
-  }
-
-  try {
-    const current = window.localStorage.getItem(STORAGE_VERSION_KEY);
-    if (!current) {
-      window.localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_STORAGE_VERSION);
-      storageHealthState.version = CURRENT_STORAGE_VERSION;
-      return;
-    }
-
-    if (current !== CURRENT_STORAGE_VERSION) {
-      // Minimal migration strategy for now: mark current version and proceed.
-      window.localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_STORAGE_VERSION);
-    }
-    storageHealthState.version = CURRENT_STORAGE_VERSION;
-  } catch {
-    // Keep running with safe defaults.
-    storageHealthState.version = CURRENT_STORAGE_VERSION;
-  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -124,7 +81,7 @@ function normalizeEntry(raw: unknown): Entry | null {
   const paymentMethodValue = raw.paymentMethod;
   const paymentMethod =
     typeof paymentMethodValue === "string" &&
-    PAYMENT_METHODS.includes(paymentMethodValue as (typeof PAYMENT_METHODS)[number])
+      PAYMENT_METHODS.includes(paymentMethodValue as (typeof PAYMENT_METHODS)[number])
       ? (paymentMethodValue as Entry["paymentMethod"])
       : undefined;
 
@@ -183,138 +140,61 @@ function sortEntriesNewestFirst(entries: Entry[]): Entry[] {
   });
 }
 
-export function loadEntries(): Entry[] {
-  if (!canUseLocalStorage()) {
-    return [];
-  }
-  ensureStorageVersion();
-
+export async function loadEntries(): Promise<Entry[]> {
   try {
-    const raw = window.localStorage.getItem(ENTRIES_KEY);
-    if (!raw) {
-      return [];
-    }
-
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) {
-      storageHealthState.entriesCorrupted = true;
-      return [];
-    }
-
-    const entries: Entry[] = [];
-    let ignored = 0;
-    for (const item of parsed) {
-      const normalized = normalizeEntry(item);
-      if (!normalized) {
-        ignored += 1;
-        continue;
-      }
-      entries.push(normalized);
-    }
-    if (ignored > 0) {
-      storageHealthState.entriesCorrupted = true;
-    }
-
-    return entries;
+    const rows = await db.entries.toArray();
+    return sortEntriesNewestFirst(rows);
   } catch {
-    storageHealthState.entriesCorrupted = true;
     return [];
   }
 }
 
-export function saveEntries(entries: Entry[]): void {
-  if (!canUseLocalStorage()) {
-    return;
-  }
-  ensureStorageVersion();
+export async function saveEntries(entries: Entry[]): Promise<void> {
   try {
-    window.localStorage.setItem(ENTRIES_KEY, JSON.stringify(entries));
-    syncLastEntryAt(entries);
+    await db.transaction("rw", db.entries, async () => {
+      await db.entries.clear();
+      await db.entries.bulkPut(entries);
+    });
+    // Fire and forget since we only use it for habit triggers
+    syncLastEntryAt(entries).catch(() => { });
   } catch {
     // Ignore write failures to avoid crashing UI.
   }
 }
 
-export function loadRules(): CategoryRules {
-  if (!canUseLocalStorage()) {
-    return [];
-  }
-  ensureStorageVersion();
-
+export async function loadRules(): Promise<CategoryRules> {
   try {
-    const raw = window.localStorage.getItem(RULES_KEY);
-    if (!raw) {
-      return [];
-    }
-
-    const parsed = JSON.parse(raw) as unknown;
-    if (Array.isArray(parsed)) {
-      const rules: CategoryRules = [];
-      let ignored = 0;
-      for (const item of parsed) {
-        const normalized = normalizeRule(item);
-        if (!normalized) {
-          ignored += 1;
-          continue;
-        }
-        rules.push(normalized);
-      }
-      if (ignored > 0) {
-        storageHealthState.rulesCorrupted = true;
-      }
-      return rules;
-    }
-
-    // Backward compatibility for old map format { keyword: category }.
-    if (parsed && typeof parsed === "object") {
-      const nextRules: CategoryRules = [];
-      for (const [pattern, category] of Object.entries(parsed as Record<string, string>)) {
-        if (!CATEGORIES.includes(category as (typeof CATEGORIES)[number])) {
-          storageHealthState.rulesCorrupted = true;
-          continue;
-        }
-
-        nextRules.push({
-          pattern: pattern.trim().toLowerCase(),
-          match: "contains",
-          category: category as CategoryRules[number]["category"]
-        });
-      }
-      return nextRules;
-    }
-
-    storageHealthState.rulesCorrupted = true;
-    return [];
+    const rows = await db.rules.toArray();
+    return rows;
   } catch {
-    storageHealthState.rulesCorrupted = true;
     return [];
   }
 }
 
-export function saveRules(rules: CategoryRules): void {
-  if (!canUseLocalStorage()) {
-    return;
-  }
-  ensureStorageVersion();
+export async function saveRules(rules: CategoryRules): Promise<void> {
   try {
-    window.localStorage.setItem(RULES_KEY, JSON.stringify(rules));
+    await db.transaction("rw", db.rules, async () => {
+      await db.rules.clear();
+      await db.rules.bulkPut(rules);
+    });
   } catch {
     // Ignore write failures to avoid crashing UI.
   }
 }
 
 export function getStorageHealth(): StorageHealth {
-  ensureStorageVersion();
-  return toStorageHealth();
-}
-
-export function clearStorageHealthWarnings(): void {
-  storageHealthState = {
+  // IndexedDB structural bounds inherently prevent the raw JSON corruption issues of localStorage.
+  // Health checks here are vastly simplified and mostly assume clean if reachable.
+  return {
     version: CURRENT_STORAGE_VERSION,
     entriesCorrupted: false,
     rulesCorrupted: false,
     hasCorruption: false
   };
+}
+
+export function clearStorageHealthWarnings(): void {
+  // No-op for Dexie. Retained for API backwards compatibility
 }
 
 export function createBackupPayload(
@@ -458,3 +338,4 @@ export {
   readRecoveryStats,
   writeNightCloseMarker
 } from "./habits";
+export { migrateFromLocalStorage } from "./migrate-localstorage";

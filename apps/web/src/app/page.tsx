@@ -21,7 +21,8 @@ import {
   readNightCloseMarker,
   saveEntries,
   saveRules,
-  writeNightCloseMarker
+  writeNightCloseMarker,
+  migrateFromLocalStorage
 } from "@kemana/storage";
 import { recordQuickAddAck, scheduleBackgroundTask } from "@/lib/perf";
 import EntriesList from "@/components/kemana/EntriesList";
@@ -120,15 +121,21 @@ export default function HomePage() {
   const isUnmountingRef = useRef(false);
 
   useEffect(() => {
-    const loadedEntries = loadEntries();
-    const loadedRules = loadRules();
-    const storageHealth = getStorageHealth();
-    setEntries(loadedEntries);
-    setRules(loadedRules);
-    if (storageHealth.hasCorruption) {
-      setStorageWarning("Data penyimpanan bermasalah. Coba Import Backup.");
+    async function initStorage() {
+      await migrateFromLocalStorage();
+      const [loadedEntries, loadedRules] = await Promise.all([
+        loadEntries(),
+        loadRules()
+      ]);
+      const storageHealth = getStorageHealth();
+      setEntries(loadedEntries);
+      setRules(loadedRules);
+      if (storageHealth.hasCorruption) {
+        setStorageWarning("Data penyimpanan bermasalah. Coba Import Backup.");
+      }
+      setIsStorageReady(true);
     }
-    setIsStorageReady(true);
+    initStorage();
   }, []);
 
   useEffect(() => {
@@ -137,15 +144,19 @@ export default function HomePage() {
 
   useEffect(() => {
     const now = Date.now();
-    const storedLastOpenAt = window.localStorage.getItem(LAST_OPEN_AT_KEY);
+    const storedLastOpenAt = window.sessionStorage ? window.localStorage.getItem(LAST_OPEN_AT_KEY) : null;
     const parsedLastOpenAt = storedLastOpenAt ? Number.parseInt(storedLastOpenAt, 10) : Number.NaN;
     setLastAppOpenAt(Number.isFinite(parsedLastOpenAt) ? parsedLastOpenAt : null);
-    window.localStorage.setItem(LAST_OPEN_AT_KEY, String(now));
-    setRecallDismissedInSession(Boolean(window.sessionStorage.getItem(RECALL_DISMISSED_SESSION_KEY)));
+    if (window.localStorage) {
+      window.localStorage.setItem(LAST_OPEN_AT_KEY, String(now));
+    }
+    setRecallDismissedInSession(Boolean(window.sessionStorage?.getItem(RECALL_DISMISSED_SESSION_KEY)));
     setIsRecallSessionReady(true);
 
-    setNightCloseClosedAt(readNightCloseMarker());
-    setIsNightCloseReady(true);
+    readNightCloseMarker().then(marker => {
+      setNightCloseClosedAt(marker);
+      setIsNightCloseReady(true);
+    });
   }, []);
 
   useEffect(() => {
