@@ -24,7 +24,6 @@ export default defineConfig({
     },
     include: [
       "src/**/*.{test,spec}.?(c|m)[jt]s?(x)",
-      "../../packages/core/**/*.{test,spec}.?(c|m)[jt]s?(x)",
       "../../packages/storage/**/*.{test,spec}.?(c|m)[jt]s?(x)"
     ]
   }
