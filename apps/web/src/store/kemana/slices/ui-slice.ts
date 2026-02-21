@@ -6,11 +6,8 @@ export const createUiSlice: KemanaSliceCreator<UiSlice> = (set) => ({
   replaceOnImport: false,
   dateFilter: "today",
   autoExpandedEntryId: null,
-  actionToast: null,
-  movedToast: null,
   pendingScrollToId: null,
   highlightEntryId: null,
-  undoToast: null,
   setBackupMessage: (next) =>
     set((state) => ({ backupMessage: resolveUpdater(next, state.backupMessage) })),
   setReplaceOnImport: (next) =>
@@ -18,13 +15,8 @@ export const createUiSlice: KemanaSliceCreator<UiSlice> = (set) => ({
   setDateFilter: (next) => set((state) => ({ dateFilter: resolveUpdater(next, state.dateFilter) })),
   setAutoExpandedEntryId: (next) =>
     set((state) => ({ autoExpandedEntryId: resolveUpdater(next, state.autoExpandedEntryId) })),
-  setActionToast: (next) =>
-    set((state) => ({ actionToast: resolveUpdater(next, state.actionToast) })),
-  setMovedToast: (next) =>
-    set((state) => ({ movedToast: resolveUpdater(next, state.movedToast) })),
   setPendingScrollToId: (next) =>
     set((state) => ({ pendingScrollToId: resolveUpdater(next, state.pendingScrollToId) })),
   setHighlightEntryId: (next) =>
-    set((state) => ({ highlightEntryId: resolveUpdater(next, state.highlightEntryId) })),
-  setUndoToast: (next) => set((state) => ({ undoToast: resolveUpdater(next, state.undoToast) }))
+    set((state) => ({ highlightEntryId: resolveUpdater(next, state.highlightEntryId) }))
 });

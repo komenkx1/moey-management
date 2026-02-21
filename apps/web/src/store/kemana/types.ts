@@ -2,25 +2,6 @@ import type { CategoryRules, Entry } from "@kemana/core/types";
 import type { StateCreator } from "zustand";
 import type { DateFilterPreset } from "@/lib/kemana-utils";
 
-export interface UndoToastState {
-  entry: Entry;
-  index: number;
-  expiresAt: number;
-}
-
-export interface ActionToastState {
-  message: string;
-  expiresAt: number;
-}
-
-export interface MovedToastState {
-  entryId: string;
-  targetDate: string;
-  label: string;
-  movedOutOfFilter: boolean;
-  expiresAt: number;
-}
-
 export type Updater<T> = T | ((prev: T) => T);
 
 export interface DataSlice {
@@ -39,20 +20,14 @@ export interface UiSlice {
   replaceOnImport: boolean;
   dateFilter: DateFilterPreset;
   autoExpandedEntryId: string | null;
-  actionToast: ActionToastState | null;
-  movedToast: MovedToastState | null;
   pendingScrollToId: string | null;
   highlightEntryId: string | null;
-  undoToast: UndoToastState | null;
   setBackupMessage: (next: Updater<string | null>) => void;
   setReplaceOnImport: (next: Updater<boolean>) => void;
   setDateFilter: (next: Updater<DateFilterPreset>) => void;
   setAutoExpandedEntryId: (next: Updater<string | null>) => void;
-  setActionToast: (next: Updater<ActionToastState | null>) => void;
-  setMovedToast: (next: Updater<MovedToastState | null>) => void;
   setPendingScrollToId: (next: Updater<string | null>) => void;
   setHighlightEntryId: (next: Updater<string | null>) => void;
-  setUndoToast: (next: Updater<UndoToastState | null>) => void;
 }
 
 export interface ComposerSlice {

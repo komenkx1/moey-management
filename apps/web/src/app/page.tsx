@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, type ChangeEvent } from "react";
+import { Toaster, toast } from "sonner";
 import { useShallow } from "zustand/react/shallow";
 import { parseQuickAdd } from "@kemana/core/parser";
 import { inferCategory, updateCategoryRule } from "@kemana/core/rules";
@@ -30,12 +31,7 @@ import NightCloseBar from "@/components/kemana/NightCloseBar";
 import NightClosePanel from "@/components/kemana/NightClosePanel";
 import QuickAddComposer from "@/components/kemana/QuickAddComposer";
 import SummaryHeader from "@/components/kemana/SummaryHeader";
-import {
-  type ActionToastState,
-  type MovedToastState,
-  type UndoToastState,
-  useKemanaStore
-} from "@/store/use-kemana-store";
+import { useKemanaStore } from "@/store/use-kemana-store";
 import {
   FILTER_OPTIONS,
   DateFilterPreset,
@@ -69,8 +65,24 @@ interface BulkPreviewLine {
   reason?: string;
 }
 
+interface UndoToastPayload {
+  entry: Entry;
+  index: number;
+}
+
+interface MovedToastPayload {
+  entryId: string;
+  targetDate: string;
+  label: string;
+  movedOutOfFilter: boolean;
+}
+
 const LAST_OPEN_AT_KEY = "kemana.lastOpenAt";
 const RECALL_DISMISSED_SESSION_KEY = "kemana.dismissedRecallUntil";
+const ACTION_TOAST_ID = "kemana.action";
+const UNDO_TOAST_ID = "kemana.undo";
+const MOVED_TOAST_ID = "kemana.moved";
+const ALL_TOAST_IDS = [ACTION_TOAST_ID, UNDO_TOAST_ID, MOVED_TOAST_ID] as const;
 
 export default function HomePage() {
   const appVersion = process.env.NEXT_PUBLIC_APP_VERSION ?? "dev";
@@ -83,8 +95,6 @@ export default function HomePage() {
     replaceOnImport,
     dateFilter,
     autoExpandedEntryId,
-    actionToast,
-    movedToast,
     pendingScrollToId,
     highlightEntryId,
     quickInput,
@@ -101,7 +111,6 @@ export default function HomePage() {
     showQuickWarningDetails,
     bulkOpen,
     bulkInput,
-    undoToast,
     setIsStorageReady,
     setEntries,
     setRules,
@@ -110,8 +119,6 @@ export default function HomePage() {
     setReplaceOnImport,
     setDateFilter,
     setAutoExpandedEntryId,
-    setActionToast,
-    setMovedToast,
     setPendingScrollToId,
     setHighlightEntryId,
     setQuickInput,
@@ -127,8 +134,7 @@ export default function HomePage() {
     setQuickError,
     setShowQuickWarningDetails,
     setBulkOpen,
-    setBulkInput,
-    setUndoToast
+    setBulkInput
   } = useKemanaStore(
     useShallow((state) => ({
       isStorageReady: state.isStorageReady,
@@ -139,8 +145,6 @@ export default function HomePage() {
       replaceOnImport: state.replaceOnImport,
       dateFilter: state.dateFilter,
       autoExpandedEntryId: state.autoExpandedEntryId,
-      actionToast: state.actionToast,
-      movedToast: state.movedToast,
       pendingScrollToId: state.pendingScrollToId,
       highlightEntryId: state.highlightEntryId,
       quickInput: state.quickInput,
@@ -157,7 +161,6 @@ export default function HomePage() {
       showQuickWarningDetails: state.showQuickWarningDetails,
       bulkOpen: state.bulkOpen,
       bulkInput: state.bulkInput,
-      undoToast: state.undoToast,
       setIsStorageReady: state.setIsStorageReady,
       setEntries: state.setEntries,
       setRules: state.setRules,
@@ -166,8 +169,6 @@ export default function HomePage() {
       setReplaceOnImport: state.setReplaceOnImport,
       setDateFilter: state.setDateFilter,
       setAutoExpandedEntryId: state.setAutoExpandedEntryId,
-      setActionToast: state.setActionToast,
-      setMovedToast: state.setMovedToast,
       setPendingScrollToId: state.setPendingScrollToId,
       setHighlightEntryId: state.setHighlightEntryId,
       setQuickInput: state.setQuickInput,
@@ -183,13 +184,14 @@ export default function HomePage() {
       setQuickError: state.setQuickError,
       setShowQuickWarningDetails: state.setShowQuickWarningDetails,
       setBulkOpen: state.setBulkOpen,
-      setBulkInput: state.setBulkInput,
-      setUndoToast: state.setUndoToast
+      setBulkInput: state.setBulkInput
     }))
   );
   const quickInputRef = useRef<HTMLInputElement>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
-  const pendingUndoRef = useRef<UndoToastState | null>(null);
+  const undoToastPayloadRef = useRef<UndoToastPayload | null>(null);
+  const movedToastPayloadRef = useRef<MovedToastPayload | null>(null);
+  const dateFilterRef = useRef<DateFilterPreset>(dateFilter);
   const cancelEntriesPersistRef = useRef<(() => void) | null>(null);
   const isUnmountingRef = useRef(false);
 
@@ -271,13 +273,12 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (!pendingUndoRef.current) {
-      return;
-    }
-
-    setUndoToast(pendingUndoRef.current);
-    pendingUndoRef.current = null;
-  }, [entries]);
+    return () => {
+      toast.dismiss(ACTION_TOAST_ID);
+      toast.dismiss(UNDO_TOAST_ID);
+      toast.dismiss(MOVED_TOAST_ID);
+    };
+  }, []);
 
   useEffect(() => {
     if (!isStorageReady) {
@@ -287,45 +288,8 @@ export default function HomePage() {
   }, [rules, isStorageReady]);
 
   useEffect(() => {
-    if (!undoToast) {
-      return;
-    }
-
-    const timeoutMs = Math.max(0, undoToast.expiresAt - Date.now());
-    const timer = window.setTimeout(() => {
-      setUndoToast((current) => (current?.expiresAt === undoToast.expiresAt ? null : current));
-    }, timeoutMs);
-
-    return () => window.clearTimeout(timer);
-  }, [undoToast]);
-
-  useEffect(() => {
-    if (!actionToast) {
-      return;
-    }
-
-    const timeoutMs = Math.max(0, actionToast.expiresAt - Date.now());
-    const timer = window.setTimeout(() => {
-      setActionToast((current) => (current?.expiresAt === actionToast.expiresAt ? null : current));
-    }, timeoutMs);
-
-    return () => window.clearTimeout(timer);
-  }, [actionToast]);
-
-  useEffect(() => {
-    if (!movedToast) {
-      return;
-    }
-
-    const timeoutMs = Math.max(0, movedToast.expiresAt - Date.now());
-    const timer = window.setTimeout(() => {
-      setMovedToast((current) =>
-        current?.expiresAt === movedToast.expiresAt ? null : current
-      );
-    }, timeoutMs);
-
-    return () => window.clearTimeout(timer);
-  }, [movedToast]);
+    dateFilterRef.current = dateFilter;
+  }, [dateFilter]);
 
   useEffect(() => {
     if (!highlightEntryId) {
@@ -514,10 +478,73 @@ export default function HomePage() {
   }, [pendingScrollToId, orderedDates]);
 
   function showActionToast(message: string) {
-    setActionToast({
-      message,
-      expiresAt: Date.now() + 2_000
+    dismissOtherToasts(ACTION_TOAST_ID);
+    toast(message, {
+      id: ACTION_TOAST_ID,
+      duration: 2_000
     });
+  }
+
+  function clearUndoToastPayload() {
+    undoToastPayloadRef.current = null;
+  }
+
+  function clearMovedToastPayload() {
+    movedToastPayloadRef.current = null;
+  }
+
+  function dismissOtherToasts(activeToastId: (typeof ALL_TOAST_IDS)[number]) {
+    for (const toastId of ALL_TOAST_IDS) {
+      if (toastId === activeToastId) {
+        continue;
+      }
+      toast.dismiss(toastId);
+    }
+    if (activeToastId !== UNDO_TOAST_ID) {
+      clearUndoToastPayload();
+    }
+    if (activeToastId !== MOVED_TOAST_ID) {
+      clearMovedToastPayload();
+    }
+  }
+
+  function showUndoToast(payload: UndoToastPayload) {
+    dismissOtherToasts(UNDO_TOAST_ID);
+    undoToastPayloadRef.current = payload;
+    toast("Dihapus", {
+      id: UNDO_TOAST_ID,
+      duration: 6_000,
+      action: {
+        label: "Undo",
+        onClick: () => {
+          handleUndoDelete();
+        }
+      },
+      onDismiss: clearUndoToastPayload,
+      onAutoClose: clearUndoToastPayload
+    });
+  }
+
+  function showMovedToast(payload: MovedToastPayload) {
+    dismissOtherToasts(MOVED_TOAST_ID);
+    movedToastPayloadRef.current = payload;
+    toast(
+      payload.movedOutOfFilter
+        ? `Tanggal disimpan. Dipindah ke ${payload.label} (di luar filter aktif).`
+        : `Tanggal disimpan. Dipindah ke ${payload.label}`,
+      {
+        id: MOVED_TOAST_ID,
+        duration: 8_000,
+        action: {
+          label: "Lihat",
+          onClick: () => {
+            handleMovedToastSee();
+          }
+        },
+        onDismiss: clearMovedToastPayload,
+        onAutoClose: clearMovedToastPayload
+      }
+    );
   }
 
   function dismissRecallForSession() {
@@ -551,29 +578,30 @@ export default function HomePage() {
     const label = formatDayLabel(nextDateISO, new Date());
     const isDateVisibleInCurrentFilter = includesDateInFilter(nextDateISO, dateFilter);
 
-    setMovedToast({
+    showMovedToast({
       entryId,
       targetDate: nextDateISO,
       label,
-      movedOutOfFilter: !isDateVisibleInCurrentFilter,
-      expiresAt: Date.now() + 8_000
+      movedOutOfFilter: !isDateVisibleInCurrentFilter
     });
     setPendingScrollToId(entryId);
     setHighlightEntryId(entryId);
   }
 
   function handleMovedToastSee() {
+    const movedToast = movedToastPayloadRef.current;
     if (!movedToast) {
       return;
     }
 
-    if (!includesDateInFilter(movedToast.targetDate, dateFilter)) {
+    if (!includesDateInFilter(movedToast.targetDate, dateFilterRef.current)) {
       setDateFilter(getBestFilterForDate(movedToast.targetDate));
     }
 
     setPendingScrollToId(movedToast.entryId);
     setHighlightEntryId(movedToast.entryId);
-    setMovedToast(null);
+    clearMovedToastPayload();
+    toast.dismiss(MOVED_TOAST_ID);
   }
 
   function markNightCloseDone(showConfirmation: boolean) {
@@ -722,27 +750,26 @@ export default function HomePage() {
   }
 
   function handleDelete(entryId: string) {
-    let didDelete = false;
+    let undoPayload: UndoToastPayload | null = null;
     setEntries((prev) => {
       const deletedIndex = prev.findIndex((entry) => entry.id === entryId);
       if (deletedIndex === -1) {
         return prev;
       }
 
-      pendingUndoRef.current = {
+      undoPayload = {
         entry: prev[deletedIndex],
-        index: deletedIndex,
-        expiresAt: Date.now() + 6_000
+        index: deletedIndex
       };
-      didDelete = true;
       return prev.filter((current) => current.id !== entryId);
     });
-    if (didDelete) {
-      showActionToast("Transaksi dihapus");
+    if (undoPayload) {
+      showUndoToast(undoPayload);
     }
   }
 
   function handleUndoDelete() {
+    const undoToast = undoToastPayloadRef.current;
     if (!undoToast) {
       return;
     }
@@ -753,7 +780,8 @@ export default function HomePage() {
       next.splice(insertIndex, 0, undoToast.entry);
       return next;
     });
-    setUndoToast(null);
+    clearUndoToastPayload();
+    toast.dismiss(UNDO_TOAST_ID);
   }
 
   function handleExportBackup() {
@@ -907,36 +935,6 @@ export default function HomePage() {
         onDateChanged={handleEntryDateChanged}
         onCategoryChange={handleCategoryChange}
       />
-
-      {undoToast ? (
-        <div className="undo-toast">
-          <span>Dihapus</span>
-          <button className="undo-link" type="button" onClick={handleUndoDelete}>
-            Undo
-          </button>
-        </div>
-      ) : null}
-      {actionToast ? (
-        <div className={`action-toast ${undoToast ? "with-undo" : ""}`} role="status" aria-live="polite">
-          {actionToast.message}
-        </div>
-      ) : null}
-      {movedToast ? (
-        <div
-          className={`moved-toast ${undoToast ? "with-undo" : ""} ${actionToast ? "with-action" : ""}`}
-          role="status"
-          aria-live="polite"
-        >
-          <span>
-            {movedToast.movedOutOfFilter
-              ? `Tanggal disimpan. Dipindah ke ${movedToast.label} (di luar filter aktif).`
-              : `Tanggal disimpan. Dipindah ke ${movedToast.label}`}
-          </span>
-          <button className="moved-link" type="button" onClick={handleMovedToastSee}>
-            Lihat
-          </button>
-        </div>
-      ) : null}
       <NightClosePanel
         open={nightClosePanelOpen}
         dateLabel={`Hari ini • ${nightCloseTodayStats.dateISO}`}
@@ -948,6 +946,7 @@ export default function HomePage() {
         onDone={handleNightCloseDoneFromPanel}
         onAddEntry={handleNightCloseAddEntry}
       />
+      <Toaster position="bottom-center" richColors />
 
       <footer className="app-version" aria-label="Versi aplikasi">
         v{appVersion}

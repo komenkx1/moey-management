@@ -8,8 +8,6 @@ import { createHabitSlice } from "./kemana/slices/habit-slice";
 import { createUiSlice } from "./kemana/slices/ui-slice";
 import type { KemanaStoreState } from "./kemana/types";
 
-export type { ActionToastState, MovedToastState, UndoToastState } from "./kemana/types";
-
 export const useKemanaStore = create<KemanaStoreState>()(
   persist(
     (...args) => ({
