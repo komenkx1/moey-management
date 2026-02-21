@@ -1,5 +1,6 @@
 import type { CategoryRules, Entry } from "../core/types";
 import { db } from "./db";
+import { normalizeEntry, normalizeRule } from "./index";
 
 const MIGRATION_DONE_KEY = "kemana.migrated.dexie.v1";
 const ENTRIES_KEY = "kemana.entries.v1";
@@ -23,24 +24,40 @@ export async function migrateFromLocalStorage(): Promise<{
         return { migrated: false, entriesCount: 0, rulesCount: 0 };
     }
 
-    let entries: Entry[] = [];
+    const entries: Entry[] = [];
     try {
         const rawEntries = localStorage.getItem(ENTRIES_KEY);
         if (rawEntries) {
-            entries = JSON.parse(rawEntries);
+            const parsed = JSON.parse(rawEntries);
+            if (Array.isArray(parsed)) {
+                for (const item of parsed) {
+                    const normalized = normalizeEntry(item);
+                    if (normalized) {
+                        entries.push(normalized);
+                    }
+                }
+            }
         }
     } catch {
-        // Keep empty
+        // Keep valid subset or empty
     }
 
-    let rules: CategoryRules = [];
+    const rules: CategoryRules = [];
     try {
         const rawRules = localStorage.getItem(RULES_KEY);
         if (rawRules) {
-            rules = JSON.parse(rawRules);
+            const parsed = JSON.parse(rawRules);
+            if (Array.isArray(parsed)) {
+                for (const item of parsed) {
+                    const normalized = normalizeRule(item);
+                    if (normalized) {
+                        rules.push(normalized);
+                    }
+                }
+            }
         }
     } catch {
-        // Keep empty
+        // Keep valid subset or empty
     }
 
     const recoveryCount = localStorage.getItem(RECOVERY_COUNT_KEY);

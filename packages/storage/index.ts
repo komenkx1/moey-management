@@ -42,7 +42,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function normalizeEntry(raw: unknown): Entry | null {
+export function normalizeEntry(raw: unknown): Entry | null {
   if (!isRecord(raw)) {
     return null;
   }
@@ -100,7 +100,7 @@ function normalizeEntry(raw: unknown): Entry | null {
   };
 }
 
-function normalizeRule(raw: unknown): CategoryRules[number] | null {
+export function normalizeRule(raw: unknown): CategoryRules[number] | null {
   if (!isRecord(raw)) {
     return null;
   }
