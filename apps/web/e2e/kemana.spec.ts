@@ -19,6 +19,33 @@ async function quickAdd(page: Page, text: string) {
     await page.locator("article[data-entry-id]").first().waitFor({ timeout: 10000 });
 }
 
+async function freezeBrowserTimeToNight(page: Page) {
+    const fixedNow = new Date();
+    fixedNow.setHours(21, 0, 0, 0);
+    await page.addInitScript((fixedNowMs) => {
+        const NativeDate = Date;
+        class MockDate extends NativeDate {
+            constructor(...args: ConstructorParameters<typeof Date>) {
+                if (args.length === 0) {
+                    super(fixedNowMs);
+                    return;
+                }
+                super(...args);
+            }
+
+            static now() {
+                return fixedNowMs;
+            }
+        }
+        MockDate.parse = NativeDate.parse;
+        MockDate.UTC = NativeDate.UTC;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (window as any).Date = MockDate as unknown as DateConstructor;
+    }, fixedNow.getTime());
+    await page.reload();
+    await waitForApp(page);
+}
+
 /**
  * Helper — ensure entry is expanded. Accounts for auto-expand after quickAdd.
  */
@@ -163,11 +190,13 @@ test.describe("Kemana App E2E", () => {
         await page.locator("button.danger:has-text('Hapus')").click();
 
         // Undo toast
-        await expect(page.locator(".undo-toast")).toBeVisible({ timeout: 10000 });
-        await expect(page.locator(".undo-toast")).toContainText("Dihapus");
+        const undoToast = page
+            .locator("[data-sonner-toast]")
+            .filter({ has: page.getByRole("button", { name: "Undo" }) });
+        await expect(undoToast).toBeVisible({ timeout: 10000 });
 
         // Click Undo
-        await page.locator(".undo-toast .undo-link").click();
+        await undoToast.getByRole("button", { name: "Undo" }).click();
         await page.waitForTimeout(300);
 
         // Entry should reappear
@@ -320,6 +349,7 @@ test.describe("Kemana App E2E", () => {
     // ─── Night Close ─────────────────────────────────────────────
 
     test("Night Close: buat laporan tutup hari", async ({ page }) => {
+        await freezeBrowserTimeToNight(page);
         await quickAdd(page, "kopi 15k");
 
         // Click the Review button in the night close bar
@@ -414,7 +444,7 @@ test.describe("Kemana App E2E", () => {
         });
 
         // Check for success toast
-        await expect(page.locator(".action-toast")).toContainText("Import backup berhasil", { timeout: 10000 });
+        await expect(page.locator('[data-sonner-toast]:has-text("Import backup berhasil")')).toBeVisible({ timeout: 10000 });
 
         // Switch to "Semua" to ensure we see all dates
         await page.locator("section.range-filter .chip:has-text('Semua')").click();
