@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { formatAmountIDR } from "@kemana/core/format";
 import type { NightCloseTopCategory } from "@/app/night-close";
+import { Button } from "@/components/ui/button";
 
 interface NightClosePanelProps {
   open: boolean;
@@ -89,15 +90,15 @@ export default function NightClosePanel({
         <div className="night-close-panel-prompt">{promptLine}</div>
 
         <div className="night-close-panel-actions">
-          <button className="btn" type="button" onClick={onDone}>
+          <Button className="btn" type="button" onClick={onDone}>
             Selesai (tandai beres)
-          </button>
-          <button className="btn secondary" type="button" onClick={onAddEntry}>
+          </Button>
+          <Button className="btn secondary" variant="secondary" type="button" onClick={onAddEntry}>
             Tambah transaksi
-          </button>
-          <button className="btn ghost" type="button" onClick={onClose}>
+          </Button>
+          <Button className="btn ghost" variant="ghost" type="button" onClick={onClose}>
             Tutup
-          </button>
+          </Button>
         </div>
       </section>
     </>

@@ -1,6 +1,7 @@
 "use client";
 
 import type { SmartRecallPrompt } from "@/app/recall";
+import { Button } from "@/components/ui/button";
 
 interface SmartRecallBarProps {
   prompt: SmartRecallPrompt;
@@ -20,12 +21,12 @@ export default function SmartRecallBar({
         {prompt.subtitle ? <div className="hint subtle">{prompt.subtitle}</div> : null}
       </div>
       <div className="smart-recall-actions">
-        <button className="btn secondary btn-sm" type="button" onClick={onAddRecent}>
+        <Button className="btn secondary btn-sm" variant="secondary" size="sm" type="button" onClick={onAddRecent}>
           Tambah yang barusan
-        </button>
-        <button className="btn ghost btn-sm" type="button" onClick={onDismiss}>
+        </Button>
+        <Button className="btn ghost btn-sm" variant="ghost" size="sm" type="button" onClick={onDismiss}>
           Engga ada
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+
 interface NightCloseBarProps {
   subtitle: string;
   onReview: () => void;
@@ -16,12 +18,12 @@ export default function NightCloseBar({
       <div className="night-close-title">Tutup hari</div>
       <div className="night-close-subtitle">{subtitle}</div>
       <div className="night-close-actions">
-        <button className="btn btn-sm" type="button" onClick={onReview}>
+        <Button className="btn btn-sm" size="sm" type="button" onClick={onReview}>
           Review
-        </button>
-        <button className="btn ghost btn-sm" type="button" onClick={onClose}>
+        </Button>
+        <Button className="btn ghost btn-sm" variant="ghost" size="sm" type="button" onClick={onClose}>
           Tutup
-        </button>
+        </Button>
       </div>
     </section>
   );

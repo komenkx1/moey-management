@@ -4,6 +4,9 @@ import { formatAmountIDR } from "@kemana/core/format";
 import type { ParseQuickAddResult } from "@kemana/core/types";
 import LastEntryGapIndicator from "@/app/LastEntryGapIndicator";
 import type { SmartRecallPrompt } from "@/app/recall";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { formatItemPillText, type ItemLine, warningShortText } from "@/lib/kemana-utils";
 import SmartRecallBar from "./SmartRecallBar";
 
@@ -85,7 +88,7 @@ export default function QuickAddComposer({
         />
       ) : null}
       <div className="composer-row">
-        <input
+        <Input
           ref={quickInputRef}
           className="input"
           value={quickInput}
@@ -101,9 +104,9 @@ export default function QuickAddComposer({
             }
           }}
         />
-        <button className="btn" type="button" onClick={onQuickAdd}>
+        <Button className="btn" type="button" onClick={onQuickAdd}>
           Tambah
-        </button>
+        </Button>
       </div>
       {adaptiveHints.length ? (
         <div className="smart-hints">
@@ -173,13 +176,15 @@ export default function QuickAddComposer({
           <div className="preview-badges">
             {isSummationInput ? <span className="mode-pill">Mode jumlah</span> : null}
             {quickPreview.warnings?.length ? (
-              <button
+              <Button
                 className="warning-pill"
+                variant="secondary"
+                size="icon-xs"
                 type="button"
                 onClick={onToggleQuickWarningDetails}
               >
                 !
-              </button>
+              </Button>
             ) : null}
           </div>
         </div>
@@ -194,13 +199,13 @@ export default function QuickAddComposer({
         </ul>
       ) : null}
 
-      <button className="btn secondary" type="button" onClick={onToggleBulkOpen}>
+      <Button className="btn secondary" variant="secondary" type="button" onClick={onToggleBulkOpen}>
         {bulkOpen ? "Tutup masukan banyak item" : "Masukan banyak item"}
-      </button>
+      </Button>
 
       {bulkOpen && (
         <div className="bulk-panel">
-          <textarea
+          <Textarea
             className="textarea"
             value={bulkInput}
             onChange={(event) => onBulkInputChange(event.target.value)}
@@ -217,14 +222,14 @@ export default function QuickAddComposer({
                 {line.line}: {line.reason}
               </div>
             ))}
-          <button
+          <Button
             className="btn"
             type="button"
             onClick={onBulkSave}
             disabled={validBulkCount === 0}
           >
             Simpan Semua
-          </button>
+          </Button>
         </div>
       )}
     </section>

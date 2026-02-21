@@ -1,6 +1,7 @@
 "use client";
 
 import { formatAmountIDR } from "@kemana/core/format";
+import { Button } from "@/components/ui/button";
 import type { DateFilterPreset, TodaySummaryStats } from "@/lib/kemana-utils";
 
 interface SummaryHeaderProps {
@@ -24,14 +25,16 @@ export default function SummaryHeader({
     <>
       <section className="range-filter" aria-label="Filter tanggal">
         {filterOptions.map((option) => (
-          <button
+          <Button
             key={option.value}
             type="button"
             className={`chip filter-chip ${dateFilter === option.value ? "active" : ""}`}
+            variant={dateFilter === option.value ? "default" : "secondary"}
+            size="sm"
             onClick={() => onDateFilterChange(option.value)}
           >
             {option.label}
-          </button>
+          </Button>
         ))}
       </section>
 

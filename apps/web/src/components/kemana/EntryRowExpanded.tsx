@@ -10,6 +10,8 @@ import {
   PAYMENT_METHODS,
   type PaymentMethod
 } from "@kemana/core/types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   normalizeDateInput,
   parseItemBreakdownFromSubtitle,
@@ -274,38 +276,40 @@ function EntryRowExpanded({
 
       <div id={expandedPanelId} className="row-expanded">
         <div className="inline-grid">
-          <input className="input" value={textDraft} onChange={(event) => setTextDraft(event.target.value)} />
-          <input
+          <Input className="input" value={textDraft} onChange={(event) => setTextDraft(event.target.value)} />
+          <Input
             ref={amountInputRef}
             className="input"
             value={amountDraft}
             onChange={(event) => setAmountDraft(event.target.value)}
           />
-          <button className="btn secondary btn-sm" type="button" onClick={saveInlineEdit}>
+          <Button className="btn secondary btn-sm" variant="secondary" size="sm" type="button" onClick={saveInlineEdit}>
             Simpan
-          </button>
+          </Button>
         </div>
 
         <div className="date-inline-editor">
           <div className="date-inline-header">
             <div className="hint subtle">Tanggal: {entry.date}</div>
             {dateEditorOpen ? (
-              <button
+              <Button
                 className="btn ghost btn-sm date-inline-close"
+                variant="ghost"
+                size="sm"
                 type="button"
                 onClick={saveDateEdit}
               >
                 Simpan
-              </button>
+              </Button>
             ) : null}
           </div>
           {!dateEditorOpen ? (
-            <button className="btn secondary btn-sm" type="button" onClick={() => setDateEditorOpen(true)}>
+            <Button className="btn secondary btn-sm" variant="secondary" size="sm" type="button" onClick={() => setDateEditorOpen(true)}>
               Ubah tanggal
-            </button>
+            </Button>
           ) : (
             <div className="date-inline-controls">
-              <input
+              <Input
                 className="input"
                 type="date"
                 value={dateDraft}
@@ -318,14 +322,16 @@ function EntryRowExpanded({
 
         <div className="chip-group">
           {CATEGORIES.map((category) => (
-            <button
+            <Button
               key={category}
               type="button"
               className={`chip ${entry.category === category ? "active" : ""}`}
+              variant={entry.category === category ? "default" : "secondary"}
+              size="sm"
               onClick={() => onCategoryChange(entry, category)}
             >
               {category}
-            </button>
+            </Button>
           ))}
         </div>
 
@@ -333,10 +339,12 @@ function EntryRowExpanded({
           <div className="hint subtle">Metode bayar (opsional)</div>
           <div className="chip-group compact">
             {PAYMENT_METHODS.map((method) => (
-              <button
+              <Button
                 key={method}
                 type="button"
                 className={`chip secondary ${currentPaymentMethod === method ? "active" : ""}`}
+                variant={currentPaymentMethod === method ? "default" : "secondary"}
+                size="sm"
                 onClick={() =>
                   onUpdate(entry.id, (current) => ({
                     ...current,
@@ -345,7 +353,7 @@ function EntryRowExpanded({
                 }
               >
                 {paymentMethodLabel(method)}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -358,8 +366,10 @@ function EntryRowExpanded({
                 <li key={`${warning.code}-${index}`}>
                   {warningDetail(warning)}
                   {warning.code === "ASSUMED_THOUSANDS" ? (
-                    <button
+                    <Button
                       className="btn secondary btn-sm"
+                      variant="secondary"
+                      size="sm"
                       type="button"
                       onClick={() => {
                         setIsAssumedThousandsReviewing(true);
@@ -367,7 +377,7 @@ function EntryRowExpanded({
                       }}
                     >
                       Edit nominal
-                    </button>
+                    </Button>
                   ) : null}
                 </li>
               ))}
@@ -413,13 +423,15 @@ function EntryRowExpanded({
 
         {subtitleBreakdown ? (
           <div className="item-breakdown-wrap">
-            <button
+            <Button
               className="btn secondary btn-sm"
+              variant="secondary"
+              size="sm"
               type="button"
               onClick={() => setShowItemBreakdown((prev) => !prev)}
             >
               {showItemBreakdown ? "Sembunyikan item" : "Lihat item"}
-            </button>
+            </Button>
             {showItemBreakdown ? (
               <div className="breakdown">
                 {subtitleBreakdown.map((item, index) => (
