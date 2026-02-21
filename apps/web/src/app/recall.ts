@@ -50,16 +50,9 @@ export function getSmartRecallPrompt(params: {
     return null;
   }
 
-  if (lastEntryTimestamp !== null && now - lastEntryTimestamp >= THREE_HOURS_MS) {
-    return {
-      kind: "gap",
-      title: `Terakhir kamu catat jam ${formatHourMinute(lastEntryTimestamp)}`,
-      subtitle: "Ada pengeluaran setelah itu?"
-    };
-  }
-
   const todayKey = getLocalDayKey(nowDate);
   const hasTodayEntry = entries.some((entry) => entry.date === todayKey);
+
   if (!hasTodayEntry && nowDate.getHours() >= 12) {
     return {
       kind: "first_today",
@@ -68,6 +61,13 @@ export function getSmartRecallPrompt(params: {
     };
   }
 
+  if (lastEntryTimestamp !== null && now - lastEntryTimestamp >= THREE_HOURS_MS) {
+    return {
+      kind: "gap",
+      title: `Terakhir kamu catat jam ${formatHourMinute(lastEntryTimestamp)}`,
+      subtitle: "Ada pengeluaran setelah itu?"
+    };
+  }
   if (lastAppOpenAt !== null && now - lastAppOpenAt >= SIX_HOURS_MS) {
     return {
       kind: "comeback",

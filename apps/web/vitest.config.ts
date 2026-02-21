@@ -10,7 +10,22 @@ export default defineConfig({
     alias: {
       "@": path.resolve(rootDir, "src"),
       "@kemana/core": path.resolve(rootDir, "../../packages/core"),
-      "@kemana/storage": path.resolve(rootDir, "../../packages/storage/index.ts")
-    }
+      "@kemana/storage": path.resolve(rootDir, "../../packages/storage/index.ts"),
+      "dexie": path.resolve(rootDir, "./node_modules/dexie")
+    },
+  },
+  test: {
+    environment: "happy-dom",
+    setupFiles: ["fake-indexeddb/auto"],
+    server: {
+      deps: {
+        inline: [/@kemana\/storage/]
+      }
+    },
+    include: [
+      "src/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+      "../../packages/core/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+      "../../packages/storage/**/*.{test,spec}.?(c|m)[jt]s?(x)"
+    ]
   }
 });
