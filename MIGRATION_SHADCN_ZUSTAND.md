@@ -12,6 +12,7 @@ Status dokumen: **Aktif** (updated 21 Feb 2026).
   - Composer, chips/filter, warning controls sudah pakai primitive shadcn.
   - Split editor sudah dipindah ke bottom `Sheet`.
 - Konfigurasi test dirapikan agar suite stabil (no duplicate parser suite loading).
+- Toast action/undo/moved sudah dimigrasikan ke Sonner.
 
 Referensi commit terbaru:
 - `6d07121` setup tailwind infra
@@ -21,7 +22,7 @@ Referensi commit terbaru:
 - `ba16bcb` vitest suite loading fix
 
 ### Belum selesai
-- Migrasi toast undo ke Sonner.
+- Tidak ada blocker migrasi utama saat ini.
 
 ## 2) Tujuan Migrasi Zustand
 
@@ -47,7 +48,7 @@ State aktif saat ini berada di `apps/web/src/app/page.tsx` dan dibagi target ber
 
 3. `uiSlice`
 - `dateFilter`, `autoExpandedEntryId`, `highlightEntryId`, `pendingScrollToId`
-- `actionToast`, `undoToast`, `movedToast`, `backupMessage`, `replaceOnImport`
+- `backupMessage`, `replaceOnImport`
 
 4. `habitSlice`
 - `lastAppOpenAt`, `recallDismissedInSession`, `isRecallSessionReady`
@@ -172,7 +173,7 @@ npx playwright test --grep "Delete entry + Undo"
 - [x] shadcn init + base components
 - [x] UI primitives migration (composer/chip/filter/warning)
 - [x] Split editor pindah ke `Sheet`
-- [ ] Sonner untuk undo/action toast
+- [x] Sonner untuk undo/action toast
 - [x] Zustand scaffold
 - [x] Zustand adopsi awal pada `page.tsx` (state utama pindah dari `useState` ke store)
 - [x] Final cleanup `useState` yang redundant di `page.tsx`
