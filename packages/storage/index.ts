@@ -339,3 +339,4 @@ export {
   writeNightCloseMarker
 } from "./habits";
 export { migrateFromLocalStorage } from "./migrate-localstorage";
+export { db } from "./db";
