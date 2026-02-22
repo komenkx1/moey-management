@@ -1,956 +1,346 @@
 "use client";
 
-import { useEffect, useMemo, useRef, type ChangeEvent } from "react";
-import { Toaster, toast } from "sonner";
-import { useShallow } from "zustand/react/shallow";
-import { parseQuickAdd } from "@kemana/core/parser";
-import { inferCategory, updateCategoryRule } from "@kemana/core/rules";
-import {
-  Category,
-  Entry,
-  EntrySource
-} from "@kemana/core/types";
-import { createId } from "@/lib/id";
-import {
-  clearStorageHealthWarnings,
-  createBackupPayload,
-  downloadBackupFile,
-  getStorageHealth,
-  importBackupFromText,
-  loadEntries,
-  loadRules,
-  readNightCloseMarker,
-  saveEntries,
-  saveRules,
-  writeNightCloseMarker,
-  migrateFromLocalStorage
-} from "@kemana/storage";
-import { recordQuickAddAck, scheduleBackgroundTask } from "@/lib/perf";
-import EntriesList from "@/components/kemana/EntriesList";
-import NightCloseBar from "@/components/kemana/NightCloseBar";
-import NightClosePanel from "@/components/kemana/NightClosePanel";
-import QuickAddComposer from "@/components/kemana/QuickAddComposer";
-import SummaryHeader from "@/components/kemana/SummaryHeader";
-import { useKemanaStore } from "@/store/use-kemana-store";
-import {
-  FILTER_OPTIONS,
-  DateFilterPreset,
-  extractSummedAmountMeta,
-  formatDayLabel,
-  getBestFilterForDate,
-  getFilteredEntries,
-  getInputHints,
-  getSummaryStats,
-  groupEntriesByDate,
-  includesDateInFilter,
-  makeInitialSplit,
-  parseItemBreakdownFromSubtitle,
-  splitDisplayText,
-  splitSubtitleItems,
-  sumAmount
-} from "@/lib/kemana-utils";
-import {
-  getAverageLast7Days,
-  getNightCloseCopy,
-  getTopCategory as getNightCloseTopCategory,
-  getTodayISO,
-  getTodayStats,
-  shouldShowNightClose
-} from "./night-close";
-import { getLastEntryTimestamp, getSmartRecallPrompt } from "./recall";
+import { useState, useCallback, useEffect } from "react";
+import { Coffee, Settings, Bell, PieChart, Sun, Moon } from "lucide-react";
+import ScreenContainer from "@/components/kemana-ui/ScreenContainer";
+import TopAppBar from "@/components/kemana-ui/TopAppBar";
+import BottomTabBar from "@/components/kemana-ui/BottomTabBar";
+import FabAddButton from "@/components/kemana-ui/FabAddButton";
+import SummaryHeroCard from "@/components/kemana-ui/SummaryHeroCard";
+import QuickRecallChips, { QuickRecallItem } from "@/components/kemana-ui/QuickRecallChips";
+import ContextBanner from "@/components/kemana-ui/ContextBanner";
+import { TransactionCard, TransactionItem } from "@/components/kemana-ui/TransactionCard";
+import AddTransactionSheet from "@/components/kemana-ui/AddTransactionSheet";
+import { formatAmountIDR } from "@kemana/core/format";
 
-interface BulkPreviewLine {
-  line: string;
-  ok: boolean;
-  reason?: string;
-}
+// --- DUMMY DATA ---
+const MOCK_RECALL: QuickRecallItem[] = [
+  { id: "r1", category: "Makan", title: "Nasi padang", amount: 25000 },
+  { id: "r2", category: "Transport", title: "Gojek kantor", amount: 14000 },
+  { id: "r3", category: "Kopi", title: "Americano", amount: 18000 },
+];
 
-interface UndoToastPayload {
-  entry: Entry;
-  index: number;
-}
+const MOCK_TRANSACTIONS: TransactionItem[] = [
+  { id: "t1", title: "Nasi campur", amount: 25000, type: "expense", category: "Makan", time: "13:12", paymentMethod: "QRIS", note: "Makan siang" },
+  { id: "t2", title: "Tiket KRL", amount: 15000, type: "expense", category: "Transport", time: "10:30", note: "Ke kantor" },
+  { id: "t3", title: "Kopi susu", amount: 18000, type: "expense", category: "Hiburan", time: "09:15", paymentMethod: "Cash" },
+  { id: "t4", title: "Token listrik", amount: 100000, type: "expense", category: "Tagihan", time: "Kemarin", paymentMethod: "Transfer" },
+  { id: "t5", title: "Bensin motor", amount: 35000, type: "expense", category: "Transport", time: "Kemarin", paymentMethod: "Cash" },
+];
 
-interface MovedToastPayload {
-  entryId: string;
-  targetDate: string;
-  label: string;
-  movedOutOfFilter: boolean;
-}
+export default function DashboardPage() {
+  const [activeTab, setActiveTab] = useState("home");
+  const [transactions, setTransactions] = useState<TransactionItem[]>(MOCK_TRANSACTIONS);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
-const LAST_OPEN_AT_KEY = "kemana.lastOpenAt";
-const RECALL_DISMISSED_SESSION_KEY = "kemana.dismissedRecallUntil";
-const ACTION_TOAST_ID = "kemana.action";
-const UNDO_TOAST_ID = "kemana.undo";
-const MOVED_TOAST_ID = "kemana.moved";
-const ALL_TOAST_IDS = [ACTION_TOAST_ID, UNDO_TOAST_ID, MOVED_TOAST_ID] as const;
+  // Sheet state
+  const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
+  const [sheetPrefill, setSheetPrefill] = useState<any>(null);
 
-export default function HomePage() {
-  const appVersion = process.env.NEXT_PUBLIC_APP_VERSION ?? "dev";
-  const {
-    isStorageReady,
-    entries,
-    rules,
-    storageWarning,
-    backupMessage,
-    replaceOnImport,
-    dateFilter,
-    autoExpandedEntryId,
-    pendingScrollToId,
-    highlightEntryId,
-    quickInput,
-    debouncedQuickInput,
-    lastAppOpenAt,
-    recallDismissedInSession,
-    isRecallSessionReady,
-    recallInputPrimed,
-    nightCloseClosedAt,
-    isNightCloseReady,
-    nightClosePanelOpen,
-    nightCloseConfirmation,
-    quickError,
-    showQuickWarningDetails,
-    bulkOpen,
-    bulkInput,
-    setIsStorageReady,
-    setEntries,
-    setRules,
-    setStorageWarning,
-    setBackupMessage,
-    setReplaceOnImport,
-    setDateFilter,
-    setAutoExpandedEntryId,
-    setPendingScrollToId,
-    setHighlightEntryId,
-    setQuickInput,
-    setDebouncedQuickInput,
-    setLastAppOpenAt,
-    setRecallDismissedInSession,
-    setIsRecallSessionReady,
-    setRecallInputPrimed,
-    setNightCloseClosedAt,
-    setIsNightCloseReady,
-    setNightClosePanelOpen,
-    setNightCloseConfirmation,
-    setQuickError,
-    setShowQuickWarningDetails,
-    setBulkOpen,
-    setBulkInput
-  } = useKemanaStore(
-    useShallow((state) => ({
-      isStorageReady: state.isStorageReady,
-      entries: state.entries,
-      rules: state.rules,
-      storageWarning: state.storageWarning,
-      backupMessage: state.backupMessage,
-      replaceOnImport: state.replaceOnImport,
-      dateFilter: state.dateFilter,
-      autoExpandedEntryId: state.autoExpandedEntryId,
-      pendingScrollToId: state.pendingScrollToId,
-      highlightEntryId: state.highlightEntryId,
-      quickInput: state.quickInput,
-      debouncedQuickInput: state.debouncedQuickInput,
-      lastAppOpenAt: state.lastAppOpenAt,
-      recallDismissedInSession: state.recallDismissedInSession,
-      isRecallSessionReady: state.isRecallSessionReady,
-      recallInputPrimed: state.recallInputPrimed,
-      nightCloseClosedAt: state.nightCloseClosedAt,
-      isNightCloseReady: state.isNightCloseReady,
-      nightClosePanelOpen: state.nightClosePanelOpen,
-      nightCloseConfirmation: state.nightCloseConfirmation,
-      quickError: state.quickError,
-      showQuickWarningDetails: state.showQuickWarningDetails,
-      bulkOpen: state.bulkOpen,
-      bulkInput: state.bulkInput,
-      setIsStorageReady: state.setIsStorageReady,
-      setEntries: state.setEntries,
-      setRules: state.setRules,
-      setStorageWarning: state.setStorageWarning,
-      setBackupMessage: state.setBackupMessage,
-      setReplaceOnImport: state.setReplaceOnImport,
-      setDateFilter: state.setDateFilter,
-      setAutoExpandedEntryId: state.setAutoExpandedEntryId,
-      setPendingScrollToId: state.setPendingScrollToId,
-      setHighlightEntryId: state.setHighlightEntryId,
-      setQuickInput: state.setQuickInput,
-      setDebouncedQuickInput: state.setDebouncedQuickInput,
-      setLastAppOpenAt: state.setLastAppOpenAt,
-      setRecallDismissedInSession: state.setRecallDismissedInSession,
-      setIsRecallSessionReady: state.setIsRecallSessionReady,
-      setRecallInputPrimed: state.setRecallInputPrimed,
-      setNightCloseClosedAt: state.setNightCloseClosedAt,
-      setIsNightCloseReady: state.setIsNightCloseReady,
-      setNightClosePanelOpen: state.setNightClosePanelOpen,
-      setNightCloseConfirmation: state.setNightCloseConfirmation,
-      setQuickError: state.setQuickError,
-      setShowQuickWarningDetails: state.setShowQuickWarningDetails,
-      setBulkOpen: state.setBulkOpen,
-      setBulkInput: state.setBulkInput
-    }))
-  );
-  const quickInputRef = useRef<HTMLInputElement>(null);
-  const importFileRef = useRef<HTMLInputElement>(null);
-  const undoToastPayloadRef = useRef<UndoToastPayload | null>(null);
-  const movedToastPayloadRef = useRef<MovedToastPayload | null>(null);
-  const dateFilterRef = useRef<DateFilterPreset>(dateFilter);
-  const cancelEntriesPersistRef = useRef<(() => void) | null>(null);
-  const isUnmountingRef = useRef(false);
+  // Theme Toggle State
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
-    async function initStorage() {
-      await migrateFromLocalStorage();
-      const [loadedEntries, loadedRules] = await Promise.all([
-        loadEntries(),
-        loadRules()
-      ]);
-      const storageHealth = getStorageHealth();
-      setEntries(loadedEntries);
-      setRules(loadedRules);
-      if (storageHealth.hasCorruption) {
-        setStorageWarning("Data penyimpanan bermasalah. Coba Import Backup.");
-      }
-      setIsStorageReady(true);
-    }
-    initStorage();
+    // Check initial dark mode state
+    setIsDarkMode(document.documentElement.classList.contains("dark"));
   }, []);
 
-  useEffect(() => {
-    quickInputRef.current?.focus();
+  const toggleTheme = useCallback(() => {
+    const root = document.documentElement;
+    if (root.classList.contains("dark")) {
+      root.classList.remove("dark");
+      setIsDarkMode(false);
+    } else {
+      root.classList.add("dark");
+      setIsDarkMode(true);
+    }
   }, []);
 
-  useEffect(() => {
-    const now = Date.now();
-    const storedLastOpenAt = window.sessionStorage ? window.localStorage.getItem(LAST_OPEN_AT_KEY) : null;
-    const parsedLastOpenAt = storedLastOpenAt ? Number.parseInt(storedLastOpenAt, 10) : Number.NaN;
-    setLastAppOpenAt(Number.isFinite(parsedLastOpenAt) ? parsedLastOpenAt : null);
-    if (window.localStorage) {
-      window.localStorage.setItem(LAST_OPEN_AT_KEY, String(now));
-    }
-    setRecallDismissedInSession(Boolean(window.sessionStorage?.getItem(RECALL_DISMISSED_SESSION_KEY)));
-    setIsRecallSessionReady(true);
-
-    readNightCloseMarker().then(marker => {
-      setNightCloseClosedAt(marker);
-      setIsNightCloseReady(true);
-    });
-  }, []);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setDebouncedQuickInput(quickInput);
-    }, 150);
-    return () => window.clearTimeout(timer);
-  }, [quickInput]);
-
-  useEffect(() => {
-    if (!isStorageReady) {
-      return;
-    }
-
-    cancelEntriesPersistRef.current?.();
-    const cancelPersist = scheduleBackgroundTask(() => {
-      saveEntries(entries);
-      if (cancelEntriesPersistRef.current === cancelPersist) {
-        cancelEntriesPersistRef.current = null;
-      }
-    });
-    cancelEntriesPersistRef.current = cancelPersist;
-
-    return () => {
-      if (isUnmountingRef.current) {
-        return;
-      }
-      cancelPersist();
-      if (cancelEntriesPersistRef.current === cancelPersist) {
-        cancelEntriesPersistRef.current = null;
-      }
-    };
-  }, [entries, isStorageReady]);
-
-  useEffect(() => {
-    return () => {
-      isUnmountingRef.current = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      toast.dismiss(ACTION_TOAST_ID);
-      toast.dismiss(UNDO_TOAST_ID);
-      toast.dismiss(MOVED_TOAST_ID);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isStorageReady) {
-      return;
-    }
-    saveRules(rules);
-  }, [rules, isStorageReady]);
-
-  useEffect(() => {
-    dateFilterRef.current = dateFilter;
-  }, [dateFilter]);
-
-  useEffect(() => {
-    if (!highlightEntryId) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      setHighlightEntryId((current) =>
-        current === highlightEntryId ? null : current
-      );
-    }, 2_800);
-
-    return () => window.clearTimeout(timer);
-  }, [highlightEntryId]);
-
-  useEffect(() => {
-    if (!nightCloseConfirmation) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      setNightCloseConfirmation((current) =>
-        current === nightCloseConfirmation ? null : current
-      );
-    }, 2_600);
-
-    return () => window.clearTimeout(timer);
-  }, [nightCloseConfirmation]);
-
-  const quickPreview = useMemo(() => {
-    if (!debouncedQuickInput.trim()) {
-      return null;
-    }
-    return parseQuickAdd(debouncedQuickInput);
-  }, [debouncedQuickInput]);
-  const smartRecallPrompt = useMemo(() => {
-    if (!isStorageReady || !isRecallSessionReady || recallDismissedInSession) {
-      return null;
-    }
-
-    return getSmartRecallPrompt({
-      entries,
-      lastAppOpenAt
-    });
-  }, [entries, isStorageReady, isRecallSessionReady, lastAppOpenAt, recallDismissedInSession]);
-  const lastEntryAt = useMemo(() => getLastEntryTimestamp(entries), [entries]);
-  const quickInputPlaceholder = useMemo(() => {
-    if (smartRecallPrompt || recallInputPrimed) {
-      return "barusan bayar apa?";
-    }
-
-    const currentHour = new Date().getHours();
-    if (currentHour >= 19 && currentHour <= 23) {
-      return "hari ini keluar apa?";
-    }
-
-    return "Misal : Foree - matcha 10k + kue 20k";
-  }, [smartRecallPrompt, recallInputPrimed]);
-  const adaptiveHints = useMemo(
-    () => getInputHints(quickInput, quickPreview),
-    [quickInput, quickPreview]
-  );
-  const quickPreviewTextParts = quickPreview?.ok ? splitDisplayText(quickPreview.value.text) : null;
-  const summedAmountMeta = quickPreview?.ok ? extractSummedAmountMeta(quickPreview.warnings) : null;
-  const isSummationInput = summedAmountMeta !== null;
-  const quickPreviewSubtitleBreakdown =
-    quickPreviewTextParts?.subtitle
-      ? parseItemBreakdownFromSubtitle(quickPreviewTextParts.subtitle)
-      : null;
-  const quickPreviewSubtitleItems =
-    quickPreviewTextParts?.subtitle ? splitSubtitleItems(quickPreviewTextParts.subtitle) : null;
-
-  const bulkPreview = useMemo(() => {
-    const lines = bulkInput
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0);
-
-    const preview: BulkPreviewLine[] = [];
-    for (const line of lines) {
-      const result = parseQuickAdd(line, new Date(), "bulk_paste");
-      if (result.ok) {
-        preview.push({ line, ok: true });
-      } else {
-        preview.push({ line, ok: false, reason: result.reason });
-      }
-    }
-    return preview;
-  }, [bulkInput]);
-
-  const validBulkCount = bulkPreview.filter((line) => line.ok).length;
-  const filteredEntries = useMemo(
-    () => getFilteredEntries(entries, dateFilter),
-    [entries, dateFilter]
-  );
-  const summaryStats = useMemo(
-    () => getSummaryStats({ allEntries: entries, filteredEntries, preset: dateFilter }),
-    [entries, filteredEntries, dateFilter]
-  );
-  const nightCloseTodayStats = useMemo(() => getTodayStats(entries), [entries]);
-  const nightCloseAvg7 = useMemo(() => getAverageLast7Days(entries), [entries]);
-  const nightCloseTopCategory = useMemo(
-    () => getNightCloseTopCategory(nightCloseTodayStats.byCategory),
-    [nightCloseTodayStats.byCategory]
-  );
-  const nightCloseCopy = useMemo(
-    () => getNightCloseCopy({ stats: nightCloseTodayStats, avg7: nightCloseAvg7 }),
-    [nightCloseTodayStats, nightCloseAvg7]
-  );
-  const showNightCloseBar = useMemo(
-    () =>
-      isNightCloseReady &&
-      shouldShowNightClose({
-        entries,
-        closedAt: nightCloseClosedAt
-      }),
-    [entries, isNightCloseReady, nightCloseClosedAt]
-  );
-  useEffect(() => {
-    if (showNightCloseBar) {
-      return;
-    }
-    setNightClosePanelOpen(false);
-  }, [showNightCloseBar]);
-  const groupedEntriesResult = useMemo(() => groupEntriesByDate(filteredEntries), [filteredEntries]);
-  const groupedEntries = useMemo(() => groupedEntriesResult.groups, [groupedEntriesResult]);
-  const orderedDates = useMemo(() => groupedEntriesResult.dates, [groupedEntriesResult]);
-  const dailyTotal = useMemo(
-    () =>
-      orderedDates.reduce(
-        (acc, dateISO) => {
-          acc[dateISO] = sumAmount(groupedEntries[dateISO] ?? []);
-          return acc;
-        },
-        {} as Record<string, number>
-      ),
-    [orderedDates, groupedEntries]
-  );
-
-  useEffect(() => {
-    if (!pendingScrollToId) {
-      return;
-    }
-
-    let cancelled = false;
-    let attempts = 0;
-    const maxAttempts = 3;
-
-    const scrollToPending = () => {
-      if (cancelled) {
-        return;
-      }
-
-      const selector = `[data-entry-id="${pendingScrollToId}"]`;
-      const element = document.querySelector(selector) as HTMLElement | null;
-      if (element) {
-        try {
-          element.scrollIntoView({ block: "center", behavior: "smooth" });
-        } catch {
-          element.scrollIntoView({ block: "center" });
-        }
-        setPendingScrollToId((current) =>
-          current === pendingScrollToId ? null : current
-        );
-        return;
-      }
-
-      if (attempts >= maxAttempts) {
-        setPendingScrollToId((current) =>
-          current === pendingScrollToId ? null : current
-        );
-        return;
-      }
-
-      attempts += 1;
-      window.setTimeout(() => {
-        window.requestAnimationFrame(scrollToPending);
-      }, 80);
-    };
-
-    window.requestAnimationFrame(scrollToPending);
-
-    return () => {
-      cancelled = true;
-    };
-  }, [pendingScrollToId, orderedDates]);
-
-  function showActionToast(message: string) {
-    dismissOtherToasts(ACTION_TOAST_ID);
-    toast(message, {
-      id: ACTION_TOAST_ID,
-      duration: 2_000
-    });
-  }
-
-  function clearUndoToastPayload() {
-    undoToastPayloadRef.current = null;
-  }
-
-  function clearMovedToastPayload() {
-    movedToastPayloadRef.current = null;
-  }
-
-  function dismissOtherToasts(activeToastId: (typeof ALL_TOAST_IDS)[number]) {
-    for (const toastId of ALL_TOAST_IDS) {
-      if (toastId === activeToastId) {
-        continue;
-      }
-      toast.dismiss(toastId);
-    }
-    if (activeToastId !== UNDO_TOAST_ID) {
-      clearUndoToastPayload();
-    }
-    if (activeToastId !== MOVED_TOAST_ID) {
-      clearMovedToastPayload();
-    }
-  }
-
-  function showUndoToast(payload: UndoToastPayload) {
-    dismissOtherToasts(UNDO_TOAST_ID);
-    undoToastPayloadRef.current = payload;
-    toast("Dihapus", {
-      id: UNDO_TOAST_ID,
-      duration: 6_000,
-      action: {
-        label: "Undo",
-        onClick: () => {
-          handleUndoDelete();
-        }
-      },
-      onDismiss: clearUndoToastPayload,
-      onAutoClose: clearUndoToastPayload
-    });
-  }
-
-  function showMovedToast(payload: MovedToastPayload) {
-    dismissOtherToasts(MOVED_TOAST_ID);
-    movedToastPayloadRef.current = payload;
-    toast(
-      payload.movedOutOfFilter
-        ? `Tanggal disimpan. Dipindah ke ${payload.label} (di luar filter aktif).`
-        : `Tanggal disimpan. Dipindah ke ${payload.label}`,
-      {
-        id: MOVED_TOAST_ID,
-        duration: 8_000,
-        action: {
-          label: "Lihat",
-          onClick: () => {
-            handleMovedToastSee();
-          }
-        },
-        onDismiss: clearMovedToastPayload,
-        onAutoClose: clearMovedToastPayload
-      }
-    );
-  }
-
-  function dismissRecallForSession() {
-    setRecallDismissedInSession(true);
-    window.sessionStorage.setItem(RECALL_DISMISSED_SESSION_KEY, String(Date.now()));
-  }
-
-  function primeQuickInputForRecall(options?: { dismissSession?: boolean }) {
-    const dismissSession = options?.dismissSession ?? true;
-    setRecallInputPrimed(true);
-    if (dismissSession) {
-      dismissRecallForSession();
-    }
-    setQuickError(null);
-    setShowQuickWarningDetails(false);
-    window.requestAnimationFrame(() => {
-      quickInputRef.current?.focus();
-    });
-  }
-
-  function handleRecallAddRecent() {
-    primeQuickInputForRecall();
-  }
-
-  function handleRecallDismiss() {
-    setRecallInputPrimed(false);
-    dismissRecallForSession();
-  }
-
-  function handleEntryDateChanged(entryId: string, nextDateISO: string) {
-    const label = formatDayLabel(nextDateISO, new Date());
-    const isDateVisibleInCurrentFilter = includesDateInFilter(nextDateISO, dateFilter);
-
-    showMovedToast({
-      entryId,
-      targetDate: nextDateISO,
-      label,
-      movedOutOfFilter: !isDateVisibleInCurrentFilter
-    });
-    setPendingScrollToId(entryId);
-    setHighlightEntryId(entryId);
-  }
-
-  function handleMovedToastSee() {
-    const movedToast = movedToastPayloadRef.current;
-    if (!movedToast) {
-      return;
-    }
-
-    if (!includesDateInFilter(movedToast.targetDate, dateFilterRef.current)) {
-      setDateFilter(getBestFilterForDate(movedToast.targetDate));
-    }
-
-    setPendingScrollToId(movedToast.entryId);
-    setHighlightEntryId(movedToast.entryId);
-    clearMovedToastPayload();
-    toast.dismiss(MOVED_TOAST_ID);
-  }
-
-  function markNightCloseDone(showConfirmation: boolean) {
-    const todayISO = getTodayISO();
-    setNightCloseClosedAt(todayISO);
-    writeNightCloseMarker(todayISO);
-    setNightClosePanelOpen(false);
-    if (showConfirmation) {
-      setNightCloseConfirmation("Hari ditutup ✅");
-    }
-  }
-
-  function handleNightCloseBarClose() {
-    markNightCloseDone(false);
-  }
-
-  function handleNightCloseDoneFromPanel() {
-    markNightCloseDone(true);
-  }
-
-  function handleNightCloseAddEntry() {
-    setNightClosePanelOpen(false);
-    primeQuickInputForRecall({ dismissSession: false });
-  }
-
-  function buildEntry(raw: string, source: EntrySource): Entry | null {
-    const parsed = parseQuickAdd(raw, new Date(), source);
-    if (!parsed.ok) {
-      return null;
-    }
-
-    const category = inferCategory(parsed.value.text, rules);
-    const now = new Date().toISOString();
-    return {
-      id: createId("entry"),
-      text: parsed.value.text,
-      amount: parsed.value.amount,
-      date: parsed.value.date,
-      category,
-      paymentMethod: "Unknown",
-      source,
-      parseWarnings: parsed.warnings,
-      createdAt: now,
-      updatedAt: now,
-      split: makeInitialSplit(parsed.value.amount, parsed.value.splitCount)
-    };
-  }
-
-  function handleQuickAdd() {
-    const submitStartedAt = performance.now();
-    const canReuseQuickPreview = quickPreview !== null && debouncedQuickInput === quickInput;
-    const parsed = canReuseQuickPreview
-      ? quickPreview
-      : parseQuickAdd(quickInput, new Date(), "quick_add");
-
-    if (!parsed.ok) {
-      setQuickError(parsed.reason);
-      return;
-    }
-
-    const category = inferCategory(parsed.value.text, rules);
-    const now = new Date().toISOString();
-    const nextEntry: Entry = {
-      id: createId("entry"),
-      text: parsed.value.text,
-      amount: parsed.value.amount,
-      date: parsed.value.date,
-      category,
-      paymentMethod: "Unknown",
-      source: "quick_add",
-      parseWarnings: parsed.warnings,
-      createdAt: now,
-      updatedAt: now,
-      split: makeInitialSplit(parsed.value.amount, parsed.value.splitCount)
-    };
-
-    setEntries((prev) => [nextEntry, ...prev]);
-    setAutoExpandedEntryId(nextEntry.id);
-    showActionToast("Transaksi ditambahkan");
-    dismissRecallForSession();
-    setQuickInput("");
-    setRecallInputPrimed(false);
-    setQuickError(null);
-    setShowQuickWarningDetails(false);
-    window.requestAnimationFrame(() => {
-      quickInputRef.current?.focus();
-      recordQuickAddAck(performance.now() - submitStartedAt);
-    });
-  }
-
-  function handleBulkSave() {
-    const lines = bulkInput
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0);
-
-    const nextEntries: Entry[] = [];
-    for (const line of lines) {
-      const entry = buildEntry(line, "bulk_paste");
-      if (entry) {
-        nextEntries.push(entry);
-      }
-    }
-
-    if (nextEntries.length === 0) {
-      return;
-    }
-
-    setEntries((prev) => [...nextEntries.reverse(), ...prev]);
-    showActionToast(`${nextEntries.length} transaksi ditambahkan`);
-    dismissRecallForSession();
-    setRecallInputPrimed(false);
-    setBulkInput("");
-    setBulkOpen(false);
-  }
-
-  function updateEntry(
-    entryId: string,
-    updater: (entry: Entry) => Entry,
-    toastMessage?: string
-  ) {
-    let didUpdate = false;
-    setEntries((prev) =>
-      prev.map((entry) => {
-        if (entry.id !== entryId) {
-          return entry;
-        }
-        didUpdate = true;
-        return {
-          ...updater(entry),
-          updatedAt: new Date().toISOString()
-        };
-      })
-    );
-    if (didUpdate && toastMessage) {
-      showActionToast(toastMessage);
-    }
-  }
-
-  function handleCategoryChange(entry: Entry, category: Category) {
-    updateEntry(entry.id, (current) => ({
-      ...current,
-      category
-    }), "Kategori diperbarui");
-    setRules((prev) => updateCategoryRule(prev, entry.text, category));
-  }
-
-  function handleDelete(entryId: string) {
-    let undoPayload: UndoToastPayload | null = null;
-    setEntries((prev) => {
-      const deletedIndex = prev.findIndex((entry) => entry.id === entryId);
-      if (deletedIndex === -1) {
-        return prev;
-      }
-
-      undoPayload = {
-        entry: prev[deletedIndex],
-        index: deletedIndex
-      };
-      return prev.filter((current) => current.id !== entryId);
-    });
-    if (undoPayload) {
-      showUndoToast(undoPayload);
-    }
-  }
-
-  function handleUndoDelete() {
-    const undoToast = undoToastPayloadRef.current;
-    if (!undoToast) {
-      return;
-    }
-
-    setEntries((prev) => {
-      const next = [...prev];
-      const insertIndex = Math.max(0, Math.min(undoToast.index, next.length));
-      next.splice(insertIndex, 0, undoToast.entry);
+  const handleToggleExpand = useCallback((id: string) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
-    clearUndoToastPayload();
-    toast.dismiss(UNDO_TOAST_ID);
-  }
+  }, []);
 
-  function handleExportBackup() {
-    const payload = createBackupPayload(entries, rules, appVersion);
-    downloadBackupFile(payload);
-    setBackupMessage("Backup berhasil diekspor.");
-  }
+  const handleSaveTransaction = useCallback((updatedItem: TransactionItem) => {
+    setTransactions(prev => prev.map(t => t.id === updatedItem.id ? updatedItem : t));
+  }, []);
 
-  async function handleImportBackup(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
+  const handleCreateTransaction = (data: any) => {
+    const newItem: TransactionItem = {
+      id: `t${Date.now()}`,
+      title: data.category, // fallback title
+      amount: data.amount,
+      type: data.type,
+      category: data.category,
+      time: "Baru saja",
+      paymentMethod: data.payment,
+      note: data.note,
+    };
+    setTransactions(prev => [newItem, ...prev]);
+    // TODO: show snackbar
+  };
 
-    try {
-      const raw = await file.text();
-      const result = importBackupFromText({
-        raw,
-        currentEntries: entries,
-        currentRules: rules,
-        mode: replaceOnImport ? "replace" : "merge"
-      });
+  const openAddSheet = useCallback((prefillData?: any) => {
+    setSheetPrefill(prefillData);
+    setIsAddSheetOpen(true);
+  }, []);
 
-      if (!result.ok) {
-        setBackupMessage(result.message);
-      } else {
-        setEntries(result.entries);
-        setRules(result.rules);
-        clearStorageHealthWarnings();
-        setStorageWarning(null);
-        setBackupMessage(result.message);
-        showActionToast("Import backup berhasil");
-      }
-    } catch {
-      setBackupMessage("File backup tidak bisa dibaca.");
-    } finally {
-      event.target.value = "";
-    }
-  }
+  // Render dummy Insight view
+  if (activeTab === "insight") {
+    return (
+      <ScreenContainer withBottomNav>
+        <TopAppBar title="Insight" />
+        <div className="px-4 py-2 flex flex-col gap-4">
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {["Minggu ini", "Bulan ini", "Tahun ini"].map((f, i) => (
+              <button key={f} className={`shrink-0 rounded-full px-4 py-2 text-[13px] font-semibold transition-colors ${i === 1 ? "bg-text-primary text-bg-elevated shadow-sm" : "bg-bg-subtle text-text-secondary hover:bg-border-subtle"}`}>
+                {f}
+              </button>
+            ))}
+          </div>
 
-  return (
-    <main className="page safe-top app-shell">
-      <h1 className="title">KeMana</h1>
-      <p className="subtitle">Biar tau uangmu kemana, yuk catat</p>
-      {storageWarning ? <div className="storage-warning">{storageWarning}</div> : null}
+          <div className="rounded-[24px] bg-bg-elevated p-5 shadow-[0_2px_12px_rgba(0,0,0,0.04)] ring-1 ring-border-subtle">
+            <h3 className="text-[18px] font-bold tracking-tight text-text-primary">Alokasi Pengeluaran</h3>
+            <p className="mt-1 text-[14px] font-medium text-text-secondary">Rp1.105.000 digunakan sejauh ini.</p>
 
-      {/* Section: Quick Add Composer */}
-      <QuickAddComposer
-        lastEntryAt={lastEntryAt}
-        smartRecallPrompt={smartRecallPrompt}
-        onRecallAddRecent={handleRecallAddRecent}
-        onRecallDismiss={handleRecallDismiss}
-        quickInputRef={quickInputRef}
-        quickInput={quickInput}
-        onQuickInputChange={(value) => {
-          setQuickInput(value);
-          setQuickError(null);
-          setShowQuickWarningDetails(false);
-        }}
-        quickInputPlaceholder={quickInputPlaceholder}
-        onQuickInputBlur={() => {
-          if (!quickInput.trim()) {
-            setRecallInputPrimed(false);
-          }
-        }}
-        onQuickAdd={handleQuickAdd}
-        adaptiveHints={adaptiveHints}
-        quickPreview={quickPreview}
-        quickPreviewTextParts={quickPreviewTextParts}
-        quickPreviewSubtitleBreakdown={quickPreviewSubtitleBreakdown}
-        quickPreviewSubtitleItems={quickPreviewSubtitleItems}
-        summedAmountMeta={summedAmountMeta}
-        isSummationInput={isSummationInput}
-        showQuickWarningDetails={showQuickWarningDetails}
-        onToggleQuickWarningDetails={() => setShowQuickWarningDetails((prev) => !prev)}
-        quickError={quickError}
-        bulkOpen={bulkOpen}
-        onToggleBulkOpen={() => setBulkOpen((prev) => !prev)}
-        bulkInput={bulkInput}
-        onBulkInputChange={setBulkInput}
-        validBulkCount={validBulkCount}
-        bulkPreview={bulkPreview}
-        onBulkSave={handleBulkSave}
-      />
+            <div className="mt-8 flex h-40 w-full items-end justify-between gap-2 px-2">
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-12 rounded-t-lg bg-insight-chip-bg" style={{ height: "40%" }} />
+                <span className="text-[11px] font-medium text-text-secondary">Pekan 1</span>
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-12 rounded-t-lg bg-insight-chip-bg" style={{ height: "65%" }} />
+                <span className="text-[11px] font-medium text-text-secondary">Pekan 2</span>
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-12 rounded-t-lg bg-brand shadow-sm" style={{ height: "100%" }} />
+                <span className="text-[11px] font-bold text-text-primary">Pekan 3</span>
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-12 rounded-t-lg bg-insight-chip-bg/50" style={{ height: "20%" }} />
+                <span className="text-[11px] font-medium text-text-secondary">Pekan 4</span>
+              </div>
+            </div>
 
-      <section className="data-tools" aria-label="Data backup">
-        <div className="data-tools-row">
-          <div className="hint subtle">Data</div>
-          <button className="btn secondary btn-sm" type="button" onClick={handleExportBackup}>
-            Export Backup
-          </button>
-          <button
-            className="btn secondary btn-sm"
-            type="button"
-            onClick={() => importFileRef.current?.click()}
-          >
-            Import Backup
-          </button>
-          <input
-            ref={importFileRef}
-            type="file"
-            accept="application/json"
-            className="sr-only"
-            onChange={handleImportBackup}
-          />
+            <div className="mt-8 flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-danger-soft text-danger">M</div>
+                  <div className="flex flex-col">
+                    <span className="text-[14px] font-bold text-text-primary">Makan</span>
+                    <span className="text-[12px] text-text-secondary">48 Transaksi</span>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end">
+                  <span className="text-[14px] font-bold text-text-primary">-Rp540.000</span>
+                  <span className="text-[12px] font-semibold text-danger">48%</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-warning-soft text-warning">T</div>
+                  <div className="flex flex-col">
+                    <span className="text-[14px] font-bold text-text-primary">Transport</span>
+                    <span className="text-[12px] text-text-secondary">22 Transaksi</span>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end">
+                  <span className="text-[14px] font-bold text-text-primary">-Rp215.000</span>
+                  <span className="text-[12px] font-semibold text-warning">19%</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <label className="data-tools-toggle">
-          <input
-            type="checkbox"
-            checked={replaceOnImport}
-            onChange={(event) => setReplaceOnImport(event.target.checked)}
-          />
-          <span>Ganti semua data saat import</span>
-        </label>
-        <div className="hint subtle">Backup disimpan sebagai file .json</div>
-        {backupMessage ? <div className="hint subtle">{backupMessage}</div> : null}
-      </section>
+        <BottomTabBar activeTab={activeTab} onTabChange={setActiveTab} />
+      </ScreenContainer>
+    );
+  }
 
-      {/* Section: Summary Header */}
-      <SummaryHeader
-        filterOptions={FILTER_OPTIONS}
-        dateFilter={dateFilter}
-        onDateFilterChange={setDateFilter}
-        summary={summaryStats}
-      />
-      {showNightCloseBar ? (
-        <NightCloseBar
-          subtitle={nightCloseCopy.subtitle}
-          onReview={() => setNightClosePanelOpen(true)}
-          onClose={handleNightCloseBarClose}
+  // Render Notes/Transactions view (Catatan)
+  if (activeTab === "notes") {
+    return (
+      <ScreenContainer withBottomNav>
+        <TopAppBar
+          title="Catatan"
+          actionIcon={<Settings className="h-5 w-5" />}
         />
-      ) : null}
-      {nightCloseConfirmation ? (
-        <div className="night-close-inline-confirmation">{nightCloseConfirmation}</div>
-      ) : null}
 
-      {/* Section: Entries List */}
-      <EntriesList
-        filteredEntries={filteredEntries}
-        entriesCount={entries.length}
-        orderedDates={orderedDates}
-        groupedEntries={groupedEntries}
-        dailyTotal={dailyTotal}
-        highlightEntryId={highlightEntryId}
-        autoExpandedEntryId={autoExpandedEntryId}
-        onAutoExpandHandled={(entryId) =>
-          setAutoExpandedEntryId((current) => (current === entryId ? null : current))
-        }
-        onDelete={handleDelete}
-        onUpdate={updateEntry}
-        onDateChanged={handleEntryDateChanged}
-        onCategoryChange={handleCategoryChange}
-      />
-      <NightClosePanel
-        open={nightClosePanelOpen}
-        dateLabel={`Hari ini • ${nightCloseTodayStats.dateISO}`}
-        total={nightCloseTodayStats.total}
-        count={nightCloseTodayStats.count}
-        topCategory={nightCloseTopCategory}
-        promptLine={nightCloseCopy.promptLine}
-        onClose={() => setNightClosePanelOpen(false)}
-        onDone={handleNightCloseDoneFromPanel}
-        onAddEntry={handleNightCloseAddEntry}
-      />
-      <Toaster position="bottom-center" richColors />
+        <div className="px-4 py-2">
+          {/* Quick Filters */}
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {["Hari ini", "Minggu ini", "Bulan ini", "Semua"].map((f, i) => (
+              <button key={f} className={`shrink-0 rounded-full px-4 py-2 text-[13px] font-semibold transition-colors ${i === 0 ? "bg-text-primary text-bg-elevated shadow-sm" : "bg-bg-subtle text-text-secondary hover:bg-border-subtle"}`}>
+                {f}
+              </button>
+            ))}
+          </div>
 
-      <footer className="app-version" aria-label="Versi aplikasi">
-        v{appVersion}
-      </footer>
-    </main>
+          <div className="mt-2 mb-4 flex items-center justify-between rounded-[16px] bg-bg-card px-4 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.04)] ring-1 ring-border-subtle">
+            <span className="text-[14px] font-semibold text-text-secondary">Total Keluar</span>
+            <span className="text-[15px] font-bold tracking-tight text-text-primary">Rp178.000</span>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            {transactions.map(t => (
+              <TransactionCard
+                key={t.id}
+                item={t}
+                isExpanded={expandedIds.has(t.id)}
+                onToggleExpand={() => handleToggleExpand(t.id)}
+                onSave={handleSaveTransaction}
+              />
+            ))}
+            {transactions.length === 0 && (
+              <div className="py-12 text-center text-text-secondary">
+                <p>Belum ada catatan.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <FabAddButton onClick={() => openAddSheet()} />
+        <BottomTabBar activeTab={activeTab} onTabChange={setActiveTab} />
+
+        <AddTransactionSheet
+          isOpen={isAddSheetOpen}
+          onClose={() => setIsAddSheetOpen(false)}
+          onSave={handleCreateTransaction}
+          prefill={sheetPrefill}
+        />
+      </ScreenContainer>
+    );
+  }
+
+  // Render Home view
+  return (
+    <ScreenContainer withBottomNav>
+      <TopAppBar
+        title="KeMana"
+        subtitle="Halo, Komang👋"
+        actionIcon={isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+        onActionClick={toggleTheme}
+      />
+
+      <main className="flex flex-col gap-6 px-4 py-2">
+        <SummaryHeroCard
+          expense={1105000}
+          transactionCount={42}
+          averagePerDay={36000}
+        >
+          {/* Combined Insight Block */}
+          <div className="flex flex-col gap-3 rounded-[20px] bg-insight-bg border border-insight-border p-4 relative overflow-hidden">
+            {/* Subtle bg decoration */}
+            <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/20 blur-2xl" />
+
+            <div className="flex items-center justify-between relative z-10">
+              <span className="text-[12px] font-semibold text-insight-header uppercase tracking-widest">
+                Insight Hari Ini
+              </span>
+              <button
+                onClick={() => setActiveTab("insight")}
+                className="flex items-center gap-1 text-[12px] font-semibold text-brand hover:opacity-80 transition-opacity"
+              >
+                Detail
+                <PieChart className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <div className="flex items-start gap-3 mt-1 relative z-10">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-insight-icon-bg shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+                <span className="text-[20px]">😎</span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[16px] font-bold text-insight-title leading-tight">Kamu hemat hari ini</span>
+                <span className="text-[13px] font-medium text-insight-subtitle leading-snug">Pengeluaranmu di bawah rata-rata.</span>
+              </div>
+            </div>
+
+            <div className="mt-2 pt-3 border-t border-insight-border flex items-center justify-between relative z-10">
+              <span className="text-[12px] font-medium text-insight-subtitle">Kategori terbesar:</span>
+              <div className="flex items-center gap-1.5 rounded-full bg-insight-chip-bg px-3 py-1 border border-insight-chip-text/10">
+                <span className="text-[12px] font-bold text-insight-chip-text">Makan (48%)</span>
+              </div>
+            </div>
+          </div>
+        </SummaryHeroCard>
+
+        {/* Quick Add Composer */}
+        <div className="flex w-full items-center overflow-hidden rounded-[20px] bg-bg-card p-1.5 shadow-sm ring-1 ring-border-subtle focus-within:ring-2 focus-within:ring-brand/50 transition-shadow">
+          <input
+            type="text"
+            placeholder="Misal: 25k makan siang"
+            className="flex-1 bg-transparent px-4 py-2.5 text-[15px] font-medium outline-none placeholder:text-text-secondary/70"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                const val = e.currentTarget.value;
+                if (val) {
+                  // Mock simple hardcoded parser behavior
+                  handleCreateTransaction({ type: "expense", amount: parseInt(val.match(/\d+/)?.[0] || "25") * 1000, category: "Makan", note: val, payment: "Cash" });
+                  e.currentTarget.value = "";
+                }
+              }
+            }}
+          />
+          <button
+            className="flex items-center justify-center rounded-[14px] bg-brand/10 text-brand px-5 py-2.5 font-bold transition-all active:scale-95 hover:bg-brand hover:text-white"
+            onClick={(e) => {
+              const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+              const val = input.value;
+              if (val) {
+                handleCreateTransaction({ type: "expense", amount: parseInt(val.match(/\d+/)?.[0] || "25") * 1000, category: "Makan", note: val, payment: "Cash" });
+                input.value = "";
+              }
+            }}
+          >
+            Catat
+          </button>
+        </div>
+
+        <QuickRecallChips
+          items={MOCK_RECALL}
+          onSelect={(item) => openAddSheet({ category: item.category, amount: item.amount, type: "expense" })}
+        />
+
+        <ContextBanner
+          variant="nightClose"
+          title="Tutup hari ini yuk"
+          subtitle="Review transaksi hari ini sebelum tidur"
+          actionLabel="Review hari ini"
+          className="dark:bg-brand-soft/20 dark:border dark:border-brand/20"
+          onAction={() => console.log("Night close trigger")}
+        />
+
+        <div className="flex flex-col gap-3">
+          <h3 className="text-[16px] font-bold text-text-primary">Aktivitas terbaru</h3>
+          <div className="flex flex-col gap-3">
+            {transactions.slice(0, 3).map(t => (
+              <TransactionCard
+                key={t.id}
+                item={t}
+                isExpanded={expandedIds.has(t.id)}
+                onToggleExpand={() => handleToggleExpand(t.id)}
+                onSave={handleSaveTransaction}
+              />
+            ))}
+          </div>
+        </div>
+      </main>
+
+      <FabAddButton onClick={() => openAddSheet()} />
+      <BottomTabBar activeTab={activeTab} onTabChange={setActiveTab} />
+
+      <AddTransactionSheet
+        isOpen={isAddSheetOpen}
+        onClose={() => setIsAddSheetOpen(false)}
+        onSave={handleCreateTransaction}
+        prefill={sheetPrefill}
+      />
+    </ScreenContainer>
   );
 }

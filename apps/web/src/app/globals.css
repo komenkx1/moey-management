@@ -10,59 +10,144 @@
   --default-mono-font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
   --disable-preflight: true;
+
+  --color-bg-base: #F7F8FA;
+  --color-bg-elevated: #FFFFFF;
+  --color-bg-subtle: #F3F4F6;
+  --color-border-subtle: #E5E7EB;
+
+  --color-text-primary: #111827;
+  --color-text-secondary: #6B7280;
+  --color-text-tertiary: #9CA3AF;
+
+  --color-brand: #2563EB;
+  --color-brand-pressed: #1D4ED8;
+  --color-brand-soft: #DBEAFE;
+
+  --color-success: #16A34A;
+  --color-success-soft: #DCFCE7;
+
+  --color-insight-bg: #F1F5F9;
+  /* slate-100 */
+  --color-insight-border: #E2E8F0;
+  /* slate-200 */
+  --color-insight-header: #64748B;
+  /* slate-500 */
+  --color-insight-title: #0F172A;
+  /* slate-900 */
+  --color-insight-subtitle: #475569;
+  /* slate-600 */
+  --color-insight-chip-bg: #DBEAFE;
+  /* blue-100 */
+  --color-insight-chip-text: #1D4ED8;
+  /* blue-700 */
+  --color-insight-icon-bg: #FFFFFF;
+
+  --color-danger: #EF4444;
+  --color-danger-soft: #FEE2E2;
+
+  --color-warning: #F59E0B;
+  --color-warning-soft: #FEF3C7;
 }
 
 @layer base {
-  /* Disable preflight by avoiding injection of base resets if disabled, 
-     but keeping the variables above for utility classes.
-     Actually, tailwind v4 natively supports disabling via @layer overrides
-     or plugin options, but simply omitting @import "tailwindcss/preflight" works
-     if we use selective imports: 
-  */
+  .dark {
+    --color-bg-base: #000000;
+    /* Pure black base */
+    --color-bg-elevated: #111111;
+    /* Slightly lighter for cards */
+    --color-bg-subtle: #222222;
+    /* Buttons/borders */
+    --color-border-subtle: #333333;
+
+    --color-text-primary: #FFFFFF;
+    --color-text-secondary: #E0E0E0;
+    /* Brighter secondary text */
+    --color-text-tertiary: #A0A0A0;
+
+    --color-brand: #3B82F6;
+    /* Brighter accent text/button */
+    --color-brand-pressed: #2563EB;
+    --color-brand-soft: #1E3A8A;
+
+    --color-success: #4ADE80;
+    --color-success-soft: #064E3B;
+
+    --color-insight-bg: #1E293B;
+    /* slate-800 */
+    --color-insight-border: #334155;
+    /* slate-700 */
+    --color-insight-header: #94A3B8;
+    /* slate-400 */
+    --color-insight-title: #F8FAFC;
+    /* slate-50 */
+    --color-insight-subtitle: #CBD5E1;
+    /* slate-300 */
+    --color-insight-chip-bg: #1E3A8A;
+    /* blue-900 */
+    --color-insight-chip-text: #BFDBFE;
+    /* blue-200 */
+    --color-insight-icon-bg: #0F172A;
+    /* slate-900 */
+
+    --color-danger: #F87171;
+    --color-danger-soft: #7F1D1D;
+
+    --color-warning: #FBBF24;
+    --color-warning-soft: #78350F;
+  }
+}
+
+@layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-bg-base text-text-primary;
   }
 }
 
 :root {
   color-scheme: light;
-  --app-bg: #f6f4ef;
+  --app-bg: #F7F8FA;
+  /* mapped to bg-base */
   --safe-header-offset: 0px;
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
+  --radius: 12px;
+  /* Small radius for base shadcn elements initially */
+
+  /* Shadcn Baseline Mapped to Design System */
+  --background: oklch(0.975 0 0);
+  /* mapped roughly to #F7F8FA */
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+
+  --primary: oklch(0.48 0.18 260);
+  /* accent mapped to oklch */
+  --primary-foreground: oklch(1 0 0);
+
+  --secondary: oklch(0.96 0 0);
+  /* subtle bg */
+  --secondary-foreground: oklch(0.145 0 0);
+
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.55 0 0);
+  /* text-secondary equivalent */
+
+  --accent: oklch(0.96 0 0);
+  --accent-foreground: oklch(0.145 0 0);
+
+  --destructive: oklch(0.57 0.22 25);
+  /* danger mapped */
+  --destructive-foreground: oklch(1 0 0);
+
+  --border: oklch(0.9 0 0);
+  /* border-subtle */
+  --input: oklch(0.9 0 0);
+  --ring: oklch(0.48 0.18 260);
 }
 
 body[data-ios-standalone="true"] {
@@ -84,7 +169,7 @@ body {
     "Segoe UI",
     sans-serif;
   background: var(--app-bg);
-  color: #1f1f1f;
+  color: var(--color-text-primary);
 }
 
 button,
@@ -1041,9 +1126,9 @@ select {
 
 .pwa-status-badge {
   position: fixed;
-  top: calc(var(--safe-header-offset) + 10px);
-  right: 12px;
-  z-index: 40;
+  top: 14px;
+  left: 16px;
+  z-index: 50;
   border: 1px solid #d2d2cc;
   border-radius: 999px;
   padding: 3px 8px;
@@ -1253,4 +1338,18 @@ select {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+}
+
+/* ---break--- */
+
+@utility scrollbar-hide {
+  /* For IE and Edge */
+  -ms-overflow-style: none;
+  /* For Firefox */
+  scrollbar-width: none;
+
+  /* For Chrome, Safari and Opera */
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
