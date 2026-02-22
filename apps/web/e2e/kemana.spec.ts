@@ -143,6 +143,34 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     await expect(entry).toContainText("15.000");
   });
 
+  test("Tema light/dark tetap tersimpan setelah reload", async ({ page }) => {
+    const beforeToggle = await page.evaluate(() => document.documentElement.classList.contains("dark"));
+    await page.getByRole("button", { name: "Action" }).first().click();
+
+    await expect
+      .poll(async () => page.evaluate(() => document.documentElement.classList.contains("dark")))
+      .not.toBe(beforeToggle);
+
+    const afterToggle = await page.evaluate(() => ({
+      isDark: document.documentElement.classList.contains("dark"),
+      storedMode: window.localStorage.getItem("kemana.themeMode")
+    }));
+    const expectedMode = afterToggle.isDark ? "dark" : "light";
+
+    expect(afterToggle.storedMode).toBe(expectedMode);
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitForHomeReady(page);
+
+    const afterReload = await page.evaluate(() => ({
+      isDark: document.documentElement.classList.contains("dark"),
+      storedMode: window.localStorage.getItem("kemana.themeMode")
+    }));
+
+    expect(afterReload.storedMode).toBe(expectedMode);
+    expect(afterReload.isDark).toBe(afterToggle.isDark);
+  });
+
   test("Quick add di Beranda auto-expand item terbaru untuk inline edit cepat", async ({ page }) => {
     await quickAdd(page, "makan 19k");
 

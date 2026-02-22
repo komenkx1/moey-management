@@ -121,8 +121,40 @@ const RECALL_DISMISSED_SESSION_KEY = "kemana.dismissedRecallUntil";
 const MOVED_TOAST_ID = "kemana.moved";
 const UNDO_TOAST_ID = "kemana.undo";
 const USER_NAME_KEY = "kemana.userName";
+const THEME_MODE_KEY = "kemana.themeMode";
 const NOTES_VIRTUALIZE_THRESHOLD = 1000;
 const NOTES_RENDER_CHUNK = 220;
+
+type ThemeMode = "light" | "dark";
+
+function resolveThemeModeFromStorage(root: HTMLElement): ThemeMode {
+  try {
+    const stored = window.localStorage.getItem(THEME_MODE_KEY);
+    if (stored === "dark" || stored === "light") {
+      return stored;
+    }
+  } catch {
+    // Ignore storage read errors and fallback to DOM/system preference.
+  }
+
+  if (root.classList.contains("dark")) {
+    return "dark";
+  }
+
+  if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) {
+    return "dark";
+  }
+
+  return "light";
+}
+
+function persistThemeMode(mode: ThemeMode): void {
+  try {
+    window.localStorage.setItem(THEME_MODE_KEY, mode);
+  } catch {
+    // Ignore storage write errors to keep theme toggle usable.
+  }
+}
 
 function createEntryId(): string {
   return `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -691,7 +723,11 @@ export default function DashboardPage() {
   }, [quickInput, setDebouncedQuickInput]);
 
   useEffect(() => {
-    setIsDarkMode(document.documentElement.classList.contains("dark"));
+    const root = document.documentElement;
+    const initialTheme = resolveThemeModeFromStorage(root);
+    root.classList.toggle("dark", initialTheme === "dark");
+    setIsDarkMode(initialTheme === "dark");
+    persistThemeMode(initialTheme);
   }, []);
 
   useEffect(() => {
@@ -1257,14 +1293,13 @@ export default function DashboardPage() {
   const shouldHideFab = isAnySheetOpen || expandedIds.size > 0;
 
   const toggleTheme = useCallback(() => {
-    const root = document.documentElement;
-    if (root.classList.contains("dark")) {
-      root.classList.remove("dark");
-      setIsDarkMode(false);
-    } else {
-      root.classList.add("dark");
-      setIsDarkMode(true);
-    }
+    setIsDarkMode((current) => {
+      const nextIsDark = !current;
+      const root = document.documentElement;
+      root.classList.toggle("dark", nextIsDark);
+      persistThemeMode(nextIsDark ? "dark" : "light");
+      return nextIsDark;
+    });
   }, []);
 
   const openAddSheet = useCallback((prefillData?: Partial<AddTransactionSubmitPayload>) => {
