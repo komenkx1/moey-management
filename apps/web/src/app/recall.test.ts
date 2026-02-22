@@ -76,7 +76,6 @@ describe("getSmartRecallPrompt", () => {
 
   it("shows comeback prompt when gap is less than 3 hours but last open was > 6 hours ago", () => {
     const now = new Date(2026, 1, 20, 10, 0, 0).getTime();
-    // Today's entry is within 3 hours (e.g. 2 hours ago), so "gap" doesn't trigger.
     const lastEntryAt = now - 2 * 60 * 60 * 1000;
     const entry = makeEntry({
       createdAt: new Date(lastEntryAt).toISOString(),
@@ -85,12 +84,28 @@ describe("getSmartRecallPrompt", () => {
 
     const result = getSmartRecallPrompt({
       entries: [entry],
-      // But user hasn't opened app for 7 hours. Wait, how could they add an entry 2 hours ago without opening the app? 
-      // Maybe they used the PWA sync or another device. Let's just test the logic fallback.
       lastAppOpenAt: now - 7 * 60 * 60 * 1000,
       now
     });
 
     expect(result?.kind).toBe("comeback");
+  });
+
+  it("returns null when the latest entry is still recent and app was opened recently", () => {
+    const now = new Date(2026, 1, 20, 10, 0, 0).getTime();
+    const lastEntryAt = now - 60 * 60 * 1000; // 1 jam lalu
+    const entry = makeEntry({
+      createdAt: new Date(lastEntryAt).toISOString(),
+      updatedAt: new Date(lastEntryAt).toISOString(),
+      date: toLocalDayKey(now)
+    });
+
+    const result = getSmartRecallPrompt({
+      entries: [entry],
+      lastAppOpenAt: now - 30 * 60 * 1000,
+      now
+    });
+
+    expect(result).toBeNull();
   });
 });

@@ -1,456 +1,423 @@
-import { test, expect, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
-/**
- * Helper — wait for the app to fully hydrate.
- */
-async function waitForApp(page: Page) {
-    await page.waitForSelector("section.composer input.input", { timeout: 15000 });
+async function clearLocalData(page: Page) {
+  await page.evaluate(async () => {
+    const databaseList = await window.indexedDB.databases();
+    for (const db of databaseList) {
+      if (db.name) {
+        window.indexedDB.deleteDatabase(db.name);
+      }
+    }
+
+    if ("serviceWorker" in window.navigator) {
+      const registrations = await window.navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((registration) => registration.unregister()));
+    }
+
+    if ("caches" in window) {
+      const cacheKeys = await window.caches.keys();
+      await Promise.all(cacheKeys.map((key) => window.caches.delete(key)));
+    }
+
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+  });
 }
 
-/**
- * Helper — add entry via Quick Add.
- * NOTE: The app auto-expands the newly added entry.
- */
-async function quickAdd(page: Page, text: string) {
-    const input = page.locator("section.composer input.input");
-    await input.fill(text);
-    await input.press("Enter");
-    // Wait for the entry to render
-    await page.locator("article[data-entry-id]").first().waitFor({ timeout: 10000 });
+async function seedUserName(page: Page, userName = "Komang") {
+  await page.evaluate((nextName) => {
+    window.localStorage.setItem("kemana.userName", nextName);
+  }, userName);
 }
 
-async function freezeBrowserTimeToNight(page: Page) {
-    const fixedNow = new Date();
-    fixedNow.setHours(21, 0, 0, 0);
-    await page.addInitScript((fixedNowMs) => {
-        const NativeDate = Date;
-        class MockDate extends NativeDate {
-            constructor(...args: ConstructorParameters<typeof Date>) {
-                if (args.length === 0) {
-                    super(fixedNowMs);
-                    return;
-                }
-                super(...args);
-            }
+async function gotoHomeStable(page: Page) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      await page.goto("/", { waitUntil: "domcontentloaded" });
+      return;
+    } catch (error) {
+      if (attempt === 1) {
+        throw error;
+      }
+    }
+  }
+}
 
-            static now() {
-                return fixedNowMs;
-            }
+async function waitForHomeReady(page: Page) {
+  await expect(page.getByRole("heading", { name: "KeMana" })).toBeVisible();
+  await expect(page.locator("main input[type='text']").first()).toBeVisible();
+}
+
+async function quickAdd(page: Page, input: string) {
+  const quickInput = page.locator("main input[type='text']").first();
+  await quickInput.fill(input);
+  await quickInput.press("Enter");
+}
+
+async function openNotesTab(page: Page) {
+  await page.locator("nav").last().getByRole("button", { name: "Catatan", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Catatan" })).toBeVisible();
+}
+
+async function expandEntryByText(page: Page, title: string): Promise<Locator> {
+  const entry = page.locator("[data-entry-id]").filter({ hasText: title }).first();
+  await expect(entry).toBeVisible();
+  await entry.locator("button").first().click();
+  await expect(page.locator("label").filter({ hasText: "Jumlah" }).first()).toBeVisible();
+  return entry;
+}
+
+async function dragBottomSheetDownToClose(page: Page) {
+  const handle = page.locator("div[aria-hidden='false'] .cursor-grab.touch-none:visible").last();
+  await expect(handle).toBeVisible();
+  const box = await handle.boundingBox();
+  if (!box) {
+    throw new Error("Drag handle sheet tidak ditemukan.");
+  }
+
+  const startX = box.x + box.width / 2;
+  const startY = box.y + box.height / 2;
+  const endY = startY + 260;
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(startX, endY, { steps: 18 });
+  await page.mouse.up();
+  await page.waitForTimeout(120);
+
+  let isStillOpen = false;
+  try {
+    isStillOpen = await handle.isVisible();
+  } catch {
+    isStillOpen = false;
+  }
+
+  if (!isStillOpen) {
+    return;
+  }
+
+  const gesture = {
+    pointerId: 1,
+    pointerType: "touch",
+    clientX: startX,
+    clientY: startY,
+    button: 0,
+    bubbles: true,
+    cancelable: true
+  };
+
+  await handle.dispatchEvent("pointerdown", gesture);
+  for (let step = 1; step <= 12; step += 1) {
+    const nextY = startY + ((endY - startY) * step) / 12;
+    await handle.dispatchEvent("pointermove", { ...gesture, clientY: nextY });
+  }
+  await handle.dispatchEvent("pointerup", { ...gesture, clientY: endY });
+  await page.waitForTimeout(160);
+}
+
+function buildCsvImport(totalRows: number): string {
+  const rows = ["id,tanggal,kategori,metode_bayar,nominal,catatan,split_mode,split_rincian,raw_input"];
+  for (let index = 1; index <= totalRows; index += 1) {
+    rows.push(
+      `imp-many-${index},2026-02-22,Makan,Cash,1000,item ${index},,,item ${index} 1k`
+    );
+  }
+  return rows.join("\n");
+}
+
+test.describe("KeMana UI flow (new UI selectors)", () => {
+  test.beforeEach(async ({ page }) => {
+    await gotoHomeStable(page);
+    await clearLocalData(page);
+    await seedUserName(page);
+    await gotoHomeStable(page);
+    await waitForHomeReady(page);
+  });
+
+  test("Quick add tersimpan dan muncul di tab Catatan", async ({ page }) => {
+    await expect(page.getByRole("banner").getByText(/^Halo,\s+\S+/)).toBeVisible();
+
+    await quickAdd(page, "kopi 15k");
+    await openNotesTab(page);
+    const entry = page.locator("[data-entry-id]").first();
+    await expect(entry).toContainText("kopi");
+    await expect(entry).toContainText("15.000");
+  });
+
+  test("Quick add di Beranda auto-expand item terbaru untuk inline edit cepat", async ({ page }) => {
+    await quickAdd(page, "makan 19k");
+
+    const homeEntry = page.locator("[data-home-entry-id]").first();
+    await expect(homeEntry).toContainText("makan");
+    await expect(homeEntry.getByRole("button", { name: "Simpan", exact: true })).toBeVisible();
+
+    await homeEntry.getByPlaceholder("Tambah detail...").fill("langsung edit dari beranda");
+    await homeEntry.getByRole("button", { name: "Simpan", exact: true }).click();
+
+    await expect(homeEntry).toContainText("langsung edit dari beranda");
+  });
+
+  test("Format cepat muncul saat mengetik dan bisa dipakai opsional", async ({ page }) => {
+    const quickInput = page.locator("main input[type='text']").first();
+    await quickInput.fill("mcd");
+
+    await expect(page.getByText("Format cepat", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Qty x nominal: mcd 3x 15k" }).click();
+    await expect(quickInput).toHaveValue("mcd 3x 15k");
+
+    await quickInput.press("Enter");
+    await openNotesTab(page);
+    await expect(page.locator("[data-entry-id]").first()).toContainText("mcd");
+  });
+
+  test("Bulk input 3 baris valid tersimpan", async ({ page }) => {
+    await page.getByRole("button", { name: "Banyak" }).click();
+    await expect(page.getByText("Catat banyak sekaligus")).toBeVisible();
+
+    await page.locator("textarea").fill("kopi 18\nparkir 4k\nmakan siang 25k");
+    await page.getByRole("button", { name: "Simpan 3 catatan" }).click();
+
+    await openNotesTab(page);
+    await expect(page.locator("[data-entry-id]")).toHaveCount(3);
+  });
+
+  test("Inline edit transaksi: ubah nama item + nominal + catatan", async ({ page }) => {
+    await quickAdd(page, "makan 20k");
+    await openNotesTab(page);
+    const entry = await expandEntryByText(page, "makan");
+
+    await entry.getByPlaceholder("Misal: Makan siang").fill("makan siang kantor");
+    await entry.locator("input[type='number']").first().fill("25000");
+    await entry.getByPlaceholder("Tambah detail...").fill("siang kantor");
+    await entry.getByRole("button", { name: "Simpan", exact: true }).click();
+
+    await expect(entry).toContainText("makan siang kantor");
+    await expect(entry).toContainText("25.000");
+    await expect(entry).toContainText("siang kantor");
+  });
+
+  test("Inline edit format cepat: parser bisa diterapkan ulang untuk qty/split", async ({ page }) => {
+    await quickAdd(page, "mcd 2x 10k");
+    await openNotesTab(page);
+    const entry = await expandEntryByText(page, "mcd");
+
+    await entry.getByTestId("inline-quick-format-input").fill("mcd 3x 15k 3p");
+    await entry.getByTestId("inline-quick-format-apply").click();
+    await expect(entry.locator("input[type='number']").first()).toHaveValue("45000");
+
+    await entry.getByRole("button", { name: "Simpan", exact: true }).click();
+    await expect(entry).toContainText("45.000");
+    await expect(entry).toContainText("Split 3 orang");
+  });
+
+  test("Split transaksi bisa disimpan dari inline edit", async ({ page }) => {
+    await quickAdd(page, "dinner 90k");
+    await openNotesTab(page);
+    const entry = await expandEntryByText(page, "dinner");
+
+    await entry.getByRole("button", { name: "Bagi rata" }).first().click();
+    await entry.getByPlaceholder("Kamu, Budi, Cici").fill("Kamu, Budi, Cici");
+    await entry.getByRole("button", { name: "Simpan", exact: true }).click();
+
+    await expect(entry).toContainText("Split 3 orang");
+  });
+
+  test("Data tools export JSON memicu download", async ({ page }) => {
+    await quickAdd(page, "test export 10k");
+    await openNotesTab(page);
+    await page.getByRole("button", { name: "Data & tools" }).first().click();
+    await expect(page.getByRole("heading", { name: "Data & tools" })).toBeVisible();
+
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "JSON" }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toContain("kemana-backup");
+    expect(download.suggestedFilename()).toContain(".json");
+  });
+
+  test("Data tools export CSV memicu download", async ({ page }) => {
+    await quickAdd(page, "test export csv 12k");
+    await openNotesTab(page);
+    await page.getByRole("button", { name: "Data & tools" }).first().click();
+    await expect(page.getByRole("heading", { name: "Data & tools" })).toBeVisible();
+
+    const downloadPromise = page.waitForEvent("download");
+    await page
+      .locator("section")
+      .filter({ hasText: "Export" })
+      .getByRole("button", { name: "CSV", exact: true })
+      .click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toContain("kemana-export");
+    expect(download.suggestedFilename()).toContain(".csv");
+  });
+
+  test("Data tools import JSON backup menambahkan catatan", async ({ page }) => {
+    await openNotesTab(page);
+    await page.getByRole("button", { name: "Data & tools" }).first().click();
+    await expect(page.getByRole("heading", { name: "Data & tools" })).toBeVisible();
+
+    const backupJson = JSON.stringify({
+      entries: [
+        {
+          id: "imp-json-1",
+          text: "backup json",
+          amount: 27000,
+          rawInput: "backup json 27k",
+          date: "2026-02-22",
+          category: "Makan",
+          source: "quick_add",
+          createdAt: "2026-02-22T08:00:00.000Z",
+          updatedAt: "2026-02-22T08:00:00.000Z"
         }
-        MockDate.parse = NativeDate.parse;
-        MockDate.UTC = NativeDate.UTC;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (window as any).Date = MockDate as unknown as DateConstructor;
-    }, fixedNow.getTime());
-    await page.reload();
-    await waitForApp(page);
-}
-
-/**
- * Helper — ensure entry is expanded. Accounts for auto-expand after quickAdd.
- */
-async function ensureExpanded(page: Page) {
-    // Wait for auto-expand to settle after quickAdd
-    await page.waitForTimeout(300);
-    const rowHit = page.locator("article[data-entry-id]").first().locator("button.row-hit");
-    const isExpanded = await rowHit.getAttribute("aria-expanded");
-    if (isExpanded !== "true") {
-        await rowHit.click();
-    }
-    await page.locator(".row-expanded").waitFor({ state: "visible", timeout: 10000 });
-}
-
-/**
- * Helper — ensure entry is collapsed.
- */
-async function ensureCollapsed(page: Page) {
-    const rowHit = page.locator("article[data-entry-id]").first().locator("button.row-hit");
-    const isExpanded = await rowHit.getAttribute("aria-expanded");
-    if (isExpanded === "true") {
-        await rowHit.click();
-    }
-    await expect(page.locator(".row-expanded")).not.toBeVisible();
-}
-
-test.describe("Kemana App E2E", () => {
-    test.beforeEach(async ({ page }) => {
-        await page.goto("/");
-        // Clear IndexedDB + localStorage so every test starts fresh
-        await page.evaluate(async () => {
-            const dbs = await window.indexedDB.databases();
-            for (const db of dbs) {
-                if (db.name) window.indexedDB.deleteDatabase(db.name);
-            }
-            localStorage.clear();
-        });
-        await page.reload();
-        await waitForApp(page);
+      ],
+      rules: [],
+      meta: {
+        exportedAt: "2026-02-22T08:00:00.000Z",
+        appVersion: "1.0.8",
+        storageVersion: "1"
+      }
     });
 
-    // ─── Quick Add ───────────────────────────────────────────────
-
-    test("Quick Add: ketik + Enter → entry muncul di list", async ({ page }) => {
-        await quickAdd(page, "kopi 15k");
-
-        const entry = page.locator("article[data-entry-id]").first();
-        await expect(entry).toContainText("kopi");
-        await expect(entry).toContainText("15.000");
+    await page.locator("input[type='file']").setInputFiles({
+      name: "kemana-backup.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(backupJson)
     });
 
-    test("Quick Add: preview muncul saat mengetik", async ({ page }) => {
-        const input = page.locator("section.composer input.input");
-        await input.fill("makan siang 35k");
+    await expect(page.locator("section").filter({ hasText: "Import" }).getByText(/Import selesai/).first()).toBeVisible();
+    await expect(page.locator("[data-entry-id]").first()).toContainText("backup json");
+    await expect(page.locator("[data-entry-id]").first()).toContainText("27.000");
+  });
 
-        const preview = page.locator(".hint.preview-row");
-        await expect(preview).toBeVisible({ timeout: 5000 });
-        await expect(preview).toContainText("35.000");
+  test("Data tools import CSV export menambahkan catatan", async ({ page }) => {
+    await openNotesTab(page);
+    await page.getByRole("button", { name: "Data & tools" }).first().click();
+    await expect(page.getByRole("heading", { name: "Data & tools" })).toBeVisible();
+
+    const csv = [
+      "id,tanggal,kategori,metode_bayar,nominal,catatan,split_mode,split_rincian,raw_input",
+      "imp-csv-1,2026-02-22,Makan,Cash,45000,backup csv,,,backup csv 45k"
+    ].join("\n");
+
+    await page.locator("input[type='file']").setInputFiles({
+      name: "kemana-export.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(csv)
     });
 
-    test("Quick Add: error ditolak tanpa nominal", async ({ page }) => {
-        const input = page.locator("section.composer input.input");
-        await input.fill("cuma deskripsi doang");
-        await input.press("Enter");
+    await expect(page.locator("section").filter({ hasText: "Import" }).getByText(/Import CSV selesai/).first()).toBeVisible();
+    await expect(page.locator("[data-entry-id]").first()).toContainText("backup csv");
+    await expect(page.locator("[data-entry-id]").first()).toContainText("45.000");
+  });
 
-        await expect(page.locator(".error")).toBeVisible();
-        await expect(page.locator("article[data-entry-id]")).toHaveCount(0);
+  test("Catatan 1000+ item mengaktifkan virtualisasi list secara otomatis", async ({ page }) => {
+    await openNotesTab(page);
+    await page.getByRole("button", { name: "Data & tools" }).first().click();
+    await expect(page.getByRole("heading", { name: "Data & tools" })).toBeVisible();
+
+    const csv = buildCsvImport(1001);
+    await page.locator("input[type='file']").setInputFiles({
+      name: "kemana-export-many.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(csv)
     });
 
-    // ─── Bulk Paste ──────────────────────────────────────────────
-
-    test("Bulk Paste: 3 baris valid → 3 entries tersimpan", async ({ page }) => {
-        await page.click("button:has-text('Masukan banyak item')");
-        const textarea = page.locator("textarea.textarea");
-        await textarea.waitFor({ state: "visible", timeout: 5000 });
-
-        await textarea.fill("satu 10k\ndua 20k\ntiga 30k");
-        await expect(page.locator(".bulk-panel")).toContainText("Valid: 3/3");
-
-        await page.click("button:has-text('Simpan Semua')");
-        await page.waitForTimeout(500);
-
-        await expect(page.locator("article[data-entry-id]")).toHaveCount(3);
-    });
-
-    test("Bulk Paste: mixed valid/invalid → hanya valid tersimpan", async ({ page }) => {
-        await page.click("button:has-text('Masukan banyak item')");
-        const textarea = page.locator("textarea.textarea");
-        await textarea.waitFor({ state: "visible", timeout: 5000 });
-
-        await textarea.fill("valid 10k\ninvalid tanpa angka\nvalid2 20k");
-        await expect(page.locator(".bulk-panel")).toContainText("Valid: 2/3");
-
-        await page.click("button:has-text('Simpan Semua')");
-        await page.waitForTimeout(500);
-
-        await expect(page.locator("article[data-entry-id]")).toHaveCount(2);
-    });
-
-    // ─── Entry Expand / Collapse ─────────────────────────────────
-
-    test("Entry expand/collapse toggle", async ({ page }) => {
-        await quickAdd(page, "gojek 14k");
-
-        // Entry is auto-expanded after quickAdd
-        await expect(page.locator(".row-expanded")).toBeVisible();
-        await expect(page.locator("button:has-text('Hapus')")).toBeVisible();
-
-        // Collapse
-        await ensureCollapsed(page);
-        await expect(page.locator(".row-expanded")).not.toBeVisible();
-
-        // Re-expand
-        await ensureExpanded(page);
-        await expect(page.locator(".row-expanded")).toBeVisible();
-    });
-
-    // ─── Category Edit ───────────────────────────────────────────
-
-    test("Category edit: pilih chip lain → tersimpan", async ({ page }) => {
-        await quickAdd(page, "random item 10k");
-
-        // Entry is auto-expanded
-        await ensureExpanded(page);
-
-        // Click "Transport" category chip
-        await page.locator(".chip-group .chip:has-text('Transport')").first().click();
-
-        await expect(
-            page.locator(".chip-group .chip.active:has-text('Transport')").first()
-        ).toBeVisible();
-    });
-
-    // ─── Delete + Undo ───────────────────────────────────────────
-
-    test("Delete entry + Undo toast → entry kembali", async ({ page }) => {
-        await quickAdd(page, "hapus ini 5k");
-        await expect(page.locator("article[data-entry-id]")).toHaveCount(1);
-
-        // Entry is auto-expanded, click delete
-        await ensureExpanded(page);
-        await page.locator("button.danger:has-text('Hapus')").click();
-
-        // Undo toast
-        const undoToast = page
-            .locator("[data-sonner-toast]")
-            .filter({ has: page.getByRole("button", { name: "Undo" }) });
-        await expect(undoToast).toBeVisible({ timeout: 10000 });
-
-        // Click Undo
-        await undoToast.getByRole("button", { name: "Undo" }).click();
-        await page.waitForTimeout(300);
-
-        // Entry should reappear
-        await expect(page.locator("article[data-entry-id]")).toHaveCount(1);
-    });
-
-    // ─── Filter Range ────────────────────────────────────────────
-
-    test("Filter range: switch antar filter chip", async ({ page }) => {
-        await quickAdd(page, "test filter 25k");
-
-        const filterSection = page.locator("section.range-filter");
-        await expect(filterSection).toBeVisible();
-        await expect(filterSection.locator(".chip.active")).toContainText("Hari ini");
-
-        // Switch to "Semua"
-        await filterSection.locator(".chip:has-text('Semua')").click();
-        await expect(filterSection.locator(".chip.active")).toContainText("Semua");
-        await expect(page.locator("article[data-entry-id]")).toHaveCount(1);
-    });
-
-    // ─── Split Equal ─────────────────────────────────────────────
-
-    test("Split equal: 3 orang → nominal terbagi", async ({ page }) => {
-        await quickAdd(page, "makan bareng 90k");
-
-        // Entry is auto-expanded
-        await ensureExpanded(page);
-
-        await page.click("button:has-text('Buat Split')");
-        await expect(page.locator(".split-box")).toBeVisible();
-
-        await page.locator(".split-box input.input").first().fill("Kamu, Budi, Ani");
-        await page.click("button:has-text('Terapkan Equal')");
-
-        await expect(page.locator(".summary")).toBeVisible();
-        await expect(page.locator(".summary")).toContainText("Pembagian");
-    });
-
-    // ─── Split Custom ────────────────────────────────────────────
-
-    test("Split custom: isi manual + apply", async ({ page }) => {
-        await quickAdd(page, "dinner 100k");
-
-        // Entry is auto-expanded
-        await ensureExpanded(page);
-
-        await page.click("button:has-text('Buat Split')");
-        await page.locator(".split-box input.input").first().fill("Kamu, Budi");
-
-        await page.click("button:has-text('Custom')");
-        const customInputs = page.locator(".split-box .inline-grid input.input");
-        await customInputs.nth(0).fill("50000");
-        await customInputs.nth(1).fill("50000");
-
-        await page.click("button:has-text('Terapkan Custom')");
-        await expect(page.locator(".split-status")).toContainText("Sudah pas");
-    });
-
-    // ─── Export Backup ───────────────────────────────────────────
-
-    test("Export backup → triggers download", async ({ page }) => {
-        await quickAdd(page, "data export 10k");
-
-        const downloadPromise = page.waitForEvent("download");
-        await page.click("button:has-text('Export Backup')");
-        const download = await downloadPromise;
-        expect(download.suggestedFilename()).toContain("kemana");
-        expect(download.suggestedFilename()).toContain(".json");
-    });
-
-    // ─── Data Persistence ────────────────────────────────────────
-
-    test("Data persists across page reload (IndexedDB)", async ({ page }) => {
-        await quickAdd(page, "persist test 99k");
-        await expect(page.locator("article[data-entry-id]")).toHaveCount(1);
-
-        // Reload WITHOUT clearing IndexedDB (skip beforeEach logic)
-        await page.reload();
-        await waitForApp(page);
-
-        // Switch to "Semua" filter to make sure all entries are visible
-        await page.locator("section.range-filter .chip:has-text('Semua')").click();
-
-        await expect(page.locator("article[data-entry-id]")).toHaveCount(1, { timeout: 10000 });
-        await expect(page.locator("article[data-entry-id]").first()).toContainText("persist test");
-    });
-
-    // ─── Summary Stats ──────────────────────────────────────────
-
-    test("Summary card shows total dan jumlah transaksi", async ({ page }) => {
-        await quickAdd(page, "item satu 30k");
-        await quickAdd(page, "item dua 20k");
-
-        const summaryCard = page.locator("section.daily-summary-card");
-        await expect(summaryCard).toBeVisible();
-        await expect(summaryCard).toContainText("50.000");
-        await expect(summaryCard).toContainText("2 transaksi");
-    });
-    // ─── Inline Edit ─────────────────────────────────────────────
-
-    test("Inline edit: ubah judul dan nominal dari panel expanded", async ({ page }) => {
-        await quickAdd(page, "makan 20k");
-        await ensureExpanded(page);
-
-        // Edit Title
-        const titleInput = page.locator(".row-expanded input.input").first();
-        await titleInput.fill("makan siang");
-
-        // Edit Amount
-        const amountInput = page.locator(".row-expanded input.input").nth(1);
-        await amountInput.fill("25000");
-
-        // Save
-        await page.click("button:has-text('Simpan')");
-
-        // Wait for update (it might collapse or stay expanded depending on state, let's just check the text)
-        await ensureCollapsed(page);
-        const entry = page.locator("article[data-entry-id]").first();
-        await expect(entry).toContainText("makan siang");
-        await expect(entry).toContainText("25.000");
-    });
-
-    // ─── Assumed Thousands Warning ──────────────────────────────
-
-    test("Warning: angka ambigu (15) memunculkan warning Asumsi Ribuan", async ({ page }) => {
-        await quickAdd(page, "gaji 15");
-
-        // The row might be collapsed or active-expanded depending on timing.
-        // Let's just ensure it is expanded so we can see the details.
-        await ensureExpanded(page);
-
-        // Warning should be present
-        const warningItem = page.locator("li:has-text('Nominal diasumsikan ribuan')");
-        await expect(warningItem).toBeVisible();
-
-        // Resolve it: click Edit, fill explicit value, save
-        await warningItem.locator("button:has-text('Edit nominal')").click();
-        const amountInput = page.locator(".row-expanded input.input").nth(1);
-        await amountInput.fill("15000");
-        await page.locator("button:has-text('Simpan')").click();
-        await page.waitForTimeout(500);
-
-        // Warning should be resolved (no longer in meta)
-        await ensureCollapsed(page);
-        const entry = page.locator("article[data-entry-id]").first();
-        await expect(entry.locator(".row-meta")).not.toContainText("!1");
-    });
-
-    // ─── Night Close ─────────────────────────────────────────────
-
-    test("Night Close: buat laporan tutup hari", async ({ page }) => {
-        await freezeBrowserTimeToNight(page);
-        await quickAdd(page, "kopi 15k");
-
-        // Click the Review button in the night close bar
-        await page.locator("button:has-text('Review')").click();
-
-        // The panel should open
-        await expect(page.locator(".night-close-panel-title")).toBeVisible();
-
-        // Click close day
-        await page.locator("button:has-text('Selesai (tandai beres)')").click();
-
-        // Wait for it to close (the panel should disappear)
-        await expect(page.locator(".night-close-panel-title")).not.toBeVisible();
-    });
-
-    // ─── Smart Recall ────────────────────────────────────────────
-
-    test("Smart Recall: muncul prompt karena ada gap waktu (5 jam)", async ({ page }) => {
-        // Prepare a backup with an entry created 5 hours ago (> 3h gap triggers prompt)
-        const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000);
-        const todayDate = new Date().toISOString().split("T")[0];
-        const mockBackup = {
-            entries: [
-                { id: "test-recall-1", text: "kopi pagi", amount: 15000, date: todayDate, category: "Makan", createdAt: fiveHoursAgo.toISOString(), updatedAt: fiveHoursAgo.toISOString() }
-            ],
-            rules: []
-        };
-
-        const buffer = Buffer.from(JSON.stringify(mockBackup));
-
-        // Import the backup via file chooser
-        const fileChooserPromise = page.waitForEvent("filechooser");
-        await page.locator("button:has-text('Import Backup')").click();
-        const fileChooser = await fileChooserPromise;
-        await fileChooser.setFiles({
-            name: "kemana-backup.json",
-            mimeType: "application/json",
-            buffer: buffer
-        });
-
-        // Wait for import to settle
-        await page.waitForTimeout(1000);
-
-        // Reload to trigger recall based on the new IndexedDB state
-        await page.reload();
-        await waitForApp(page);
-
-        // Prompt should be visible (gap > 3 hours → "Terakhir kamu catat jam ...")
-        const recallPrompt = page.locator(".smart-recall");
-        await expect(recallPrompt).toBeVisible({ timeout: 10000 });
-        await expect(recallPrompt).toContainText("Terakhir kamu catat jam");
-
-        // Click "Tambah yang barusan" to add an entry
-        await recallPrompt.locator("button:has-text('Tambah yang barusan')").click();
-        const input = page.locator("section.composer input.input");
-        await input.fill("gaji 5jt");
-        await input.press("Enter");
-
-        // Prompt should disappear after submitting (new entry closes the gap)
-        await page.waitForTimeout(500);
-        await expect(page.locator(".smart-recall")).not.toBeVisible();
-    });
-
-    // ─── Import Backup ───────────────────────────────────────────
-
-    test("Import Backup: parse JSON file dan kembalikan data", async ({ page }) => {
-        // Create an empty state first
-        await expect(page.locator("article[data-entry-id]")).toHaveCount(0);
-
-        // Prepare dummy backup in the correct format: { entries: [...], rules: [...] }
-        const todayDate = new Date().toISOString().split("T")[0];
-        const now = new Date().toISOString();
-        const mockBackup = {
-            entries: [
-                { id: "test-import-1", text: "import kopi", amount: 15000, date: todayDate, category: "Makan", createdAt: now, updatedAt: now },
-                { id: "test-import-2", text: "import tiket", amount: 50000, date: todayDate, category: "Transport", createdAt: now, updatedAt: now }
-            ],
-            rules: []
-        };
-
-        // Create file buffer
-        const buffer = Buffer.from(JSON.stringify(mockBackup));
-
-        // Use Playwright's setInputFiles
-        const fileChooserPromise = page.waitForEvent("filechooser");
-        await page.locator("button:has-text('Import Backup')").click();
-        const fileChooser = await fileChooserPromise;
-        await fileChooser.setFiles({
-            name: "kemana-backup.json",
-            mimeType: "application/json",
-            buffer: buffer
-        });
-
-        // Check for success toast
-        await expect(page.locator('[data-sonner-toast]:has-text("Import backup berhasil")')).toBeVisible({ timeout: 10000 });
-
-        // Switch to "Semua" to ensure we see all dates
-        await page.locator("section.range-filter .chip:has-text('Semua')").click();
-
-        // Wait for list to reflect imports
-        await expect(page.locator("article[data-entry-id]")).toHaveCount(2, { timeout: 10000 });
-        await expect(page.locator("article[data-entry-id]").nth(0)).toContainText("import");
-    });
+    await expect(page.locator("section").filter({ hasText: "Import" }).getByText(/Import CSV selesai/).first()).toBeVisible();
+    await page.locator("button[aria-label='Tutup data dan tools']:visible").click();
+
+    await expect(page.getByText("Menampilkan 220 dari 1001 catatan")).toBeVisible();
+    await expect(page.getByText("Memuat catatan lainnya...")).toBeVisible();
+    await expect(page.locator("[data-entry-id]")).toHaveCount(220);
+  });
+
+  test("Insight page menampilkan faktor penyebab dan CTA lanjutan", async ({ page }) => {
+    await quickAdd(page, "makan 35k");
+    await quickAdd(page, "bensin 50k");
+    await quickAdd(page, "kopi 18k");
+
+    await page.locator("nav").last().getByRole("button", { name: "Insight", exact: true }).click();
+
+    await expect(page.getByRole("heading", { name: "Insight" })).toBeVisible();
+    const thirtyDayFilter = page.getByRole("button", { name: "30 hari", exact: true });
+    await thirtyDayFilter.click();
+    await expect(thirtyDayFilter).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByText("30 hari terakhir").first()).toBeVisible();
+
+    const customFilter = page.locator("button[aria-label='Filter rentang tanggal custom']").first();
+    await customFilter.click();
+    await expect(customFilter).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("main input[type='date']")).toHaveCount(2);
+
+    await expect(page.getByRole("heading", { name: "Kenapa segitu?" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Dari mana paling banyak keluar" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Tren 4 pekan" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Transaksi terbesar/i })).toBeVisible();
+
+    await page.getByRole("button", { name: "Lihat detail catatan" }).click();
+    await expect(page.getByRole("heading", { name: "Catatan" })).toBeVisible();
+  });
+
+  test("Bottom sheet close flow stabil (Add/Bulk/Data tools)", async ({ page }) => {
+    await openNotesTab(page);
+    await page.getByRole("button", { name: "Catat pengeluaran" }).click();
+    await expect(page.getByRole("heading", { name: "Catat pengeluaran" })).toBeVisible();
+    await page.locator("button[aria-label='Tutup lembar catatan']:visible").click();
+
+    await page.locator("nav").last().getByRole("button", { name: "Beranda", exact: true }).click();
+    await page.getByRole("button", { name: "Banyak" }).click();
+    await expect(page.getByText("Catat banyak sekaligus")).toBeVisible();
+    await page.locator("button[aria-label='Tutup input massal']:visible").click();
+
+    await openNotesTab(page);
+    await page.getByRole("button", { name: "Data & tools" }).first().click();
+    await expect(page.getByRole("heading", { name: "Data & tools" })).toBeVisible();
+    await page.locator("button[aria-label='Tutup data dan tools']:visible").click();
+  });
+
+  test("Bottom sheet bisa ditutup dengan drag pelan di beberapa halaman", async ({ page }) => {
+    await openNotesTab(page);
+    await page.getByRole("button", { name: "Catat pengeluaran" }).click();
+    await expect(page.getByRole("heading", { name: "Catat pengeluaran" })).toBeVisible();
+    await dragBottomSheetDownToClose(page);
+    await expect(page.getByRole("heading", { name: "Catat pengeluaran" })).not.toBeVisible();
+
+    await page.locator("nav").last().getByRole("button", { name: "Beranda", exact: true }).click();
+    await page.getByRole("button", { name: "Banyak" }).click();
+    await expect(page.getByText("Catat banyak sekaligus")).toBeVisible();
+    await dragBottomSheetDownToClose(page);
+    await expect(page.getByText("Catat banyak sekaligus")).not.toBeVisible();
+
+    await openNotesTab(page);
+    await page.getByRole("button", { name: "Data & tools" }).first().click();
+    await expect(page.getByRole("heading", { name: "Data & tools" })).toBeVisible();
+    await dragBottomSheetDownToClose(page);
+    await expect(page.getByRole("heading", { name: "Data & tools" })).not.toBeVisible();
+  });
+
+  test("Offline mode: quick add dan list tetap berjalan tanpa jaringan", async ({ page }) => {
+    await page.context().setOffline(true);
+    await expect(page.getByText("Offline")).toBeVisible();
+
+    await quickAdd(page, "offline test 11k");
+    await openNotesTab(page);
+    const firstEntry = page.locator("[data-entry-id]").first();
+    await expect(firstEntry).toContainText("offline test");
+    await expect(firstEntry).toContainText("11.000");
+
+    await page.context().setOffline(false);
+  });
+
+  test("Catat pengeluaran: qty menghitung total nominal", async ({ page }) => {
+    await openNotesTab(page);
+    await page.getByRole("button", { name: "Catat pengeluaran" }).click();
+    await expect(page.getByRole("heading", { name: "Catat pengeluaran" })).toBeVisible();
+
+    await page.locator("input[inputmode='numeric']").first().fill("15000");
+    await page.locator("input[aria-label='Jumlah item']").fill("3");
+    await page.getByRole("button", { name: "Makan" }).click();
+    await page.getByRole("button", { name: "Simpan catatan" }).click();
+
+    const firstEntry = page.locator("[data-entry-id]").first();
+    await expect(firstEntry).toContainText("45.000");
+  });
 });

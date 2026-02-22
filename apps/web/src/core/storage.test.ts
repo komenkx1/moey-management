@@ -85,6 +85,14 @@ describe("Dexie Storage", () => {
             expect(normalizeRule(null)).toBeNull();
             expect(normalizeRule({ pattern: 123, match: "equals", category: "Makan" })).toBeNull();
         });
+
+        it("normalizeEntry keeps parser rawInput when available", () => {
+            const raw = makeEntry("raw", "2026-02-20");
+            (raw as Entry & { rawInput?: string }).rawInput = "mcd 3x 15k";
+
+            const normalized = normalizeEntry(raw);
+            expect(normalized?.rawInput).toBe("mcd 3x 15k");
+        });
     });
 
     describe("Backup Export", () => {

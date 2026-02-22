@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
-    DateFilterPreset,
     extractSummedAmountMeta,
     formatDayLabel,
     formatItemPillText,
+    getFilterLabel,
+    getEntryReportAmount,
     getFilteredEntries,
+    normalizeCustomDateRange,
+    paymentMethodLabel,
     getSmartEmptyState,
     getSpendingStatus,
     getSummaryStats,
@@ -105,6 +108,57 @@ describe("Filtering", () => {
         const res = getFilteredEntries(entries, "all", now);
         expect(res.map(e => e.id)).toEqual(["1", "2", "3", "4"]);
     });
+
+    it("filters 'custom' dengan rentang tanggal manual", () => {
+        const customRange = normalizeCustomDateRange({ start: "2026-02-09", end: "2026-02-18" }, now);
+        const res = getFilteredEntries(entries, "custom", now, customRange);
+        expect(res.map(e => e.id)).toEqual(["2", "3"]);
+        expect(getFilterLabel("custom", customRange, now)).toContain("Feb");
+    });
+});
+
+describe("Insight Helpers", () => {
+    it("getEntryReportAmount memakai porsi 'Kamu' saat split tersedia", () => {
+        const entry = makeEntry({
+            amount: 90000,
+            split: {
+                mode: "equal",
+                payer: "Kamu",
+                shares: [
+                    { person: "Kamu", amount: 30000 },
+                    { person: "Budi", amount: 30000 },
+                    { person: "Cici", amount: 30000 }
+                ]
+            }
+        });
+
+        expect(getEntryReportAmount(entry)).toBe(30000);
+    });
+
+    it("sumAmount tetap menjumlahkan porsi report amount", () => {
+        const entries = [
+            makeEntry({
+                amount: 120000,
+                split: {
+                    mode: "equal",
+                    payer: "Kamu",
+                    shares: [
+                        { person: "Kamu", amount: 40000 },
+                        { person: "Dina", amount: 80000 }
+                    ]
+                }
+            }),
+            makeEntry({ id: "2", amount: 15000, split: undefined })
+        ];
+
+        expect(sumAmount(entries)).toBe(55000);
+    });
+
+    it("paymentMethodLabel memberi label natural untuk UI", () => {
+        expect(paymentMethodLabel("Debit")).toBe("Debit");
+        expect(paymentMethodLabel("Unknown")).toBe("Belum pilih");
+        expect(paymentMethodLabel(undefined)).toBe("Belum pilih");
+    });
 });
 
 describe("getSummaryStats", () => {
@@ -140,6 +194,27 @@ describe("getSummaryStats", () => {
         expect(stats.totalAmount).toBe(0);
         expect(stats.emptyState).not.toBeNull();
         expect(stats.emptyState?.title).toContain("Catat pengeluaran");
+    });
+
+    it("summary custom range menghitung rata-rata sesuai jumlah hari rentang", () => {
+        const allEntries = [
+            makeEntry({ id: "1", date: "2026-02-20", amount: 120000 }),
+            makeEntry({ id: "2", date: "2026-02-18", amount: 30000 }),
+            makeEntry({ id: "3", date: "2026-02-10", amount: 45000 })
+        ];
+        const customRange = normalizeCustomDateRange({ start: "2026-02-18", end: "2026-02-20" }, now);
+        const filteredEntries = getFilteredEntries(allEntries, "custom", now, customRange);
+
+        const stats = getSummaryStats({
+            allEntries,
+            filteredEntries,
+            preset: "custom",
+            customRange,
+            now
+        });
+
+        expect(stats.totalAmount).toBe(150000);
+        expect(stats.compareText).toContain("Rata-rata 3 hari");
     });
 });
 
