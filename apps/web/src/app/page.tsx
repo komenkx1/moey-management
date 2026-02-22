@@ -2054,7 +2054,7 @@ export default function DashboardPage() {
               Biar kamu bisa lihat ritme pengeluaran naik/turun dari minggu ke minggu.
             </p>
 
-            <div className="mt-4 flex h-36 items-end justify-between gap-2">
+            <div className="mt-4 grid grid-cols-4 gap-2">
               {insightWeeklySeries.map((week, index) => {
                 const isLatest = index === insightWeeklySeries.length - 1;
                 const height = insightMaxWeekTotal
@@ -2062,16 +2062,23 @@ export default function DashboardPage() {
                   : 16;
 
                 return (
-                  <div key={week.label} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-                    <div
+                  <div key={week.label} className="flex min-w-0 flex-col items-center gap-2">
+                    <div className="flex h-28 w-full items-end rounded-xl bg-bg-subtle/80 px-1.5 pb-1.5">
+                      <div
+                        className={cn(
+                          "w-full rounded-lg transition-[height]",
+                          isLatest ? "bg-brand shadow-[0_4px_14px_rgba(37,99,235,0.24)]" : "bg-brand/35"
+                        )}
+                        style={{ height: `${height}%` }}
+                      />
+                    </div>
+                    <span className="text-center text-[10px] font-semibold text-text-secondary">{week.label}</span>
+                    <span
                       className={cn(
-                        "w-full rounded-t-xl",
-                        isLatest ? "bg-brand shadow-[0_4px_14px_rgba(37,99,235,0.24)]" : "bg-brand/25"
+                        "text-center text-[10px] font-semibold",
+                        isLatest ? "text-brand" : "text-text-tertiary"
                       )}
-                      style={{ height: `${height}%` }}
-                    />
-                    <span className="text-[10px] font-semibold text-text-secondary">{week.label}</span>
-                    <span className={cn("text-[10px] font-semibold", isLatest ? "text-brand" : "text-text-tertiary")}>
+                    >
                       Rp{formatAmountCompact(week.total)}
                     </span>
                   </div>

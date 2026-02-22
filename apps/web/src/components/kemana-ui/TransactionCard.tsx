@@ -98,6 +98,19 @@ function normalizeInputText(value: string): string {
     return value.replace(/\s+/g, " ").trim();
 }
 
+function hasQtyPattern(value: string): boolean {
+    const normalized = normalizeInputText(value).toLowerCase();
+    if (!normalized) {
+        return false;
+    }
+
+    return (
+        /\b\d+\s*[x×]\s*\d+(?:[.,]\d+)?(?:k|rb|jt)?\b/.test(normalized) ||
+        /\b[x×]\s*\d+\b/.test(normalized) ||
+        /\b\d+\s*[x×]\b/.test(normalized)
+    );
+}
+
 function toParserAmountToken(amount: number): string {
     const normalizedAmount = Math.max(0, Math.round(amount));
     if (normalizedAmount >= 1_000 && normalizedAmount % 1_000 === 0) {
@@ -223,6 +236,54 @@ function TransactionCardComponent({
         }
         return splitDisplayText(parserPreview.value.text);
     }, [parserPreview]);
+    const showQuickFormatEditor = useMemo(
+        () => hasQtyPattern(item.rawInput || "") || hasQtyPattern(draftRawInput) || hasQtyPattern(item.title),
+        [draftRawInput, item.rawInput, item.title]
+    );
+    const canApplyQuickFormat = useMemo(() => {
+        if (!parserPreview || !parserPreview.ok) {
+            return false;
+        }
+
+        const parsed = parserPreview.value;
+        const parsedDisplay = parserPreviewDisplay ?? splitDisplayText(parsed.text);
+        const nextTitle = (parsedDisplay.title || draftTitle).trim();
+        const nextNote = parsedDisplay.subtitle ?? "";
+        const nextAmount = parsed.amount;
+        const nextRawInput = parsed.rawInput;
+        const nextSplitEnabled = Boolean(parsed.splitCount && parsed.splitCount > 1);
+        const nextSplitPeopleInput = nextSplitEnabled
+            ? buildSplitPeopleText(parsed.splitCount ?? 2)
+            : "Kamu, Teman";
+        const nextCategory = inferCategory ? inferCategory(parsed.text) : draftCategory;
+
+        return (
+            nextTitle !== draftTitle ||
+            nextNote !== draftNote ||
+            nextAmount !== parsedDraftAmount ||
+            nextRawInput !== normalizedRawInput ||
+            nextSplitEnabled !== splitEnabled ||
+            splitMode !== "equal" ||
+            nextSplitPeopleInput !== splitPeopleInput ||
+            nextCategory !== draftCategory ||
+            Object.keys(splitCustomDraft).length > 0 ||
+            Boolean(splitError)
+        );
+    }, [
+        draftCategory,
+        draftNote,
+        draftTitle,
+        inferCategory,
+        normalizedRawInput,
+        parsedDraftAmount,
+        parserPreview,
+        parserPreviewDisplay,
+        splitEnabled,
+        splitError,
+        splitMode,
+        splitPeopleInput,
+        splitCustomDraft
+    ]);
     const rawInputDirty =
         normalizedRawInput !== normalizeInputText(item.rawInput || getDefaultParserInput(item)) &&
         (normalizedRawInput.length === 0 || Boolean(parserPreview && parserPreview.ok));
@@ -272,6 +333,10 @@ function TransactionCardComponent({
             setFormatFeedback("Format belum dikenali. Lanjut edit manual saja.");
             return;
         }
+        if (!canApplyQuickFormat) {
+            setFormatFeedback("Isi sudah sesuai.");
+            return;
+        }
 
         const parsed = parserPreview.value;
         const parsedDisplay = splitDisplayText(parsed.text);
@@ -294,7 +359,7 @@ function TransactionCardComponent({
         if (inferCategory) {
             setDraftCategory(inferCategory(parsed.text));
         }
-        setFormatFeedback("Format diterapkan ke catatan ini.");
+        setFormatFeedback("Sudah dipakai. Tekan Simpan kalau sudah pas.");
     };
 
     const handleSave = () => {
@@ -426,57 +491,71 @@ function TransactionCardComponent({
                             />
                         </div>
 
-                        <div className="grid gap-1.5">
-                            <div className="flex items-center justify-between px-1">
-                                <label className="text-[12px] font-semibold text-text-secondary">Edit format cepat</label>
-                                <span className="text-[11px] font-medium text-text-tertiary">Opsional</span>
-                            </div>
-                            <Input
-                                value={draftRawInput}
-                                onChange={(event) => {
-                                    setDraftRawInput(event.target.value);
-                                    setFormatFeedback(null);
-                                }}
-                                placeholder="Contoh: mcd 3x 15k 3p"
-                                className="h-10 rounded-xl bg-bg-elevated text-[14px] font-medium"
-                                data-testid="inline-quick-format-input"
-                            />
-                            {parserPreview && parserPreview.ok ? (
-                                <div className="rounded-xl border border-border-subtle bg-bg-elevated px-3 py-2">
-                                    <p className="text-[12px] font-semibold text-text-primary">
-                                        {(parserPreviewDisplay?.title || parserPreview.value.text).trim()} • Rp{formatAmountIDR(parserPreview.value.amount)}
-                                    </p>
-                                    <p className="mt-0.5 text-[11px] font-medium text-text-secondary">
-                                        {parserPreviewDisplay?.subtitle || "Tanpa detail tambahan"}
-                                        {parserPreview.value.splitCount ? ` • ${parserPreview.value.splitCount} orang` : ""}
-                                    </p>
-                                    {parserPreview.warnings?.length ? (
-                                        <p className="mt-1 text-[11px] font-medium text-text-tertiary">
-                                            {warningShortText(parserPreview.warnings[0])}
+                        {showQuickFormatEditor ? (
+                            <div className="grid gap-1.5">
+                                <div className="flex items-center justify-between px-1">
+                                    <label className="text-[12px] font-semibold text-text-secondary">Perbaiki jumlah cepat</label>
+                                    <span className="text-[11px] font-medium text-text-tertiary">Opsional</span>
+                                </div>
+                                <Input
+                                    value={draftRawInput}
+                                    onChange={(event) => {
+                                        setDraftRawInput(event.target.value);
+                                        setFormatFeedback(null);
+                                    }}
+                                    placeholder="Contoh: kopi 5x 50k atau mcd 3x 15k 3p"
+                                    className="h-10 rounded-xl bg-bg-elevated text-[14px] font-medium"
+                                    data-testid="inline-quick-format-input"
+                                />
+                                <p className="px-1 text-[11px] font-medium text-text-tertiary">
+                                    Kalau jumlah item keliru, ubah di sini. Contoh: 3x jadi 5x.
+                                </p>
+                                {parserPreview && parserPreview.ok ? (
+                                    <div className="rounded-xl border border-border-subtle bg-bg-elevated px-3 py-2">
+                                        <p className="text-[12px] font-semibold text-text-primary">
+                                            {(parserPreviewDisplay?.title || parserPreview.value.text).trim()} • Rp{formatAmountIDR(parserPreview.value.amount)}
                                         </p>
-                                    ) : null}
-                                    <button
-                                        type="button"
-                                        onClick={handleApplyQuickFormat}
-                                        className="mt-2 h-8 rounded-lg bg-brand px-3 text-[12px] font-semibold text-white transition-colors hover:bg-brand-pressed"
+                                        <p className="mt-0.5 text-[11px] font-medium text-text-secondary">
+                                            {parserPreviewDisplay?.subtitle || "Tanpa detail tambahan"}
+                                            {parserPreview.value.splitCount ? ` • ${parserPreview.value.splitCount} orang` : ""}
+                                        </p>
+                                        {parserPreview.warnings?.length ? (
+                                            <p className="mt-1 text-[11px] font-medium text-text-tertiary">
+                                                {warningShortText(parserPreview.warnings[0])}
+                                            </p>
+                                        ) : null}
+                                        <button
+                                            type="button"
+                                            onClick={handleApplyQuickFormat}
+                                            disabled={!canApplyQuickFormat}
+                                            className={cn(
+                                                "mt-2 h-8 rounded-lg px-3 text-[12px] font-semibold transition-colors",
+                                                canApplyQuickFormat
+                                                    ? "bg-brand text-white hover:bg-brand-pressed"
+                                                    : "bg-bg-subtle text-text-tertiary"
+                                            )}
                                         data-testid="inline-quick-format-apply"
                                     >
-                                        Terapkan format
+                                        {canApplyQuickFormat ? "Pakai hasil ini" : "Sudah sesuai"}
                                     </button>
+                                    <p className="mt-1 text-[11px] font-medium text-text-tertiary">
+                                        Belum tersimpan. Tekan Simpan kalau sudah pas.
+                                    </p>
                                 </div>
                             ) : normalizedRawInput.length > 0 ? (
                                 <p className="px-1 text-[12px] font-medium text-danger">
-                                    Format belum dikenali. Kamu tetap bisa edit manual.
+                                        Format belum kebaca. Coba tulis seperti 3x 15k, atau edit manual.
                                 </p>
                             ) : (
                                 <p className="px-1 text-[12px] font-medium text-text-tertiary">
-                                    Pakai format seperti: kopi 18k, mcd 3x 15k, dinner 120 3p.
+                                        Contoh: mcd 3x 15k atau dinner 120 3p.
                                 </p>
                             )}
-                            {formatFeedback ? (
-                                <p className="px-1 text-[12px] font-medium text-success">{formatFeedback}</p>
-                            ) : null}
-                        </div>
+                                {formatFeedback ? (
+                                    <p className="px-1 text-[12px] font-medium text-success">{formatFeedback}</p>
+                                ) : null}
+                            </div>
+                        ) : null}
 
                         <div className="grid gap-1.5">
                             <label className="px-1 text-[12px] font-semibold text-text-secondary">Jumlah</label>
