@@ -1,7 +1,11 @@
-import { useState, memo, ReactNode } from "react";
+import { useEffect, useMemo, useState, memo, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { formatAmountIDR } from "@kemana/core/format";
-import { Coffee, Utensils, Car, ShoppingBag, Receipt, MoreHorizontal } from "lucide-react";
+import { buildCustomSplit, buildEqualSplit, normalizePeople } from "@kemana/core/split";
+import { parseQuickAdd } from "@kemana/core/parser";
+import { CATEGORIES, PAYMENT_METHODS, type EntrySplit, type ParseWarning, type PaymentMethod } from "@kemana/core/types";
+import { paymentMethodLabel, splitDisplayText, warningShortText } from "@/lib/kemana-utils";
+import { Coffee, Utensils, Car, ShoppingBag, Receipt, MoreHorizontal, Trash2, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -14,6 +18,9 @@ export interface TransactionItem {
     category: string;
     paymentMethod?: string;
     time: string;
+    split?: EntrySplit;
+    rawInput?: string;
+    parseWarnings?: ParseWarning[];
 }
 
 interface TransactionCardProps {
@@ -21,6 +28,8 @@ interface TransactionCardProps {
     isExpanded: boolean;
     onToggleExpand: () => void;
     onSave?: (updatedItem: TransactionItem) => void;
+    onDelete?: (id: string) => void;
+    inferCategory?: (text: string) => string;
     className?: string;
 }
 
@@ -33,181 +42,693 @@ const CategoryIcons: Record<string, ReactNode> = {
     Lainnya: <MoreHorizontal className="h-5 w-5" />
 };
 
+function parseCurrencyInput(value: string): number {
+    const parsed = Number.parseInt(value.replace(/[^\d]/g, ""), 10);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function splitFingerprint(split?: EntrySplit): string {
+    if (!split || !split.shares.length) {
+        return "none";
+    }
+
+    return `${split.mode}|${split.payer}|${split.shares
+        .map((share) => `${share.person}:${Math.round(share.amount)}`)
+        .join("|")}`;
+}
+
+function formatDateLabel(dateISO: string): string {
+    const parsed = new Date(dateISO);
+    if (Number.isNaN(parsed.getTime())) {
+        return dateISO;
+    }
+    return parsed.toLocaleDateString("id-ID", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+    });
+}
+
+function getInitialPeopleText(item: TransactionItem): string {
+    if (item.split?.shares?.length) {
+        return item.split.shares.map((share) => share.person).join(", ");
+    }
+    return "Kamu, Teman";
+}
+
+function getInitialCustomDraft(item: TransactionItem): Record<string, string> {
+    const draft: Record<string, string> = {};
+    for (const share of item.split?.shares ?? []) {
+        draft[share.person] = String(Math.round(share.amount));
+    }
+    return draft;
+}
+
+function getPaymentMethodText(value?: string): string {
+    if (!value) {
+        return "";
+    }
+    const normalized = PAYMENT_METHODS.includes(value as (typeof PAYMENT_METHODS)[number])
+        ? (value as PaymentMethod)
+        : undefined;
+    return paymentMethodLabel(normalized);
+}
+
+function normalizeInputText(value: string): string {
+    return value.replace(/\s+/g, " ").trim();
+}
+
+function toParserAmountToken(amount: number): string {
+    const normalizedAmount = Math.max(0, Math.round(amount));
+    if (normalizedAmount >= 1_000 && normalizedAmount % 1_000 === 0) {
+        return `${normalizedAmount / 1_000}k`;
+    }
+    return String(normalizedAmount);
+}
+
+function getDefaultParserInput(item: TransactionItem): string {
+    const label = item.title.trim() || "pengeluaran";
+    const amountToken = toParserAmountToken(item.amount);
+    const splitCount = item.split?.shares?.length ?? 0;
+    const splitToken = splitCount > 1 ? ` ${splitCount}p` : "";
+    return normalizeInputText(`${label} ${amountToken}${splitToken}`);
+}
+
+function buildSplitPeopleText(count: number): string {
+    const normalizedCount = Math.max(2, Math.min(20, Math.round(count)));
+    const people = ["Kamu", ...Array.from({ length: normalizedCount - 1 }, (_, index) => `Orang ${index + 2}`)];
+    return people.join(", ");
+}
+
+function warningFingerprint(warnings?: ParseWarning[]): string {
+    return (warnings ?? []).map((warning) => `${warning.code}:${warning.message}`).join("|");
+}
+
 function TransactionCardComponent({
     item,
     isExpanded,
     onToggleExpand,
     onSave,
+    onDelete,
+    inferCategory,
     className
 }: TransactionCardProps) {
-    const [draftAmount, setDraftAmount] = useState(item.amount.toString());
+    const [draftTitle, setDraftTitle] = useState(item.title);
+    const [draftAmount, setDraftAmount] = useState(String(item.amount));
     const [draftNote, setDraftNote] = useState(item.note || "");
-    const [draftDate, setDraftDate] = useState(new Date().toISOString().split('T')[0]); // Mock base date
+    const [draftDate, setDraftDate] = useState(item.time);
+    const [draftCategory, setDraftCategory] = useState(item.category);
+    const [draftPaymentMethod, setDraftPaymentMethod] = useState(item.paymentMethod || "");
+    const [splitEnabled, setSplitEnabled] = useState(Boolean(item.split?.shares?.length));
+    const [splitMode, setSplitMode] = useState<"equal" | "custom">(item.split?.mode ?? "equal");
+    const [splitPeopleInput, setSplitPeopleInput] = useState(getInitialPeopleText(item));
+    const [splitCustomDraft, setSplitCustomDraft] = useState<Record<string, string>>(
+        getInitialCustomDraft(item)
+    );
+    const [draftRawInput, setDraftRawInput] = useState(item.rawInput || getDefaultParserInput(item));
+    const [splitError, setSplitError] = useState<string | null>(null);
+    const [formatFeedback, setFormatFeedback] = useState<string | null>(null);
 
-    // Add split bill mock state
-    const [hasSplit, setHasSplit] = useState(false);
+    const itemSplitFingerprint = useMemo(() => splitFingerprint(item.split), [item.split]);
 
-    const hasChanges = draftAmount !== item.amount.toString() || draftNote !== (item.note || "") || draftDate !== new Date().toISOString().split('T')[0];
+    useEffect(() => {
+        setDraftTitle(item.title);
+        setDraftAmount(String(item.amount));
+        setDraftNote(item.note || "");
+        setDraftDate(item.time);
+        setDraftCategory(item.category);
+        setDraftPaymentMethod(item.paymentMethod || "");
+        setSplitEnabled(Boolean(item.split?.shares?.length));
+        setSplitMode(item.split?.mode ?? "equal");
+        setSplitPeopleInput(getInitialPeopleText(item));
+        setSplitCustomDraft(getInitialCustomDraft(item));
+        setDraftRawInput(item.rawInput || getDefaultParserInput(item));
+        setSplitError(null);
+        setFormatFeedback(null);
+    }, [
+        item.id,
+        item.title,
+        item.amount,
+        item.note,
+        item.time,
+        item.category,
+        item.paymentMethod,
+        item.rawInput,
+        itemSplitFingerprint
+    ]);
+
+    const parsedDraftAmount = useMemo(() => parseCurrencyInput(draftAmount), [draftAmount]);
+    const splitPeople = useMemo(
+        () => normalizePeople(splitPeopleInput.split(",").map((person) => person.trim())),
+        [splitPeopleInput]
+    );
+
+    useEffect(() => {
+        setSplitCustomDraft((prev) => {
+            const next: Record<string, string> = {};
+            for (const person of splitPeople) {
+                next[person] = prev[person] ?? "";
+            }
+            const changed =
+                Object.keys(next).length !== Object.keys(prev).length ||
+                Object.entries(next).some(([person, amount]) => prev[person] !== amount);
+            return changed ? next : prev;
+        });
+    }, [splitPeople]);
+
+    const customShares = useMemo(
+        () =>
+            splitPeople.map((person) => ({
+                person,
+                amount: parseCurrencyInput(splitCustomDraft[person] ?? "")
+            })),
+        [splitCustomDraft, splitPeople]
+    );
+    const customTotal = useMemo(
+        () => customShares.reduce((sum, share) => sum + share.amount, 0),
+        [customShares]
+    );
+    const customDiff = customTotal - parsedDraftAmount;
+    const normalizedRawInput = useMemo(() => normalizeInputText(draftRawInput), [draftRawInput]);
+    const parserPreview = useMemo(() => {
+        if (!isExpanded || normalizedRawInput.length === 0) {
+            return null;
+        }
+        const parseDate = Number.isNaN(new Date(draftDate).getTime()) ? new Date() : new Date(draftDate);
+        return parseQuickAdd(normalizedRawInput, parseDate, "quick_add");
+    }, [draftDate, isExpanded, normalizedRawInput]);
+    const parserPreviewDisplay = useMemo(() => {
+        if (!parserPreview || !parserPreview.ok) {
+            return null;
+        }
+        return splitDisplayText(parserPreview.value.text);
+    }, [parserPreview]);
+    const rawInputDirty =
+        normalizedRawInput !== normalizeInputText(item.rawInput || getDefaultParserInput(item)) &&
+        (normalizedRawInput.length === 0 || Boolean(parserPreview && parserPreview.ok));
+
+    const draftSplit = useMemo<EntrySplit | undefined>(() => {
+        if (!splitEnabled || parsedDraftAmount <= 0 || splitPeople.length < 2) {
+            return undefined;
+        }
+
+        if (splitMode === "equal") {
+            return {
+                mode: "equal",
+                payer: item.split?.payer ?? "Kamu",
+                shares: buildEqualSplit(parsedDraftAmount, splitPeople)
+            };
+        }
+
+        const validated = buildCustomSplit(parsedDraftAmount, customShares);
+        if (!validated) {
+            return undefined;
+        }
+        return {
+            mode: "custom",
+            payer: item.split?.payer ?? "Kamu",
+            shares: validated
+        };
+    }, [customShares, item.split?.payer, parsedDraftAmount, splitEnabled, splitMode, splitPeople]);
+
+    const splitDirty =
+        splitEnabled !== Boolean(item.split?.shares?.length) ||
+        splitMode !== (item.split?.mode ?? "equal") ||
+        splitPeopleInput.trim() !== getInitialPeopleText(item) ||
+        splitFingerprint(draftSplit) !== itemSplitFingerprint;
+
+    const hasChanges =
+        draftTitle.trim() !== item.title.trim() ||
+        parsedDraftAmount !== item.amount ||
+        draftNote !== (item.note || "") ||
+        draftDate !== item.time ||
+        draftCategory !== item.category ||
+        draftPaymentMethod !== (item.paymentMethod || "") ||
+        splitDirty ||
+        rawInputDirty;
+
+    const handleApplyQuickFormat = () => {
+        if (!parserPreview || !parserPreview.ok) {
+            setFormatFeedback("Format belum dikenali. Lanjut edit manual saja.");
+            return;
+        }
+
+        const parsed = parserPreview.value;
+        const parsedDisplay = splitDisplayText(parsed.text);
+        setDraftTitle(parsedDisplay.title || draftTitle);
+        setDraftNote(parsedDisplay.subtitle ?? "");
+        setDraftAmount(String(parsed.amount));
+        setDraftRawInput(parsed.rawInput);
+
+        if (parsed.splitCount && parsed.splitCount > 1) {
+            setSplitEnabled(true);
+            setSplitMode("equal");
+            setSplitPeopleInput(buildSplitPeopleText(parsed.splitCount));
+        } else {
+            setSplitEnabled(false);
+            setSplitMode("equal");
+            setSplitPeopleInput("Kamu, Teman");
+        }
+        setSplitCustomDraft({});
+        setSplitError(null);
+        if (inferCategory) {
+            setDraftCategory(inferCategory(parsed.text));
+        }
+        setFormatFeedback("Format diterapkan ke catatan ini.");
+    };
 
     const handleSave = () => {
-        if (onSave) {
-            onSave({
-                ...item,
-                amount: parseInt(draftAmount, 10) || 0,
-                note: draftNote,
-                time: draftDate // Mock apply 
-            });
+        if (!onSave) {
+            return;
         }
-        onToggleExpand(); // Close after save
+
+        if (parsedDraftAmount <= 0) {
+            setSplitError("Nominal harus lebih dari 0.");
+            return;
+        }
+
+        if (splitEnabled && splitPeople.length < 2) {
+            setSplitError("Split butuh minimal 2 orang.");
+            return;
+        }
+
+        if (splitEnabled && splitMode === "custom" && customDiff !== 0) {
+            setSplitError(
+                customDiff < 0
+                    ? `Nominal split kurang Rp${formatAmountIDR(Math.abs(customDiff))}`
+                    : `Nominal split lebih Rp${formatAmountIDR(customDiff)}`
+            );
+            return;
+        }
+
+        let nextRawInput = item.rawInput;
+        let nextWarnings = item.parseWarnings;
+        if (rawInputDirty) {
+            if (normalizedRawInput.length === 0) {
+                nextRawInput = undefined;
+                nextWarnings = undefined;
+            } else if (parserPreview && parserPreview.ok) {
+                nextRawInput = parserPreview.value.rawInput;
+                nextWarnings = parserPreview.warnings;
+            }
+        }
+
+        onSave({
+            ...item,
+            title: draftTitle.trim() || item.title,
+            amount: parsedDraftAmount,
+            note: draftNote.trim() || undefined,
+            time: draftDate,
+            category: draftCategory,
+            paymentMethod: draftPaymentMethod || undefined,
+            split: draftSplit,
+            rawInput: nextRawInput,
+            parseWarnings: nextWarnings
+        });
+        onToggleExpand();
     };
 
     const handleCancel = () => {
-        // Reset drafts
-        setDraftAmount(item.amount.toString());
+        setDraftTitle(item.title);
+        setDraftAmount(String(item.amount));
         setDraftNote(item.note || "");
-        setDraftDate(new Date().toISOString().split('T')[0]);
+        setDraftDate(item.time);
+        setDraftCategory(item.category);
+        setDraftPaymentMethod(item.paymentMethod || "");
+        setSplitEnabled(Boolean(item.split?.shares?.length));
+        setSplitMode(item.split?.mode ?? "equal");
+        setSplitPeopleInput(getInitialPeopleText(item));
+        setSplitCustomDraft(getInitialCustomDraft(item));
+        setDraftRawInput(item.rawInput || getDefaultParserInput(item));
+        setSplitError(null);
+        setFormatFeedback(null);
         onToggleExpand();
     };
+
+    const splitSummary = draftSplit?.shares.slice(0, 3) ?? [];
 
     return (
         <div
             className={cn(
                 "group flex flex-col overflow-hidden rounded-2xl bg-bg-elevated transition-all",
                 isExpanded
-                    ? "ring-1 ring-border-subtle shadow-[0_8px_30px_rgba(0,0,0,0.06)] scale-[1.01] my-1"
+                    ? "my-1 scale-[1.005] ring-1 ring-border-subtle shadow-[0_8px_24px_rgba(15,23,42,0.08)]"
                     : "hover:bg-bg-subtle active:scale-[0.99]",
                 className
             )}
         >
-            {/* Collapsed Header Area (Always visible) */}
             <button
                 onClick={onToggleExpand}
-                className="flex items-center gap-3 p-4 text-left w-full focus:outline-none"
+                className="flex w-full items-center gap-3 p-4 text-left focus:outline-none"
             >
-                <div className={cn(
-                    "flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition-colors",
-                    "bg-bg-subtle text-text-secondary group-hover:bg-brand-soft group-hover:text-brand"
-                )}>
+                <div
+                    className={cn(
+                        "flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition-colors",
+                        "bg-bg-subtle text-text-secondary group-hover:bg-brand-soft group-hover:text-brand"
+                    )}
+                >
                     {CategoryIcons[item.category] || CategoryIcons["Lainnya"]}
                 </div>
 
-                <div className="flex flex-1 flex-col justify-center min-w-0">
+                <div className="flex min-w-0 flex-1 flex-col justify-center">
                     <span className="truncate text-[15px] font-bold text-text-primary">
                         {item.title}
                     </span>
-                    <span className="truncate text-[13px] font-medium text-text-tertiary mt-0.5">
-                        {item.time} {item.paymentMethod ? `• ${item.paymentMethod}` : ""}
+                    <span className="mt-0.5 truncate text-[12px] font-medium text-text-tertiary">
+                        {formatDateLabel(item.time)}
+                        {item.paymentMethod ? ` • ${getPaymentMethodText(item.paymentMethod)}` : ""}
+                        {item.split?.shares?.length ? ` • Split ${item.split.shares.length} orang` : ""}
                     </span>
                 </div>
 
-                <div className="flex flex-col items-end justify-center shrink-0 pl-2">
-                    <span
-                        className={cn(
-                            "text-[15px] font-bold",
-                            "text-text-primary"
-                        )}
-                    >
+                <div className="flex shrink-0 flex-col items-end justify-center pl-2">
+                    <span className="text-[15px] font-bold text-text-primary">
                         -Rp{formatAmountIDR(item.amount)}
                     </span>
-                    {item.note && !isExpanded && (
-                        <span className="truncate max-w-[100px] text-[12px] font-medium text-text-tertiary mt-0.5">
+                    {item.note && !isExpanded ? (
+                        <span className="mt-0.5 max-w-[100px] truncate text-[12px] font-medium text-text-tertiary">
                             {item.note}
                         </span>
-                    )}
+                    ) : null}
                 </div>
             </button>
 
-            {/* Expanded Inline Edit Area (Lazy rendered) */}
-            {isExpanded && (
-                <div className="border-t border-border-subtle bg-bg-base/30 p-4 animate-in fade-in slide-in-from-top-2 duration-200">
+            {isExpanded ? (
+                <div className="animate-in slide-in-from-top-2 fade-in border-t border-border-subtle bg-bg-base/30 p-4 duration-200">
                     <div className="flex flex-col gap-4">
+                        <div className="grid gap-1.5">
+                            <label className="px-1 text-[12px] font-semibold text-text-secondary">Nama catatan</label>
+                            <Input
+                                value={draftTitle}
+                                onChange={(event) => setDraftTitle(event.target.value)}
+                                placeholder="Misal: Makan siang"
+                                className="h-11 rounded-xl bg-bg-elevated text-[15px] font-semibold"
+                            />
+                        </div>
 
-                        <div className="grid gap-1">
-                            <label className="text-[12px] font-semibold text-text-secondary px-1">Jumlah</label>
+                        <div className="grid gap-1.5">
+                            <div className="flex items-center justify-between px-1">
+                                <label className="text-[12px] font-semibold text-text-secondary">Edit format cepat</label>
+                                <span className="text-[11px] font-medium text-text-tertiary">Opsional</span>
+                            </div>
+                            <Input
+                                value={draftRawInput}
+                                onChange={(event) => {
+                                    setDraftRawInput(event.target.value);
+                                    setFormatFeedback(null);
+                                }}
+                                placeholder="Contoh: mcd 3x 15k 3p"
+                                className="h-10 rounded-xl bg-bg-elevated text-[14px] font-medium"
+                                data-testid="inline-quick-format-input"
+                            />
+                            {parserPreview && parserPreview.ok ? (
+                                <div className="rounded-xl border border-border-subtle bg-bg-elevated px-3 py-2">
+                                    <p className="text-[12px] font-semibold text-text-primary">
+                                        {(parserPreviewDisplay?.title || parserPreview.value.text).trim()} • Rp{formatAmountIDR(parserPreview.value.amount)}
+                                    </p>
+                                    <p className="mt-0.5 text-[11px] font-medium text-text-secondary">
+                                        {parserPreviewDisplay?.subtitle || "Tanpa detail tambahan"}
+                                        {parserPreview.value.splitCount ? ` • ${parserPreview.value.splitCount} orang` : ""}
+                                    </p>
+                                    {parserPreview.warnings?.length ? (
+                                        <p className="mt-1 text-[11px] font-medium text-text-tertiary">
+                                            {warningShortText(parserPreview.warnings[0])}
+                                        </p>
+                                    ) : null}
+                                    <button
+                                        type="button"
+                                        onClick={handleApplyQuickFormat}
+                                        className="mt-2 h-8 rounded-lg bg-brand px-3 text-[12px] font-semibold text-white transition-colors hover:bg-brand-pressed"
+                                        data-testid="inline-quick-format-apply"
+                                    >
+                                        Terapkan format
+                                    </button>
+                                </div>
+                            ) : normalizedRawInput.length > 0 ? (
+                                <p className="px-1 text-[12px] font-medium text-danger">
+                                    Format belum dikenali. Kamu tetap bisa edit manual.
+                                </p>
+                            ) : (
+                                <p className="px-1 text-[12px] font-medium text-text-tertiary">
+                                    Pakai format seperti: kopi 18k, mcd 3x 15k, dinner 120 3p.
+                                </p>
+                            )}
+                            {formatFeedback ? (
+                                <p className="px-1 text-[12px] font-medium text-success">{formatFeedback}</p>
+                            ) : null}
+                        </div>
+
+                        <div className="grid gap-1.5">
+                            <label className="px-1 text-[12px] font-semibold text-text-secondary">Jumlah</label>
                             <Input
                                 type="number"
                                 value={draftAmount}
-                                onChange={(e) => setDraftAmount(e.target.value)}
+                                onChange={(event) => setDraftAmount(event.target.value)}
                                 className="h-11 rounded-xl bg-bg-elevated text-[16px] font-semibold tracking-wide"
                             />
                         </div>
 
-                        <div className="grid gap-1">
-                            <label className="text-[12px] font-semibold text-text-secondary px-1">Catatan</label>
+                        <div className="grid gap-1.5">
+                            <label className="px-1 text-[12px] font-semibold text-text-secondary">Catatan</label>
                             <Input
                                 value={draftNote}
-                                onChange={(e) => setDraftNote(e.target.value)}
+                                onChange={(event) => setDraftNote(event.target.value)}
                                 placeholder="Tambah detail..."
                                 className="h-11 rounded-xl bg-bg-elevated text-[15px]"
                             />
                         </div>
 
-                        <div className="grid gap-1 mt-1">
-                            <label className="text-[12px] font-semibold text-text-secondary px-1">Tanggal</label>
+                        <div className="mt-0.5 grid grid-cols-2 gap-3">
+                            <div className="grid gap-1.5">
+                                <label className="px-1 text-[12px] font-semibold text-text-secondary">Kategori</label>
+                                <select
+                                    value={draftCategory}
+                                    onChange={(event) => setDraftCategory(event.target.value)}
+                                    className="h-11 appearance-none rounded-xl border border-border-subtle bg-bg-elevated px-3 text-[15px] focus:outline-none focus:ring-2 focus:ring-brand/50"
+                                >
+                                    {CATEGORIES.map((category) => (
+                                        <option key={category} value={category}>
+                                            {category}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="grid gap-1.5">
+                                <label className="px-1 text-[12px] font-semibold text-text-secondary">Metode bayar</label>
+                                <select
+                                    value={draftPaymentMethod}
+                                    onChange={(event) => setDraftPaymentMethod(event.target.value)}
+                                    className="h-11 appearance-none rounded-xl border border-border-subtle bg-bg-elevated px-3 text-[15px] focus:outline-none focus:ring-2 focus:ring-brand/50"
+                                >
+                                    <option value="">Pilih...</option>
+                                    {PAYMENT_METHODS.filter((method) => method !== "Unknown").map((method) => (
+                                        <option key={method} value={method}>
+                                            {paymentMethodLabel(method)}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="grid gap-1.5">
+                            <label className="px-1 text-[12px] font-semibold text-text-secondary">Tanggal</label>
                             <Input
                                 type="date"
                                 value={draftDate}
-                                onChange={(e) => setDraftDate(e.target.value)}
+                                onChange={(event) => setDraftDate(event.target.value)}
                                 className="h-11 rounded-xl bg-bg-elevated text-[15px]"
                             />
                         </div>
 
-                        {/* Split Bill CTA */}
-                        <div className="flex flex-col gap-2 mt-2 pt-3 border-t border-border-subtle/50">
-                            <div className="flex items-center justify-between px-1">
-                                <span className="text-[12px] font-semibold text-text-secondary">Split Bill</span>
-                                {hasSplit && <span className="text-[12px] font-medium text-success">Aktif (2 orang)</span>}
-                            </div>
-                            <div className="flex gap-2">
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setHasSplit(!hasSplit)}
-                                    className={cn("flex-1 h-10 rounded-xl text-[13px] border-border-subtle", hasSplit ? "bg-brand-soft text-brand border-brand/20" : "")}
+                        <div className="flex flex-col gap-3 rounded-2xl border border-border-subtle/80 bg-bg-elevated p-3.5">
+                            <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                    <Users className="h-[18px] w-[18px] text-text-secondary" />
+                                    <span className="text-[12px] font-semibold text-text-secondary">Split transaksi</span>
+                                </div>
+                                <span
+                                    className={cn(
+                                        "rounded-full px-2.5 py-1 text-[11px] font-semibold",
+                                        splitEnabled
+                                            ? "bg-brand-soft text-brand"
+                                            : "bg-bg-subtle text-text-tertiary"
+                                    )}
                                 >
-                                    Bagi Rata
+                                    {splitEnabled ? `${splitPeople.length || 0} orang` : "Opsional"}
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2">
+                                <Button
+                                    type="button"
+                                    variant={!splitEnabled ? "default" : "outline"}
+                                    className={cn(
+                                        "h-9 rounded-xl border-border-subtle text-[12px] font-semibold",
+                                        !splitEnabled ? "bg-brand text-white hover:bg-brand-pressed" : ""
+                                    )}
+                                    onClick={() => {
+                                        setSplitEnabled(false);
+                                        setSplitError(null);
+                                    }}
+                                >
+                                    Tanpa split
                                 </Button>
                                 <Button
-                                    variant="outline"
-                                    onClick={() => setHasSplit(true)}
-                                    className="flex-1 h-10 rounded-xl text-[13px] border-border-subtle"
+                                    type="button"
+                                    variant={splitEnabled && splitMode === "equal" ? "default" : "outline"}
+                                    className={cn(
+                                        "h-9 rounded-xl border-border-subtle text-[12px] font-semibold",
+                                        splitEnabled && splitMode === "equal" ? "bg-brand text-white hover:bg-brand-pressed" : ""
+                                    )}
+                                    onClick={() => {
+                                        setSplitEnabled(true);
+                                        setSplitMode("equal");
+                                        setSplitError(null);
+                                    }}
                                 >
-                                    Custom Split
+                                    Bagi rata
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant={splitEnabled && splitMode === "custom" ? "default" : "outline"}
+                                    className={cn(
+                                        "h-9 rounded-xl border-border-subtle text-[12px] font-semibold",
+                                        splitEnabled && splitMode === "custom" ? "bg-brand text-white hover:bg-brand-pressed" : ""
+                                    )}
+                                    onClick={() => {
+                                        setSplitEnabled(true);
+                                        setSplitMode("custom");
+                                        setSplitError(null);
+                                    }}
+                                >
+                                    Custom
                                 </Button>
                             </div>
+
+                            {splitEnabled ? (
+                                <div className="grid gap-2">
+                                    <Input
+                                        value={splitPeopleInput}
+                                        onChange={(event) => setSplitPeopleInput(event.target.value)}
+                                        placeholder="Kamu, Budi, Cici"
+                                        className="h-10 rounded-xl bg-bg-base text-[14px]"
+                                    />
+
+                                    {splitMode === "custom" ? (
+                                        <div className="grid gap-2">
+                                            {splitPeople.map((person) => (
+                                                <div key={person} className="flex items-center gap-2">
+                                                    <span className="min-w-[72px] text-[12px] font-medium text-text-secondary">
+                                                        {person}
+                                                    </span>
+                                                    <Input
+                                                        type="number"
+                                                        value={splitCustomDraft[person] ?? ""}
+                                                        onChange={(event) =>
+                                                            setSplitCustomDraft((prev) => ({
+                                                                ...prev,
+                                                                [person]: event.target.value
+                                                            }))
+                                                        }
+                                                        placeholder="0"
+                                                        className="h-9 rounded-xl bg-bg-base text-[13px]"
+                                                    />
+                                                </div>
+                                            ))}
+                                            <span
+                                                className={cn(
+                                                    "text-[12px] font-medium",
+                                                    customDiff === 0 ? "text-success" : "text-warning"
+                                                )}
+                                            >
+                                                {customDiff === 0
+                                                    ? "Nominal split sudah pas."
+                                                    : customDiff < 0
+                                                        ? `Masih kurang Rp${formatAmountIDR(Math.abs(customDiff))}`
+                                                        : `Kelebihan Rp${formatAmountIDR(customDiff)}`}
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {splitSummary.map((share) => (
+                                                <span
+                                                    key={share.person}
+                                                    className="rounded-full border border-border-subtle bg-bg-base px-2.5 py-1 text-[11px] font-medium text-text-secondary"
+                                                >
+                                                    {share.person} Rp{formatAmountIDR(share.amount)}
+                                                </span>
+                                            ))}
+                                            {(draftSplit?.shares.length ?? 0) > splitSummary.length ? (
+                                                <span className="rounded-full border border-border-subtle bg-bg-base px-2.5 py-1 text-[11px] font-medium text-text-tertiary">
+                                                    +{(draftSplit?.shares.length ?? 0) - splitSummary.length} orang
+                                                </span>
+                                            ) : null}
+                                        </div>
+                                    )}
+                                </div>
+                            ) : null}
                         </div>
 
-                        {hasChanges && (
-                            <span className="text-[12px] font-medium text-warning px-1 mt-1">
-                                Perubahan belum disimpan
-                            </span>
-                        )}
+                        {hasChanges ? (
+                            <span className="px-1 text-[12px] font-medium text-warning">Perubahan belum disimpan</span>
+                        ) : null}
 
-                        <div className="flex items-center gap-3 pt-3 mt-1 border-t border-border-subtle/50">
+                        {splitError ? (
+                            <span className="px-1 text-[12px] font-medium text-danger">{splitError}</span>
+                        ) : null}
+
+                        <div className="mt-1 flex flex-wrap items-center justify-between gap-2 border-t border-border-subtle/60 pt-3">
                             <Button
+                                type="button"
                                 variant="ghost"
-                                onClick={handleCancel}
-                                className="flex-1 rounded-xl h-11 font-semibold text-text-secondary hover:bg-bg-subtle active:bg-border-subtle"
+                                onClick={() => onDelete?.(item.id)}
+                                className="h-9 rounded-lg px-2 text-[12px] font-semibold text-danger/90 transition-colors hover:bg-danger-soft/45 hover:text-danger"
                             >
-                                Batal
+                                <Trash2 className="h-4 w-4" />
+                                Hapus
                             </Button>
-                            <Button
-                                onClick={handleSave}
-                                className="flex-1 rounded-xl h-11 font-bold bg-brand hover:bg-brand-pressed text-white shadow-sm"
-                            >
-                                Simpan
-                            </Button>
-                        </div>
 
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={handleCancel}
+                                    className="h-10 min-w-[90px] rounded-xl border border-border-subtle bg-bg-base px-4 text-[13px] font-semibold text-text-secondary transition-colors hover:border-text-secondary/30 hover:text-text-primary"
+                                >
+                                    Batal
+                                </Button>
+                                <Button
+                                    type="button"
+                                    onClick={handleSave}
+                                    className="h-10 min-w-[104px] rounded-xl bg-brand px-5 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-brand-pressed"
+                                >
+                                    Simpan
+                                </Button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            )}
+            ) : null}
         </div>
     );
 }
 
-// React.memo to prevent re-rendering the whole list when one card expands
-export const TransactionCard = memo(TransactionCardComponent, (prev, next) => {
-    return prev.item.amount === next.item.amount &&
+function isTransactionCardPropsEqual(prev: TransactionCardProps, next: TransactionCardProps): boolean {
+    return (
+        prev.isExpanded === next.isExpanded &&
+        prev.item.id === next.item.id &&
+        prev.item.title === next.item.title &&
         prev.item.note === next.item.note &&
-        prev.isExpanded === next.isExpanded;
-});
+        prev.item.amount === next.item.amount &&
+        prev.item.category === next.item.category &&
+        prev.item.paymentMethod === next.item.paymentMethod &&
+        prev.item.time === next.item.time &&
+        prev.item.rawInput === next.item.rawInput &&
+        warningFingerprint(prev.item.parseWarnings) === warningFingerprint(next.item.parseWarnings) &&
+        splitFingerprint(prev.item.split) === splitFingerprint(next.item.split)
+    );
+}
+
+// Ready for virtualization integration (react-window) by keeping row props stable and memoized.
+export const TransactionCard = memo(TransactionCardComponent, isTransactionCardPropsEqual);

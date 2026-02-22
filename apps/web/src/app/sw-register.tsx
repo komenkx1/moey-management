@@ -1,34 +1,81 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
-type SWStatus = "idle" | "ready";
+const CONNECTION_BADGE_DURATION_MS = 2400;
+const UPDATE_BANNER_DISMISSED_SESSION_KEY = "kemana.updateBanner.dismissedSession.v1";
 
 export default function SWRegister() {
-  const [isOffline, setIsOffline] = useState(false);
-  const [swStatus, setSwStatus] = useState<SWStatus>("idle");
+  const [connectionStatus, setConnectionStatus] = useState<"online" | "offline">("online");
+  const [isConnectionBadgeVisible, setIsConnectionBadgeVisible] = useState(false);
   const [updateReady, setUpdateReady] = useState(false);
+  const [isUpdateBannerDismissed, setIsUpdateBannerDismissed] = useState(false);
   const waitingRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
   const hasReloadedRef = useRef(false);
+  const lastConnectionStateRef = useRef<boolean | null>(null);
+  const hideConnectionBadgeTimeoutRef = useRef<number | null>(null);
+
+  const clearConnectionBadgeTimer = useCallback(() => {
+    if (hideConnectionBadgeTimeoutRef.current !== null) {
+      window.clearTimeout(hideConnectionBadgeTimeoutRef.current);
+      hideConnectionBadgeTimeoutRef.current = null;
+    }
+  }, []);
+
+  const showConnectionBadge = useCallback(() => {
+    setIsConnectionBadgeVisible(true);
+    clearConnectionBadgeTimer();
+    hideConnectionBadgeTimeoutRef.current = window.setTimeout(() => {
+      setIsConnectionBadgeVisible(false);
+      hideConnectionBadgeTimeoutRef.current = null;
+    }, CONNECTION_BADGE_DURATION_MS);
+  }, [clearConnectionBadgeTimer]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
 
-    const handleConnection = () => {
-      setIsOffline(!window.navigator.onLine);
+    try {
+      setIsUpdateBannerDismissed(window.sessionStorage.getItem(UPDATE_BANNER_DISMISSED_SESSION_KEY) === "1");
+    } catch {
+      setIsUpdateBannerDismissed(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const syncConnectionState = (forceShowBadge = false) => {
+      const isOnline = window.navigator.onLine;
+      const previous = lastConnectionStateRef.current;
+      lastConnectionStateRef.current = isOnline;
+      setConnectionStatus(isOnline ? "online" : "offline");
+
+      if (forceShowBadge || previous === null || previous !== isOnline) {
+        showConnectionBadge();
+      }
     };
 
-    handleConnection();
-    window.addEventListener("online", handleConnection);
-    window.addEventListener("offline", handleConnection);
+    syncConnectionState(true);
+
+    const handleOnline = () => syncConnectionState();
+    const handleOffline = () => syncConnectionState();
+    const handlePageShow = () => syncConnectionState(true);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener("pageshow", handlePageShow);
 
     return () => {
-      window.removeEventListener("online", handleConnection);
-      window.removeEventListener("offline", handleConnection);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("pageshow", handlePageShow);
+      clearConnectionBadgeTimer();
     };
-  }, []);
+  }, [clearConnectionBadgeTimer, showConnectionBadge]);
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "production") {
@@ -69,12 +116,6 @@ export default function SWRegister() {
           markUpdateReady(registration);
         }
 
-        navigator.serviceWorker.ready.then(() => {
-          if (isMounted) {
-            setSwStatus("ready");
-          }
-        });
-
         registration.addEventListener("updatefound", () => {
           const installingWorker = registration.installing;
           if (!installingWorker) {
@@ -96,6 +137,15 @@ export default function SWRegister() {
     };
   }, []);
 
+  const handleDismissUpdate = useCallback(() => {
+    setIsUpdateBannerDismissed(true);
+    try {
+      window.sessionStorage.setItem(UPDATE_BANNER_DISMISSED_SESSION_KEY, "1");
+    } catch {
+      // Ignore sessionStorage errors.
+    }
+  }, []);
+
   const handleApplyUpdate = () => {
     const waitingWorker = waitingRegistrationRef.current?.waiting;
     if (!waitingWorker) {
@@ -106,19 +156,25 @@ export default function SWRegister() {
 
   return (
     <>
-      <div
-        className={`pwa-status-badge ${isOffline ? "offline" : "online"}`}
-        role="status"
-        aria-live="polite"
-      >
-        {isOffline ? "Offline" : swStatus === "ready" ? "Siap offline" : "Online"}
-      </div>
-      {updateReady ? (
+      {isConnectionBadgeVisible ? (
+        <div className={`pwa-status-badge ${connectionStatus}`} role="status" aria-live="polite">
+          {connectionStatus === "offline" ? "Offline" : "Online"}
+        </div>
+      ) : null}
+      {updateReady && !isUpdateBannerDismissed ? (
         <div className="pwa-update-banner" role="status" aria-live="polite">
-          <span>Update tersedia</span>
-          <button type="button" className="btn btn-sm secondary" onClick={handleApplyUpdate}>
-            Muat ulang
-          </button>
+          <div className="pwa-update-banner-main">
+            <span className="pwa-update-banner-title">Versi baru siap dipakai</span>
+            <span className="pwa-update-banner-subtitle">Muat ulang untuk pakai update terbaru.</span>
+          </div>
+          <div className="pwa-update-banner-actions">
+            <button type="button" className="btn btn-sm ghost" onClick={handleDismissUpdate}>
+              Nanti
+            </button>
+            <button type="button" className="btn btn-sm secondary" onClick={handleApplyUpdate}>
+              Muat ulang
+            </button>
+          </div>
         </div>
       ) : null}
     </>

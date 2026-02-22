@@ -18,6 +18,8 @@ export default function SummaryHeroCard({
     className,
     children,
 }: SummaryHeroCardProps) {
+    const roundedAveragePerDay = Math.max(0, Math.round(averagePerDay || 0));
+
     return (
         <div
             className={cn(
@@ -44,7 +46,9 @@ export default function SummaryHeroCard({
                 </div>
                 <div className="flex flex-col gap-0.5">
                     <span className="text-[12px] font-medium text-text-tertiary">Rata-rata harian</span>
-                    <span className="text-[14px] font-semibold text-text-primary">Rp{formatAmountIDR(averagePerDay)}/hari</span>
+                    <span className="text-[14px] font-semibold text-text-primary">
+                        Rp{formatAmountIDR(roundedAveragePerDay)}/hari
+                    </span>
                 </div>
             </div>
 

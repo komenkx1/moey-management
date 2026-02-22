@@ -3,6 +3,7 @@ import PwaInstallBanner from "@/components/PwaInstallBanner";
 import SafeAreaSync from "./safe-area-sync";
 import SWRegister from "./sw-register";
 import ThemeColorSync from "./theme-color";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -40,6 +41,7 @@ export default function RootLayout({
         <SafeAreaSync />
         <PwaInstallBanner />
         {children}
+        <Toaster position="bottom-center" richColors />
         <ThemeColorSync />
         <SWRegister />
       </body>

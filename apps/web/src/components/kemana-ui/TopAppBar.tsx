@@ -7,13 +7,39 @@ interface TopAppBarProps {
     actionIcon?: ReactNode;
     onActionClick?: () => void;
     className?: string;
+    showVersion?: boolean;
 }
 
-export default function TopAppBar({ title, subtitle, actionIcon, onActionClick, className }: TopAppBarProps) {
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "dev";
+
+export default function TopAppBar({
+    title,
+    subtitle,
+    actionIcon,
+    onActionClick,
+    className,
+    showVersion = true
+}: TopAppBarProps) {
     return (
-        <header className={cn("sticky top-0 z-10 flex w-full items-center justify-between bg-bg-base/90 px-4 py-4 backdrop-blur-md safe-top", className)}>
+        <header
+            className={cn(
+                "safe-top sticky top-0 z-40 flex w-full items-center justify-between border-b border-border-subtle/70 bg-bg-base/96 px-4 py-4 backdrop-blur-md supports-[backdrop-filter]:bg-bg-base/88",
+                className
+            )}
+        >
             <div className="flex flex-col gap-0.5">
-                <h1 className="text-[20px] font-bold leading-tight text-text-primary">{title}</h1>
+                <div className="flex items-center gap-2">
+                    <h1 className="text-[20px] font-bold leading-tight text-text-primary">{title}</h1>
+                    {showVersion ? (
+                        <span
+                            className="inline-flex items-center rounded-full border border-border-subtle bg-bg-elevated px-2 py-0.5 text-[10px] font-semibold tracking-wide text-text-tertiary"
+                            aria-label={`Versi aplikasi v${APP_VERSION}`}
+                            title={`Versi aplikasi v${APP_VERSION}`}
+                        >
+                            v{APP_VERSION}
+                        </span>
+                    ) : null}
+                </div>
                 {subtitle && <p className="text-[14px] font-medium text-text-secondary">{subtitle}</p>}
             </div>
             {actionIcon && (

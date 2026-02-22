@@ -5,19 +5,24 @@ interface ScreenContainerProps {
     children: ReactNode;
     className?: string;
     withBottomNav?: boolean;
+    withFab?: boolean;
 }
 
 export default function ScreenContainer({
     children,
     className,
     withBottomNav = false,
+    withFab = false,
 }: ScreenContainerProps) {
     return (
         <div
             className={cn(
                 "relative mx-auto flex min-h-[100dvh] w-full max-w-md flex-col bg-bg-base text-text-primary",
-                // Add padding at the bottom if the screen has a bottom navigation bar (approx 80px)
-                withBottomNav ? "pb-[calc(80px+env(safe-area-inset-bottom))]" : "pb-[env(safe-area-inset-bottom)]",
+                withBottomNav
+                    ? withFab
+                        ? "pb-[calc(164px+env(safe-area-inset-bottom))]"
+                        : "pb-[calc(84px+env(safe-area-inset-bottom))]"
+                    : "pb-[env(safe-area-inset-bottom)]",
                 className
             )}
         >

@@ -139,7 +139,7 @@ export function getNightCloseCopy(params: {
     };
   }
 
-  const subtitle = `Hari ini kamu keluar Rp${formatAmountIDR(stats.total)} dari ${stats.count} transaksi.`;
+  const subtitle = `Hari ini kamu keluar Rp${formatAmountIDR(stats.total)} dari ${stats.count} catatan.`;
 
   if (avg7 > 0 && stats.total >= avg7 * 1.35) {
     return {

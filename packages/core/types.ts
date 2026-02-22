@@ -42,6 +42,7 @@ export interface Entry {
   id: string;
   text: string;
   amount: number;
+  rawInput?: string;
   date: string;
   category: Category;
   paymentMethod?: PaymentMethod;

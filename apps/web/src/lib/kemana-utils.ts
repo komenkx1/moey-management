@@ -9,13 +9,19 @@ import type {
   PaymentMethod
 } from "@kemana/core/types";
 
-export type DateFilterPreset = "today" | "7d" | "30d" | "all";
+export type DateFilterPreset = "today" | "7d" | "30d" | "all" | "custom";
+
+export interface CustomDateRange {
+  start: string;
+  end: string;
+}
 
 export const FILTER_OPTIONS: Array<{ value: DateFilterPreset; label: string }> = [
   { value: "today", label: "Hari ini" },
   { value: "7d", label: "7 hari" },
   { value: "30d", label: "30 hari" },
-  { value: "all", label: "Semua" }
+  { value: "all", label: "Semua" },
+  { value: "custom", label: "Custom" }
 ];
 
 export interface TopCategorySummary {
@@ -102,6 +108,45 @@ export function normalizeDateInput(value: string): string | null {
     return null;
   }
   return toDateKey(parsed);
+}
+
+export function getDefaultCustomDateRange(now: Date = new Date()): CustomDateRange {
+  return {
+    start: toDateKey(offsetDate(now, -6)),
+    end: toDateKey(now)
+  };
+}
+
+export function normalizeCustomDateRange(
+  range: CustomDateRange | null | undefined,
+  now: Date = new Date()
+): CustomDateRange {
+  const fallback = getDefaultCustomDateRange(now);
+  if (!range) {
+    return fallback;
+  }
+
+  const start = normalizeDateInput(range.start);
+  const end = normalizeDateInput(range.end);
+  if (!start || !end) {
+    return fallback;
+  }
+
+  if (start <= end) {
+    return { start, end };
+  }
+
+  return { start: end, end: start };
+}
+
+export function getCustomRangeDayCount(range: CustomDateRange): number {
+  const startDate = parseDateKey(range.start);
+  const endDate = parseDateKey(range.end);
+  if (!startDate || !endDate) {
+    return 1;
+  }
+  const diffDays = Math.floor((toDayStartTimestamp(endDate) - toDayStartTimestamp(startDate)) / 86_400_000);
+  return Math.max(1, diffDays + 1);
 }
 
 export function getEntryReportAmount(entry: Entry): number {
@@ -201,11 +246,17 @@ export function groupEntriesByDate(entries: Entry[]): { dates: string[]; groups:
 export function getFilteredEntries(
   entries: Entry[],
   preset: DateFilterPreset,
-  now: Date = new Date()
+  now: Date = new Date(),
+  customRange?: CustomDateRange | null
 ): Entry[] {
   const todayKey = toDateKey(now);
   if (preset === "all") {
     return entries;
+  }
+
+  if (preset === "custom") {
+    const range = normalizeCustomDateRange(customRange, now);
+    return entries.filter((entry) => entry.date >= range.start && entry.date <= range.end);
   }
 
   if (preset === "today") {
@@ -220,11 +271,16 @@ export function getFilteredEntries(
 export function includesDateInFilter(
   dateISO: string,
   preset: DateFilterPreset,
-  now: Date = new Date()
+  now: Date = new Date(),
+  customRange?: CustomDateRange | null
 ): boolean {
   const todayKey = toDateKey(now);
   if (preset === "all") {
     return true;
+  }
+  if (preset === "custom") {
+    const range = normalizeCustomDateRange(customRange, now);
+    return dateISO >= range.start && dateISO <= range.end;
   }
   if (preset === "today") {
     return dateISO === todayKey;
@@ -260,7 +316,24 @@ export function getBestFilterForDate(
   return "all";
 }
 
-export function getFilterLabel(preset: DateFilterPreset): string {
+function formatRangeDate(dateISO: string, now: Date): string {
+  const parsed = parseDateKey(dateISO);
+  if (!parsed) {
+    return dateISO;
+  }
+
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "short",
+    ...(parsed.getFullYear() === now.getFullYear() ? {} : { year: "numeric" })
+  }).format(parsed);
+}
+
+export function getFilterLabel(
+  preset: DateFilterPreset,
+  customRange?: CustomDateRange | null,
+  now: Date = new Date()
+): string {
   switch (preset) {
     case "today":
       return "Hari ini";
@@ -268,6 +341,10 @@ export function getFilterLabel(preset: DateFilterPreset): string {
       return "7 hari terakhir";
     case "30d":
       return "30 hari terakhir";
+    case "custom": {
+      const range = normalizeCustomDateRange(customRange, now);
+      return `${formatRangeDate(range.start, now)} - ${formatRangeDate(range.end, now)}`;
+    }
     default:
       return "Semua data";
   }
@@ -420,9 +497,10 @@ export function getSummaryStats(params: {
   allEntries: Entry[];
   filteredEntries: Entry[];
   preset: DateFilterPreset;
+  customRange?: CustomDateRange | null;
   now?: Date;
 }): TodaySummaryStats {
-  const { allEntries, filteredEntries, preset, now = new Date() } = params;
+  const { allEntries, filteredEntries, preset, customRange, now = new Date() } = params;
   const totalAmount = filteredEntries.reduce(
     (sum, entry) => sum + getEntryReportAmount(entry),
     0
@@ -456,7 +534,7 @@ export function getSummaryStats(params: {
           : `Rata-rata 7 hari: Rp${formatAmountIDR(Math.round(sevenDayAverage))}`;
 
     return {
-      periodLabel: getFilterLabel(preset),
+      periodLabel: getFilterLabel(preset, customRange, now),
       totalAmount,
       entryCount: filteredEntries.length,
       topCategory,
@@ -475,20 +553,26 @@ export function getSummaryStats(params: {
   const emptyState =
     filteredEntries.length === 0
       ? {
-          title: `Belum ada catatan di ${getFilterLabel(preset).toLowerCase()}`,
+          title:
+            preset === "custom"
+              ? "Belum ada catatan di rentang custom"
+              : `Belum ada catatan di ${getFilterLabel(preset, customRange, now).toLowerCase()}`,
           subtitle: "Coba ubah rentang tanggal."
         }
       : null;
+  const normalizedCustomRange = normalizeCustomDateRange(customRange, now);
   const dayCount =
     preset === "7d"
       ? 7
       : preset === "30d"
         ? 30
+        : preset === "custom"
+          ? getCustomRangeDayCount(normalizedCustomRange)
         : Math.max(1, new Set(filteredEntries.map((entry) => entry.date)).size);
   const averageForRange = totalAmount / dayCount;
 
   return {
-    periodLabel: getFilterLabel(preset),
+    periodLabel: getFilterLabel(preset, customRange, now),
     totalAmount,
     entryCount: filteredEntries.length,
     topCategory,

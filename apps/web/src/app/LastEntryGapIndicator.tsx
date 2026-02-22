@@ -48,13 +48,9 @@ export default function LastEntryGapIndicator({
     return formatGapLabel(lastEntryAt, now);
   }, [lastEntryAt, now]);
 
-  if (!label) {
-    return null;
-  }
-
   return (
-    <div className="last-entry-indicator hint subtle" role="status" aria-live="polite">
-      Terakhir catat: {label}
+    <div className="text-[12px] font-medium text-text-secondary" role="status" aria-live="polite">
+      {label ? `Terakhir dicatat ${label}` : "Belum ada catatan."}
     </div>
   );
 }

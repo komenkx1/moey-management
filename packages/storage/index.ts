@@ -50,6 +50,7 @@ export function normalizeEntry(raw: unknown): Entry | null {
   const id = raw.id;
   const text = raw.text;
   const amount = raw.amount;
+  const rawInput = raw.rawInput;
   const date = raw.date;
   const category = raw.category;
   const createdAt = raw.createdAt;
@@ -79,16 +80,23 @@ export function normalizeEntry(raw: unknown): Entry | null {
       : "quick_add";
 
   const paymentMethodValue = raw.paymentMethod;
+  const normalizedPaymentMethodRaw =
+    typeof paymentMethodValue === "string" ? paymentMethodValue.trim() : "";
+  const paymentMethodAlias =
+    normalizedPaymentMethodRaw.toLowerCase() === "lainnya" ||
+      normalizedPaymentMethodRaw.toLowerCase() === "belum pilih"
+      ? "Unknown"
+      : normalizedPaymentMethodRaw;
   const paymentMethod =
-    typeof paymentMethodValue === "string" &&
-      PAYMENT_METHODS.includes(paymentMethodValue as (typeof PAYMENT_METHODS)[number])
-      ? (paymentMethodValue as Entry["paymentMethod"])
+    PAYMENT_METHODS.includes(paymentMethodAlias as (typeof PAYMENT_METHODS)[number])
+      ? (paymentMethodAlias as Entry["paymentMethod"])
       : undefined;
 
   return {
     id,
     text,
     amount,
+    rawInput: typeof rawInput === "string" ? rawInput : undefined,
     date,
     category: normalizedCategory,
     source,
@@ -220,15 +228,26 @@ export function downloadBackupFile(payload: BackupPayload): void {
 
   const date = payload.meta.exportedAt.slice(0, 10);
   const filename = `kemana-backup-${date}.json`;
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-  const url = window.URL.createObjectURL(blob);
+  const content = JSON.stringify(payload, null, 2);
+  const blobLike =
+    typeof File === "function"
+      ? new File([content], filename, {
+          type: "application/json;charset=utf-8;"
+        })
+      : new Blob([content], { type: "application/json;charset=utf-8;" });
+  const url = window.URL.createObjectURL(blobLike);
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = filename;
+  anchor.setAttribute("download", filename);
+  anchor.rel = "noopener";
+  anchor.style.display = "none";
   document.body.appendChild(anchor);
   anchor.click();
-  document.body.removeChild(anchor);
-  window.URL.revokeObjectURL(url);
+  window.setTimeout(() => {
+    document.body.removeChild(anchor);
+    window.URL.revokeObjectURL(url);
+  }, 1200);
 }
 
 function mergeEntriesById(currentEntries: Entry[], incomingEntries: Entry[]): Entry[] {
