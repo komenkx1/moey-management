@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 interface NameOnboardingSheetProps {
@@ -17,9 +17,11 @@ export default function NameOnboardingSheet({
   canSave
 }: NameOnboardingSheetProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const [keyboardInset, setKeyboardInset] = useState(0);
 
   useEffect(() => {
     if (!isOpen) {
+      setKeyboardInset(0);
       return;
     }
 
@@ -31,6 +33,54 @@ export default function NameOnboardingSheet({
       window.clearTimeout(timer);
     };
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const readKeyboardInset = () => {
+      const viewport = window.visualViewport;
+      if (!viewport) {
+        setKeyboardInset(0);
+        return;
+      }
+
+      const nextInset = Math.max(
+        0,
+        Math.round(window.innerHeight - (viewport.height + viewport.offsetTop))
+      );
+      setKeyboardInset(nextInset);
+    };
+
+    const syncInset = () => {
+      window.requestAnimationFrame(readKeyboardInset);
+    };
+
+    syncInset();
+    window.addEventListener("resize", syncInset);
+    window.addEventListener("orientationchange", syncInset);
+    window.addEventListener("focusin", syncInset);
+    window.addEventListener("focusout", syncInset);
+    window.visualViewport?.addEventListener("resize", syncInset);
+    window.visualViewport?.addEventListener("scroll", syncInset);
+
+    return () => {
+      window.removeEventListener("resize", syncInset);
+      window.removeEventListener("orientationchange", syncInset);
+      window.removeEventListener("focusin", syncInset);
+      window.removeEventListener("focusout", syncInset);
+      window.visualViewport?.removeEventListener("resize", syncInset);
+      window.visualViewport?.removeEventListener("scroll", syncInset);
+    };
+  }, [isOpen]);
+
+  const sheetStyle = useMemo(
+    () => ({
+      bottom: `${keyboardInset}px`
+    }),
+    [keyboardInset]
+  );
 
   return (
     <div
@@ -44,6 +94,7 @@ export default function NameOnboardingSheet({
           "absolute inset-x-0 bottom-0 flex flex-col rounded-t-[24px] bg-bg-base px-5 pb-[calc(20px+env(safe-area-inset-bottom))] pt-4 shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] sm:mx-auto sm:max-w-md",
           isOpen ? "translate-y-0" : "translate-y-full"
         )}
+        style={sheetStyle}
         role="dialog"
         aria-modal="true"
         aria-labelledby="name-onboarding-title"
