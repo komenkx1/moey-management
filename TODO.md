@@ -1,10 +1,14 @@
 # TODO Eksekusi MVP KeMana (Single-Device First)
 
-## 0. Progress Update (Per 21 Februari 2026)
+## 0. Progress Update (Per 22 Februari 2026)
 - Phase 1 core UX sudah usable untuk dogfooding single-device.
 - Parser + split + rules sudah dipisah ke `packages/core`.
 - Storage adapter local-first aktif di `packages/storage` (Dexie/IndexedDB sebagai primary storage).
 - PWA minimal + offline/update flow sudah aktif.
+- Import/Export JSON + CSV sudah jalan (termasuk import CSV dan filename download lebih stabil di browser mobile).
+- Kompatibilitas data legacy metode bayar (`Lainnya`/`Belum pilih`) dinormalisasi ke `Unknown` saat load/import.
+- Bottom sheet `Catat pengeluaran` sudah punya input `Nama catatan` terpisah dari detail `Catatan`.
+- Notifikasi update PWA sudah dipoles (judul/subtitle lebih jelas + tombol `Nanti` per sesi).
 - Composer sudah lebih tenang: teaching hint adaptif kontekstual, error merah hanya setelah submit.
 - Parser qty-aware sudah aktif (`3x 15k`, `x3 15k`, `15k x3`, `3 x 15k`) dan token qty dipertahankan di text.
 - Expanded row sudah punya breakdown display item untuk meningkatkan trust (display-only).
@@ -37,6 +41,22 @@
 - Migrasi state page orchestration ke Zustand selesai (dibagi per domain slice sesuai `MIGRATION_SHADCN_ZUSTAND.md`).
 - Migrasi toast ke Sonner selesai dengan deduplikasi action/undo.
 - Fokus sisa Phase 1: validasi metrik latency/habit dan stabilisasi alur Dexie (tanpa ubah domain contract).
+
+## 0.1 Audit Cakupan Test (22 Februari 2026)
+- Unit test: `107/107` lulus (`vitest`).
+- E2E test: `17/17` lulus (`playwright`, Chromium, production build).
+- Flow yang sudah tercakup:
+  - Quick Add + inline edit + split.
+  - Bulk input.
+  - Export JSON/CSV + import JSON/CSV.
+  - Insight page CTA.
+  - Bottom sheet open/close + drag-close lintas halaman.
+  - Offline mode E2E (network simulation) untuk quick add + list.
+  - Catat pengeluaran dengan qty.
+  - Virtualisasi list otomatis saat import `1001+` item.
+  - SW update banner waiting state + dismiss per sesi.
+- Gap cakupan yang masih belum otomatis:
+  - Perf benchmark end-to-end berbasis metrik frame time/scroll jank CI (bukan hanya threshold render count).
 
 ## 1. Prinsip Eksekusi
 - Fokus pengiriman 7 hari: Quick Add -> List -> Edit -> Split -> Bulk Paste.
