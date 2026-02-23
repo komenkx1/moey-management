@@ -861,6 +861,55 @@ export function makeInitialSplit(amount: number, splitCount?: number): EntrySpli
   };
 }
 
+function splitPeopleInputTokens(input: string): string[] {
+  return input
+    .split(",")
+    .map((person) => person.trim())
+    .filter(Boolean);
+}
+
+export function normalizeSplitPeopleWithLockedSelf(
+  input: string,
+  selfPerson: string = "Kamu"
+): string[] {
+  const normalizedSelf = selfPerson.trim() || "Kamu";
+  const selfKey = normalizedSelf.toLowerCase();
+  const seen = new Set<string>();
+  const people: string[] = [];
+
+  for (const token of splitPeopleInputTokens(input)) {
+    const key = token.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    people.push(key === selfKey ? normalizedSelf : token);
+  }
+
+  if (!seen.has(selfKey)) {
+    people.unshift(normalizedSelf);
+  }
+
+  return people;
+}
+
+export function toSplitPeopleInputWithLockedSelf(
+  input: string,
+  selfPerson: string = "Kamu"
+): string {
+  return normalizeSplitPeopleWithLockedSelf(input, selfPerson).join(", ");
+}
+
+export function getSplitOtherPeopleInput(
+  input: string,
+  selfPerson: string = "Kamu"
+): string {
+  const selfKey = selfPerson.trim().toLowerCase() || "kamu";
+  return normalizeSplitPeopleWithLockedSelf(input, selfPerson)
+    .filter((person) => person.toLowerCase() !== selfKey)
+    .join(", ");
+}
+
 export type TrendGranularity = "hour" | "day" | "week" | "month";
 
 export function getTrendGranularity(

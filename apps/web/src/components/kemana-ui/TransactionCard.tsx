@@ -1,10 +1,17 @@
 import { useEffect, useMemo, useState, memo, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { formatAmountIDR } from "@kemana/core/format";
-import { buildCustomSplit, buildEqualSplit, normalizePeople } from "@kemana/core/split";
+import { buildCustomSplit, buildEqualSplit } from "@kemana/core/split";
 import { parseQuickAdd } from "@kemana/core/parser";
 import { CATEGORIES, PAYMENT_METHODS, type EntrySplit, type ParseWarning, type PaymentMethod } from "@kemana/core/types";
-import { paymentMethodLabel, splitDisplayText, warningShortText } from "@/lib/kemana-utils";
+import {
+    getSplitOtherPeopleInput,
+    normalizeSplitPeopleWithLockedSelf,
+    paymentMethodLabel,
+    splitDisplayText,
+    toSplitPeopleInputWithLockedSelf,
+    warningShortText
+} from "@/lib/kemana-utils";
 import { Coffee, Utensils, Car, ShoppingBag, Receipt, MoreHorizontal, Trash2, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -71,7 +78,7 @@ function formatDateLabel(dateISO: string): string {
 
 function getInitialPeopleText(item: TransactionItem): string {
     if (item.split?.shares?.length) {
-        return item.split.shares.map((share) => share.person).join(", ");
+        return toSplitPeopleInputWithLockedSelf(item.split.shares.map((share) => share.person).join(", "));
     }
     return "Kamu, Teman";
 }
@@ -211,7 +218,11 @@ function TransactionCardComponent({
 
     const parsedDraftAmount = useMemo(() => parseCurrencyInput(draftAmount), [draftAmount]);
     const splitPeople = useMemo(
-        () => normalizePeople(splitPeopleInput.split(",").map((person) => person.trim())),
+        () => normalizeSplitPeopleWithLockedSelf(splitPeopleInput),
+        [splitPeopleInput]
+    );
+    const splitOthersInput = useMemo(
+        () => getSplitOtherPeopleInput(splitPeopleInput),
         [splitPeopleInput]
     );
 
@@ -727,9 +738,17 @@ function TransactionCardComponent({
 
                             {splitEnabled ? (
                                 <div className="grid gap-2">
+                                    <div className="flex items-center gap-2">
+                                        <span className="inline-flex rounded-full border border-border-subtle bg-bg-subtle px-2.5 py-1 text-[11px] font-semibold text-text-primary">
+                                            Kamu
+                                        </span>
+                                        <span className="text-[11px] font-medium text-text-tertiary">Dikunci otomatis</span>
+                                    </div>
                                     <Input
-                                        value={splitPeopleInput}
-                                        onChange={(event) => setSplitPeopleInput(event.target.value)}
+                                        value={splitOthersInput}
+                                        onChange={(event) =>
+                                            setSplitPeopleInput(toSplitPeopleInputWithLockedSelf(event.target.value))
+                                        }
                                         placeholder="Kamu, Budi, Cici"
                                         className="h-10 rounded-xl bg-bg-base text-[14px]"
                                     />

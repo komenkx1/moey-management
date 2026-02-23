@@ -11,12 +11,15 @@ import {
     getSmartEmptyState,
     getSpendingStatus,
     getSummaryStats,
+    getSplitOtherPeopleInput,
     groupEntriesByDate,
     includesDateInFilter,
+    normalizeSplitPeopleWithLockedSelf,
     parseDateKey,
     parseItemBreakdownFromSubtitle,
     splitDisplayText,
     sumAmount,
+    toSplitPeopleInputWithLockedSelf,
     toDateKey
 } from "./kemana-utils";
 import type { Entry, ParseWarning } from "@kemana/core/types";
@@ -266,5 +269,21 @@ describe("Text Parsing Helpers", () => {
         expect(formatItemPillText({ label: "roti", qty: 2, raw: "" })).toBe("roti ×2");
         expect(formatItemPillText({ label: "roti", amount: 15000, raw: "" })).toBe("roti • Rp15k");
         expect(formatItemPillText({ label: "roti", qty: 2, amount: 15000, raw: "" })).toBe("roti ×2 • Rp15k");
+    });
+});
+
+describe("Split People Helpers", () => {
+    it("always keeps 'Kamu' inside split people list", () => {
+        expect(normalizeSplitPeopleWithLockedSelf("Budi, Cici")).toEqual(["Kamu", "Budi", "Cici"]);
+    });
+
+    it("deduplicates people and keeps only one canonical 'Kamu'", () => {
+        expect(normalizeSplitPeopleWithLockedSelf("kamu, Budi, Kamu, budi, Cici")).toEqual(["Kamu", "Budi", "Cici"]);
+        expect(toSplitPeopleInputWithLockedSelf("kamu, Budi, Kamu, budi, Cici")).toBe("Kamu, Budi, Cici");
+    });
+
+    it("extracts editable others list without 'Kamu'", () => {
+        expect(getSplitOtherPeopleInput("Kamu, Budi, Cici")).toBe("Budi, Cici");
+        expect(getSplitOtherPeopleInput("budi, cici")).toBe("budi, cici");
     });
 });

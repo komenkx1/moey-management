@@ -1,8 +1,13 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { cn } from "@/lib/utils";
-import { buildCustomSplit, buildEqualSplit, normalizePeople } from "@kemana/core/split";
+import { buildCustomSplit, buildEqualSplit } from "@kemana/core/split";
 import type { EntrySplit } from "@kemana/core/types";
 import { formatAmountIDR } from "@kemana/core/format";
+import {
+  getSplitOtherPeopleInput,
+  normalizeSplitPeopleWithLockedSelf,
+  toSplitPeopleInputWithLockedSelf
+} from "@/lib/kemana-utils";
 import { Coffee, Utensils, Car, ShoppingBag, Receipt, MoreHorizontal, X, Users } from "lucide-react";
 import { useBottomSheetDrag } from "./use-bottom-sheet-drag";
 
@@ -93,7 +98,7 @@ export default function AddTransactionSheet({ isOpen, onClose, onSave, prefill }
     setSplitEnabled(Boolean(prefill?.split?.shares?.length));
     setSplitMode(prefill?.split?.mode ?? "equal");
     setSplitPeopleInput(
-      prefill?.split?.shares?.map((share) => share.person).join(", ") || "Kamu, Teman"
+      toSplitPeopleInputWithLockedSelf(prefill?.split?.shares?.map((share) => share.person).join(", ") || "Kamu, Teman")
     );
     setSplitCustomDraft(
       prefill?.split?.shares?.reduce<Record<string, string>>((acc, share) => {
@@ -113,7 +118,11 @@ export default function AddTransactionSheet({ isOpen, onClose, onSave, prefill }
   );
   const totalAmount = useMemo(() => unitAmount * quantity, [quantity, unitAmount]);
   const splitPeople = useMemo(
-    () => normalizePeople(splitPeopleInput.split(",").map((item) => item.trim())),
+    () => normalizeSplitPeopleWithLockedSelf(splitPeopleInput),
+    [splitPeopleInput]
+  );
+  const splitOthersInput = useMemo(
+    () => getSplitOtherPeopleInput(splitPeopleInput),
     [splitPeopleInput]
   );
   const splitCustomShares = useMemo(
@@ -439,10 +448,16 @@ export default function AddTransactionSheet({ isOpen, onClose, onSave, prefill }
             </div>
             {splitEnabled ? (
               <div className="mt-2 flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex rounded-full border border-border-subtle bg-bg-subtle px-2.5 py-1 text-[11px] font-semibold text-text-primary">
+                    Kamu
+                  </span>
+                  <span className="text-[11px] font-medium text-text-tertiary">Dikunci otomatis</span>
+                </div>
                 <input
                   type="text"
-                  value={splitPeopleInput}
-                  onChange={(event) => setSplitPeopleInput(event.target.value)}
+                  value={splitOthersInput}
+                  onChange={(event) => setSplitPeopleInput(toSplitPeopleInputWithLockedSelf(event.target.value))}
                   placeholder="Kamu, Budi, Cici"
                   className="h-10 w-full rounded-xl border border-border-subtle bg-bg-base px-3 text-[14px] text-text-primary outline-none focus:border-brand"
                 />
