@@ -15,7 +15,7 @@ import {
     toSplitPeopleInputWithLockedSelf,
     warningShortText
 } from "@/lib/kemana-utils";
-import { Coffee, Utensils, Car, ShoppingBag, Receipt, MoreHorizontal, Trash2, Users } from "lucide-react";
+import { Coffee, Utensils, Car, ShoppingBag, Receipt, MoreHorizontal, Trash2, Users, CalendarDays } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -667,12 +667,15 @@ function TransactionCardComponent({
 
                         <div className="grid gap-1.5">
                             <label className="px-1 text-[12px] font-semibold text-text-secondary">Tanggal</label>
-                            <Input
-                                type="date"
-                                value={draftDate}
-                                onChange={(event) => setDraftDate(event.target.value)}
-                                className="h-11 rounded-xl bg-bg-elevated text-[15px]"
-                            />
+                            <div className="relative">
+                                <Input
+                                    type="date"
+                                    value={draftDate}
+                                    onChange={(event) => setDraftDate(event.target.value)}
+                                    className="date-input-native h-11 rounded-xl bg-bg-elevated pr-10 text-[15px]"
+                                />
+                                <CalendarDays className="pointer-events-none absolute right-3 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-text-secondary" />
+                            </div>
                         </div>
 
                         <div className="flex flex-col gap-3 rounded-2xl border border-border-subtle/80 bg-bg-elevated p-3.5">

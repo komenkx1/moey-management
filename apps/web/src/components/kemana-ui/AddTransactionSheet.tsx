@@ -11,7 +11,7 @@ import {
   sanitizeCurrencyInput,
   toSplitPeopleInputWithLockedSelf
 } from "@/lib/kemana-utils";
-import { Coffee, Utensils, Car, ShoppingBag, Receipt, MoreHorizontal, X, Users } from "lucide-react";
+import { Coffee, Utensils, Car, ShoppingBag, Receipt, MoreHorizontal, X, Users, CalendarDays } from "lucide-react";
 import { useBottomSheetDrag } from "./use-bottom-sheet-drag";
 
 type TxType = "expense";
@@ -386,12 +386,15 @@ export default function AddTransactionSheet({ isOpen, onClose, onSave, prefill }
 
           <div className="mt-4 rounded-2xl border border-border-subtle bg-bg-elevated p-4">
             <label className="text-[12px] font-semibold text-text-secondary">Tanggal</label>
-            <input
-              type="date"
-              value={date}
-              onChange={(event) => setDate(event.target.value)}
-              className="mt-2 h-11 w-full rounded-xl border border-border-subtle bg-bg-base px-3 text-[15px] text-text-primary outline-none focus:border-brand"
-            />
+            <div className="relative mt-2">
+              <input
+                type="date"
+                value={date}
+                onChange={(event) => setDate(event.target.value)}
+                className="date-input-native h-11 w-full rounded-xl border border-border-subtle bg-bg-base px-3 pr-10 text-[15px] text-text-primary outline-none focus:border-brand"
+              />
+              <CalendarDays className="pointer-events-none absolute right-3 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-text-secondary" />
+            </div>
           </div>
 
           <div className="mt-4 rounded-2xl border border-border-subtle bg-bg-elevated p-4">
