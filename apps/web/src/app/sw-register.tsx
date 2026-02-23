@@ -128,8 +128,27 @@ export default function SWRegister() {
             }
           });
         });
+
+        // 1. Cek otomatis saat aplikasi dibuka lagi dari background (visibility change)
+        const handleVisibilityChange = () => {
+          if (document.visibilityState === "visible") {
+            registration.update().catch(() => { });
+          }
+        };
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+
+        // 2. Cek otomatis berjalan berkala (misal: setiap 2 jam) jika app didiamkan terus-menerus
+        const UPDATE_INTERVAL_MS = 2 * 60 * 60 * 1000;
+        const intervalId = setInterval(() => {
+          registration.update().catch(() => { });
+        }, UPDATE_INTERVAL_MS);
+
+        return () => {
+          document.removeEventListener("visibilitychange", handleVisibilityChange);
+          clearInterval(intervalId);
+        };
       })
-      .catch(() => {});
+      .catch(() => { });
 
     return () => {
       isMounted = false;
