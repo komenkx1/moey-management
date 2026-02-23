@@ -925,6 +925,7 @@ export function generateTrendSeries(
   customRange?: CustomDateRange | null,
   now = new Date()
 ): TrendBucket[] {
+  const scopedEntries = getFilteredEntries(entries, preset, now, customRange);
   const granularity = getTrendGranularity(preset, customRange, now);
   const buckets: TrendBucket[] = [];
 
@@ -945,11 +946,11 @@ export function generateTrendSeries(
     startDate = parseDateKey(range.start) || now;
     endDate = parseDateKey(range.end) || now;
   } else {
-    if (entries.length === 0) {
+    if (scopedEntries.length === 0) {
       startDate = now;
       endDate = now;
     } else {
-      const sortedKeys = [...new Set(entries.map((e) => e.date))].sort();
+      const sortedKeys = [...new Set(scopedEntries.map((e) => e.date))].sort();
       startDate = parseDateKey(sortedKeys[0]) || now;
       endDate = parseDateKey(sortedKeys[sortedKeys.length - 1]) || now;
     }
@@ -959,7 +960,7 @@ export function generateTrendSeries(
     const periodLabels = ["Pagi", "Siang", "Sore", "Malam"];
     const bucketTotals = [0, 0, 0, 0];
 
-    for (const entry of entries) {
+    for (const entry of scopedEntries) {
       const createdTs = Date.parse(entry.createdAt);
       const updatedTs = Date.parse(entry.updatedAt);
       const dateObj = Number.isFinite(createdTs)
@@ -992,7 +993,7 @@ export function generateTrendSeries(
       const d = offsetDate(endDate, -i);
       const dKey = toDateKey(d);
 
-      const bucketEntries = entries.filter((e) => e.date === dKey);
+      const bucketEntries = scopedEntries.filter((e) => e.date === dKey);
 
       let label = "";
       if (dKey === toDateKey(now)) {
@@ -1017,7 +1018,7 @@ export function generateTrendSeries(
       const startKey = toDateKey(dStart);
       const endKey = toDateKey(dEnd);
 
-      const bucketEntries = entries.filter((e) => e.date >= startKey && e.date <= endKey);
+      const bucketEntries = scopedEntries.filter((e) => e.date >= startKey && e.date <= endKey);
 
       let label = "";
       if (i === 0) {
@@ -1041,7 +1042,7 @@ export function generateTrendSeries(
       const targetYear = Math.floor(targetMonthIndex / 12);
       const targetMonth = targetMonthIndex % 12;
 
-      const bucketEntries = entries.filter((e) => {
+      const bucketEntries = scopedEntries.filter((e) => {
         const d = parseDateKey(e.date);
         return d && d.getFullYear() === targetYear && d.getMonth() === targetMonth;
       });

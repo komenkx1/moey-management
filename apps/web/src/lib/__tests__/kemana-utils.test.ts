@@ -1,10 +1,9 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
     getTrendGranularity,
     getTrendTitle,
     getTrendSubtitle,
-    generateTrendSeries,
-    type DateFilterPreset,
+    generateTrendSeries
 } from "../kemana-utils";
 import type { Entry } from "@kemana/core/types";
 
@@ -95,5 +94,28 @@ describe("Trend Chart Utils", () => {
         expect(buckets[1]).toEqual({ label: "Siang", total: 20000 });
         expect(buckets[2]).toEqual({ label: "Sore", total: 30000 });
         expect(buckets[3]).toEqual({ label: "Malam", total: 40000 });
+    });
+
+    it("does not leak non-today entries into today rhythm buckets", () => {
+        const entries: Entry[] = [
+            {
+                id: "old-malam",
+                text: "nonton",
+                amount: 30000,
+                date: "2026-02-17",
+                category: "Hiburan",
+                source: "quick_add",
+                createdAt: "2026-02-17T21:00:00",
+                updatedAt: "2026-02-17T21:00:00"
+            }
+        ];
+
+        const buckets = generateTrendSeries(entries, "today", null, new Date("2026-02-18T11:25:00"));
+        expect(buckets).toEqual([
+            { label: "Pagi", total: 0 },
+            { label: "Siang", total: 0 },
+            { label: "Sore", total: 0 },
+            { label: "Malam", total: 0 }
+        ]);
     });
 });

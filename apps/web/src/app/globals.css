@@ -1162,7 +1162,8 @@ select {
 .pwa-update-banner {
   position: fixed;
   left: 50%;
-  bottom: calc(84px + env(safe-area-inset-bottom));
+  /* Keep update banner above bottom CTA/FAB area to avoid overlap. */
+  bottom: calc(84px + env(safe-area-inset-bottom) + 76px);
   transform: translateX(-50%);
   z-index: 35;
   display: flex;
