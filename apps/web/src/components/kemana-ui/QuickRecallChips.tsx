@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { formatAmountIDR } from "@kemana/core/format";
 import { Coffee, Utensils, Car, ShoppingBag, Receipt, MoreHorizontal } from "lucide-react";
@@ -26,6 +26,13 @@ const CategoryIcons: Record<string, ReactNode> = {
 };
 
 export default function QuickRecallChips({ items, onSelect, className }: QuickRecallChipsProps) {
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
+    if (!isMounted) return null;
     if (!items || items.length === 0) return null;
 
     return (
