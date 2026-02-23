@@ -57,7 +57,7 @@ export default function QuickRecallChips({ items, onSelect, className }: QuickRe
                                     {item.title}
                                 </span>
                                 <span className="text-[15px] font-bold text-text-primary mt-0.5">
-                                    Rp{formatAmountIDR(item.amount)}
+                                    -Rp{formatAmountIDR(item.amount)}
                                 </span>
                             </div>
                         </button>
