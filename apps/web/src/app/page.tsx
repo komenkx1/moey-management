@@ -1010,6 +1010,18 @@ export default function DashboardPage() {
     () => Math.max(...insightTrendSeries.map((item) => item.total), 0),
     [insightTrendSeries]
   );
+  const insightTrendSeriesDisplay = useMemo(
+    () => [...insightTrendSeries].reverse(),
+    [insightTrendSeries]
+  );
+  const trendCompactSlotCount = useMemo(
+    () => Math.max(2, insightTrendSeriesDisplay.length),
+    [insightTrendSeriesDisplay.length]
+  );
+  const trendCompactItemWidth = useMemo(
+    () => `calc((100% - ${(trendCompactSlotCount - 1) * 6}px) / ${trendCompactSlotCount})`,
+    [trendCompactSlotCount]
+  );
 
   useEffect(() => {
     if (activeTab !== "insight") {
@@ -2039,7 +2051,10 @@ export default function DashboardPage() {
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">{item.label}</p>
                       <p className="mt-1 text-[14px] font-semibold text-text-primary">{item.value}</p>
                     </div>
-                    <p className="text-right text-[11px] font-medium text-text-secondary">-{item.detail}</p>
+                    <p className="text-right text-[11px] font-medium text-text-secondary">
+                      {item.isCurrencyDetail ? "-" : ""}
+                      {item.detail}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -2094,25 +2109,36 @@ export default function DashboardPage() {
 
             {isTrendChartOverflowing ? (
               <p className="mt-2 text-[10px] font-medium text-text-tertiary">
-                Geser chart ke kanan untuk lihat semuanya.
+                Geser chart ke kanan untuk lihat data yang lebih lama.
               </p>
             ) : null}
 
             <div ref={insightTrendScrollRef} className="mt-4 overflow-x-auto pb-1 no-scrollbar">
               <div
                 className={cn(
-                  "flex w-max min-w-full items-start gap-1.5",
-                  isTrendChartOverflowing ? "justify-start" : "justify-center"
+                  "flex items-start gap-1.5",
+                  isTrendChartOverflowing
+                    ? "w-max min-w-full justify-start"
+                    : insightTrendSeries.length === 1
+                      ? "w-full justify-center"
+                      : "w-full justify-between"
                 )}
               >
-                {insightTrendSeries.map((bucket, index) => {
-                  const isLatest = index === insightTrendSeries.length - 1;
+                {insightTrendSeriesDisplay.map((bucket, index) => {
+                  const isLatest = index === 0;
                   const height = insightMaxTrendTotal
                     ? Math.max(16, Math.round((bucket.total / insightMaxTrendTotal) * 100))
                     : 16;
 
                   return (
-                    <div key={`${bucket.label}-${index}`} className="flex w-[56px] shrink-0 flex-col items-center gap-2">
+                    <div
+                      key={`${bucket.label}-${index}`}
+                      className={cn(
+                        "flex shrink-0 flex-col items-center gap-2",
+                        isTrendChartOverflowing ? "w-[56px]" : ""
+                      )}
+                      style={isTrendChartOverflowing ? undefined : { width: trendCompactItemWidth }}
+                    >
                       <div className="flex h-28 w-[48px] items-end rounded-xl bg-bg-subtle/80 px-1.5 pb-1.5">
                         <div
                           className={cn(

@@ -159,8 +159,12 @@ describe("dashboard-page-utils", () => {
     const whyCards = deriveInsightWhyCards(summary);
     const coach = deriveInsightCoachCopy(summary);
     const trend = deriveInsightTrendBadge(summary);
+    const timeCard = whyCards.find((card) => card.key === "time");
+    const moneyCards = whyCards.filter((card) => card.key !== "time");
 
     expect(whyCards.length).toBeGreaterThan(0);
+    expect(timeCard?.isCurrencyDetail).toBe(false);
+    expect(moneyCards.every((card) => card.isCurrencyDetail)).toBe(true);
     expect(coach.primaryLabel).toBe("Catat sekarang");
     expect(trend.tone).toBe("up");
     expect(trend.label).toContain("%");

@@ -68,6 +68,7 @@ export interface InsightWhyCardItem {
   label: string;
   value: string;
   detail: string;
+  isCurrencyDetail: boolean;
 }
 
 export interface InsightCoachCopy {
@@ -493,7 +494,8 @@ export function deriveInsightWhyCards(insight: InsightSevenDaySummary): InsightW
       key: "category",
       label: "Kategori terbesar",
       value: `${insight.topCategory.category} (${insight.topCategory.percentage}%)`,
-      detail: `Rp${formatAmountIDR(insight.topCategory.amount)} dari ${insight.topCategory.count} catatan`
+      detail: `Rp${formatAmountIDR(insight.topCategory.amount)} dari ${insight.topCategory.count} catatan`,
+      isCurrencyDetail: true
     });
   }
 
@@ -502,7 +504,8 @@ export function deriveInsightWhyCards(insight: InsightSevenDaySummary): InsightW
       key: "payment",
       label: "Metode bayar dominan",
       value: `${insight.topPayment.label} (${insight.topPayment.percentage}%)`,
-      detail: `Rp${formatAmountIDR(insight.topPayment.amount)}`
+      detail: `Rp${formatAmountIDR(insight.topPayment.amount)}`,
+      isCurrencyDetail: true
     });
   }
 
@@ -511,7 +514,8 @@ export function deriveInsightWhyCards(insight: InsightSevenDaySummary): InsightW
       key: "time",
       label: "Waktu paling aktif",
       value: `${insight.topTimeSlot.label} (${insight.topTimeSlot.percentage}%)`,
-      detail: `${insight.topTimeSlot.count} catatan`
+      detail: `${insight.topTimeSlot.count} catatan`,
+      isCurrencyDetail: false
     });
   }
 
@@ -520,7 +524,8 @@ export function deriveInsightWhyCards(insight: InsightSevenDaySummary): InsightW
       key: "weekday",
       label: "Hari paling boros",
       value: `${insight.topWeekday.label} (${insight.topWeekday.percentage}%)`,
-      detail: `Rp${formatAmountIDR(insight.topWeekday.amount)}`
+      detail: `Rp${formatAmountIDR(insight.topWeekday.amount)}`,
+      isCurrencyDetail: true
     });
   }
 
