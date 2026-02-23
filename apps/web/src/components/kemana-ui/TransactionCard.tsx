@@ -548,7 +548,7 @@ function TransactionCardComponent({
                         {showQuickFormatEditor ? (
                             <div className="grid gap-1.5">
                                 <div className="flex items-center justify-between px-1">
-                                    <label className="text-[12px] font-semibold text-text-secondary">Perbaiki jumlah cepat</label>
+                                    <label className="text-[12px] font-semibold text-text-secondary">Perbaiki format cepat</label>
                                     <span className="text-[11px] font-medium text-text-tertiary">Opsional</span>
                                 </div>
                                 <Input
@@ -590,11 +590,8 @@ function TransactionCardComponent({
                                             )}
                                             data-testid="inline-quick-format-apply"
                                         >
-                                            {canApplyQuickFormat ? "Pakai hasil ini" : "Sudah sesuai"}
+                                            {canApplyQuickFormat ? "Terapkan perubahan" : "Sudah sesuai"}
                                         </button>
-                                        <p className="mt-1 text-[11px] font-medium text-text-tertiary">
-                                            Belum tersimpan. Tekan Simpan kalau sudah pas.
-                                        </p>
                                     </div>
                                 ) : normalizedRawInput.length > 0 ? (
                                     <p className="px-1 text-[12px] font-medium text-danger">
