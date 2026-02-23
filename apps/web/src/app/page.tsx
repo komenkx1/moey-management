@@ -2271,7 +2271,7 @@ export default function DashboardPage() {
           <div className="flex flex-col gap-5 pb-[calc(124px+env(safe-area-inset-bottom))]">
             {orderedDates.map((dateString) => (
               <div key={dateString} className="flex flex-col gap-2">
-                <div className="sticky top-[calc(var(--safe-header-offset)+74px)] z-10 flex items-center justify-between gap-2 bg-bg-base/94 pb-2 pt-3 backdrop-blur-md">
+                <div className="sticky top-[calc(var(--safe-header-offset)+74px)] z-10 -mx-4 flex items-center justify-between gap-2 border-b border-border-subtle/70 bg-bg-base/94 px-4 pb-2 pt-3 backdrop-blur-md">
                   <span className="text-[14px] font-bold text-text-primary">{formatDayLabel(dateString)}</span>
                   <span className="text-[12px] font-medium text-text-secondary">
                     -Rp{formatAmountIDR(dailyTotal[dateString] ?? 0)}
