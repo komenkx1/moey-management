@@ -23,7 +23,7 @@ export default function TopAppBar({
     return (
         <header
             className={cn(
-                "safe-top sticky top-0 z-40 flex w-full items-center justify-between border-b border-border-subtle/70 bg-bg-base/96 px-4 py-4 backdrop-blur-md supports-[backdrop-filter]:bg-bg-base/88",
+                "sticky top-0 z-40 flex w-full items-center justify-between border-b border-border-subtle/70 bg-bg-base/96 px-4 pb-4 pt-[calc(1rem+var(--safe-header-offset))] backdrop-blur-md supports-[backdrop-filter]:bg-bg-base/88",
                 className
             )}
         >

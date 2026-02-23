@@ -124,7 +124,7 @@ export default function PwaInstallBanner() {
     <>
       {isVisible ? (
         <section
-          className="fixed bottom-[calc(env(safe-area-inset-bottom)+20px)] left-1/2 z-[100] flex w-[min(400px,calc(100%-32px))] -translate-x-1/2 items-center justify-between gap-3 rounded-[16px] border border-border-subtle bg-bg-elevated p-3 shadow-xl"
+          className="fixed bottom-[calc(env(safe-area-inset-bottom)+100px)] left-1/2 z-[100] flex w-[min(400px,calc(100%-32px))] -translate-x-1/2 items-center justify-between gap-3 rounded-[16px] border border-border-subtle bg-bg-elevated p-3 shadow-xl"
           role="status"
           aria-live="polite"
           aria-label="Install aplikasi"
@@ -158,12 +158,19 @@ export default function PwaInstallBanner() {
         <>
           <button
             type="button"
-            className="pwa-install-modal-backdrop"
+            className="pwa-install-modal-backdrop animate-in fade-in duration-200"
             aria-label="Tutup instruksi install"
             onClick={closeIosHelp}
           />
-          <section className="fixed top-1/2 z-[110] left-1/2 w-[min(400px,calc(100%-40px))] -translate-x-1/2 -translate-y-1/2 rounded-[20px] border border-border-subtle bg-bg-elevated p-5 shadow-2xl flex flex-col gap-4" role="dialog" aria-modal="true" aria-label="Instruksi install iOS">
+          <section className="fixed top-1/2 z-[110] left-1/2 w-[min(400px,calc(100%-40px))] -translate-x-1/2 -translate-y-1/2 rounded-[20px] border border-border-subtle bg-bg-elevated p-5 shadow-2xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200" role="dialog" aria-modal="true" aria-label="Instruksi install iOS">
             <div className="text-[16px] font-bold text-text-primary">Install di iPhone/iPad</div>
+
+            <img
+              src="/screenshots/tutorial-install-pwa-kemana-1x1.png"
+              alt="Tutorial Install iOS Safari"
+              className="w-full rounded-[12px] border border-border-subtle shadow-sm object-cover"
+              loading="lazy"
+            />
             <ol className="ml-5 list-decimal flex flex-col gap-1.5 text-[14px] text-text-secondary">
               <li>Buka menu <span className="font-semibold text-text-primary">Share</span> di Safari.</li>
               <li>Pilih <span className="font-semibold text-text-primary">Add to Home Screen</span>.</li>
