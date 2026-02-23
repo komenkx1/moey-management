@@ -4,7 +4,7 @@ import {
     getTrendTitle,
     getTrendSubtitle,
     generateTrendSeries
-} from "../kemana-utils";
+} from "@/lib/kemana-utils";
 import type { Entry } from "@kemana/core/types";
 
 describe("Trend Chart Utils", () => {

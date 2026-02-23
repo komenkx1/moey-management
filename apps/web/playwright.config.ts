@@ -4,7 +4,7 @@ const PLAYWRIGHT_PORT = Number.parseInt(process.env.PLAYWRIGHT_PORT ?? "3100", 1
 const PLAYWRIGHT_BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? `http://localhost:${PLAYWRIGHT_PORT}`;
 
 export default defineConfig({
-    testDir: "./e2e",
+    testDir: "./tests/e2e",
     timeout: 60000,
     fullyParallel: false,
     forbidOnly: !!process.env.CI,
@@ -24,7 +24,7 @@ export default defineConfig({
     webServer: {
         command: `PORT=${PLAYWRIGHT_PORT} NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS='' npm start`,
         port: PLAYWRIGHT_PORT,
-        reuseExistingServer: true,
+        reuseExistingServer: false,
         timeout: 120000,
     },
 });

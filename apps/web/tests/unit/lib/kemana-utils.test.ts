@@ -24,7 +24,7 @@ import {
     sumAmount,
     toSplitPeopleInputWithLockedSelf,
     toDateKey
-} from "./kemana-utils";
+} from "@/lib/kemana-utils";
 import type { Entry, ParseWarning } from "@kemana/core/types";
 
 function makeEntry(overrides?: Partial<Entry>): Entry {

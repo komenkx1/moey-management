@@ -12,7 +12,7 @@ import {
   getInitialNotesRenderCount,
   getNextNotesRenderCount,
   getEntryActivityTimestamp
-} from "./dashboard-page-utils";
+} from "@/lib/dashboard-page-utils";
 
 function makeEntry(overrides?: Partial<Entry>): Entry {
   const fallbackIso = new Date("2026-02-22T10:00:00.000Z").toISOString();

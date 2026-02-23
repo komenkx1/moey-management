@@ -1,6 +1,6 @@
 import type { Entry } from "@kemana/core/types";
 import { describe, expect, it } from "vitest";
-import { getSmartRecallPrompt } from "./recall";
+import { getSmartRecallPrompt } from "@/app/recall";
 
 function toLocalDayKey(timestamp: number): string {
   const date = new Date(timestamp);

@@ -2,7 +2,7 @@ import React from "react";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import SWRegister from "./sw-register";
+import SWRegister from "@/app/sw-register";
 
 const UPDATE_BANNER_DISMISSED_SESSION_KEY = "kemana.updateBanner.dismissedSession.v1";
 

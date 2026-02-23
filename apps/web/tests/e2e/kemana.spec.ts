@@ -47,7 +47,13 @@ async function gotoHomeStable(page: Page) {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const isNavigationRace = message.includes("interrupted by another navigation");
-      const isAlreadyOnHome = /^https?:\/\/localhost:3000\/?$/.test(page.url());
+      let isAlreadyOnHome = false;
+      try {
+        const currentUrl = new URL(page.url());
+        isAlreadyOnHome = currentUrl.hostname === "localhost" && currentUrl.pathname === "/";
+      } catch {
+        isAlreadyOnHome = false;
+      }
 
       if (isNavigationRace && isAlreadyOnHome) {
         await page.waitForLoadState("domcontentloaded");
