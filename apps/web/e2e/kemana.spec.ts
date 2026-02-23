@@ -235,7 +235,7 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     const entry = await expandEntryByText(page, "makan");
 
     await entry.getByPlaceholder("Misal: Makan siang").fill("makan siang kantor");
-    await entry.locator("input[type='number']").first().fill("25000");
+    await entry.locator("label:has-text('Jumlah') + input").first().fill("25000");
     await entry.getByPlaceholder("Tambah detail...").fill("siang kantor");
     await entry.getByRole("button", { name: "Simpan", exact: true }).click();
 
@@ -253,7 +253,7 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     await expect(entry.getByText("Rp45.000")).toBeVisible();
     await page.waitForTimeout(500); // Wait for React state to fully commit
     await entry.getByTestId("inline-quick-format-apply").click();
-    await expect(entry.locator("input[type='number']").first()).toHaveValue("45000");
+    await expect(entry.locator("label:has-text('Jumlah') + input").first()).toHaveValue("45.000");
 
     await entry.getByRole("button", { name: "Simpan", exact: true }).click();
     // Nominal list menampilkan porsi pengguna saat split aktif.

@@ -65,6 +65,27 @@ export interface ItemLine {
   raw: string;
 }
 
+export function sanitizeCurrencyInput(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
+export function parseCurrencyInputToNumber(value: string): number {
+  const digits = sanitizeCurrencyInput(value);
+  if (!digits.length) {
+    return 0;
+  }
+  const parsed = Number.parseInt(digits, 10);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export function formatCurrencyInputDisplay(value: string): string {
+  const amount = parseCurrencyInputToNumber(value);
+  if (amount === 0) {
+    return "";
+  }
+  return formatAmountIDR(amount);
+}
+
 export function toDateKey(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");

@@ -5,9 +5,12 @@ import { buildCustomSplit, buildEqualSplit } from "@kemana/core/split";
 import { parseQuickAdd } from "@kemana/core/parser";
 import { CATEGORIES, PAYMENT_METHODS, type EntrySplit, type ParseWarning, type PaymentMethod } from "@kemana/core/types";
 import {
+    formatCurrencyInputDisplay,
     getSplitOtherPeopleInput,
     normalizeSplitPeopleWithLockedSelf,
+    parseCurrencyInputToNumber,
     paymentMethodLabel,
+    sanitizeCurrencyInput,
     splitDisplayText,
     toSplitPeopleInputWithLockedSelf,
     warningShortText
@@ -48,11 +51,6 @@ const CategoryIcons: Record<string, ReactNode> = {
     Hiburan: <Coffee className="h-5 w-5" />,
     Lainnya: <MoreHorizontal className="h-5 w-5" />
 };
-
-function parseCurrencyInput(value: string): number {
-    const parsed = Number.parseInt(value.replace(/[^\d]/g, ""), 10);
-    return Number.isFinite(parsed) ? parsed : 0;
-}
 
 function splitFingerprint(split?: EntrySplit): string {
     if (!split || !split.shares.length) {
@@ -219,7 +217,7 @@ function TransactionCardComponent({
         itemSplitFingerprint
     ]);
 
-    const parsedDraftAmount = useMemo(() => parseCurrencyInput(draftAmount), [draftAmount]);
+    const parsedDraftAmount = useMemo(() => parseCurrencyInputToNumber(draftAmount), [draftAmount]);
     const splitPeople = useMemo(
         () => normalizeSplitPeopleWithLockedSelf(splitPeopleInput),
         [splitPeopleInput]
@@ -242,7 +240,7 @@ function TransactionCardComponent({
         () =>
             splitPeople.map((person) => ({
                 person,
-                amount: parseCurrencyInput(splitCustomDraft[person] ?? "")
+                amount: parseCurrencyInputToNumber(splitCustomDraft[person] ?? "")
             })),
         [splitCustomDraft, splitPeople]
     );
@@ -616,9 +614,10 @@ function TransactionCardComponent({
                         <div className="grid gap-1.5">
                             <label className="px-1 text-[12px] font-semibold text-text-secondary">Jumlah</label>
                             <Input
-                                type="number"
-                                value={draftAmount}
-                                onChange={(event) => setDraftAmount(event.target.value)}
+                                type="text"
+                                inputMode="numeric"
+                                value={formatCurrencyInputDisplay(draftAmount)}
+                                onChange={(event) => setDraftAmount(sanitizeCurrencyInput(event.target.value))}
                                 className="h-11 rounded-xl bg-bg-elevated text-[16px] font-semibold tracking-wide"
                             />
                         </div>
@@ -777,12 +776,13 @@ function TransactionCardComponent({
                                                         {person}
                                                     </span>
                                                     <Input
-                                                        type="number"
-                                                        value={splitCustomDraft[person] ?? ""}
+                                                        type="text"
+                                                        inputMode="numeric"
+                                                        value={formatCurrencyInputDisplay(splitCustomDraft[person] ?? "")}
                                                         onChange={(event) =>
                                                             setSplitCustomDraft((prev) => ({
                                                                 ...prev,
-                                                                [person]: event.target.value
+                                                                [person]: sanitizeCurrencyInput(event.target.value)
                                                             }))
                                                         }
                                                         placeholder="0"

@@ -4,8 +4,11 @@ import { buildCustomSplit, buildEqualSplit } from "@kemana/core/split";
 import type { EntrySplit } from "@kemana/core/types";
 import { formatAmountIDR } from "@kemana/core/format";
 import {
+  formatCurrencyInputDisplay,
   getSplitOtherPeopleInput,
   normalizeSplitPeopleWithLockedSelf,
+  parseCurrencyInputToNumber,
+  sanitizeCurrencyInput,
   toSplitPeopleInputWithLockedSelf
 } from "@/lib/kemana-utils";
 import { Coffee, Utensils, Car, ShoppingBag, Receipt, MoreHorizontal, X, Users } from "lucide-react";
@@ -112,7 +115,7 @@ export default function AddTransactionSheet({ isOpen, onClose, onSave, prefill }
   }, [isOpen, prefill]);
 
   const unitAmount = useMemo(
-    () => Number.parseInt(amountStr.replace(/\D/g, ""), 10) || 0,
+    () => parseCurrencyInputToNumber(amountStr),
     [amountStr]
   );
   const quantity = useMemo(
@@ -128,7 +131,7 @@ export default function AddTransactionSheet({ isOpen, onClose, onSave, prefill }
     () =>
       splitPeople.map((person) => ({
         person,
-        amount: Number.parseInt((splitCustomDraft[person] ?? "").replace(/\D/g, ""), 10) || 0
+        amount: parseCurrencyInputToNumber(splitCustomDraft[person] ?? "")
       })),
     [splitCustomDraft, splitPeople]
   );
@@ -179,7 +182,7 @@ export default function AddTransactionSheet({ isOpen, onClose, onSave, prefill }
   }, [splitCustomShares, splitEnabled, splitMode, splitPeople, totalAmount]);
 
   const handleAmountChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const sanitized = event.target.value.replace(/\D/g, "");
+    const sanitized = sanitizeCurrencyInput(event.target.value);
     setAmountStr(sanitized);
   };
 
@@ -282,7 +285,7 @@ export default function AddTransactionSheet({ isOpen, onClose, onSave, prefill }
               <input
                 type="text"
                 inputMode="numeric"
-                value={amountStr ? formatAmountIDR(unitAmount) : ""}
+                value={formatCurrencyInputDisplay(amountStr)}
                 onChange={handleAmountChange}
                 placeholder="0"
                 className="w-full min-w-[120px] max-w-[220px] bg-transparent text-center text-[40px] leading-none tracking-tight outline-none placeholder:text-border-subtle"
@@ -483,11 +486,11 @@ export default function AddTransactionSheet({ isOpen, onClose, onSave, prefill }
                         <input
                           type="text"
                           inputMode="numeric"
-                          value={splitCustomDraft[person] ?? ""}
+                          value={formatCurrencyInputDisplay(splitCustomDraft[person] ?? "")}
                           onChange={(event) =>
                             setSplitCustomDraft((prev) => ({
                               ...prev,
-                              [person]: event.target.value.replace(/\D/g, "")
+                              [person]: sanitizeCurrencyInput(event.target.value)
                             }))
                           }
                           placeholder="0"

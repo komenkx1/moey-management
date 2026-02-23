@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+    formatCurrencyInputDisplay,
     extractSummedAmountMeta,
     formatDayLabel,
     formatItemPillText,
@@ -15,8 +16,10 @@ import {
     groupEntriesByDate,
     includesDateInFilter,
     normalizeSplitPeopleWithLockedSelf,
+    parseCurrencyInputToNumber,
     parseDateKey,
     parseItemBreakdownFromSubtitle,
+    sanitizeCurrencyInput,
     splitDisplayText,
     sumAmount,
     toSplitPeopleInputWithLockedSelf,
@@ -269,6 +272,22 @@ describe("Text Parsing Helpers", () => {
         expect(formatItemPillText({ label: "roti", qty: 2, raw: "" })).toBe("roti ×2");
         expect(formatItemPillText({ label: "roti", amount: 15000, raw: "" })).toBe("roti • Rp15k");
         expect(formatItemPillText({ label: "roti", qty: 2, amount: 15000, raw: "" })).toBe("roti ×2 • Rp15k");
+    });
+});
+
+describe("Currency Input Helpers", () => {
+    it("sanitizes non-digit characters", () => {
+        expect(sanitizeCurrencyInput("Rp 12.345abc")).toBe("12345");
+    });
+
+    it("parses sanitized input into numbers", () => {
+        expect(parseCurrencyInputToNumber("12.345")).toBe(12345);
+        expect(parseCurrencyInputToNumber("")).toBe(0);
+    });
+
+    it("formats input display in Indonesian grouping", () => {
+        expect(formatCurrencyInputDisplay("12345")).toBe("12.345");
+        expect(formatCurrencyInputDisplay("0")).toBe("");
     });
 });
 
