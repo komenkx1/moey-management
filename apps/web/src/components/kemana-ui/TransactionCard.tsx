@@ -146,6 +146,25 @@ function TransactionCardComponent({
     inferCategory,
     className
 }: TransactionCardProps) {
+    const displayAmount = useMemo(() => {
+        if (!item.split?.shares?.length) {
+            return item.split?.payer && item.split.payer.toLowerCase() !== "kamu" ? 0 : item.amount;
+        }
+
+        const myShare = item.split.shares.find((s) => s.person.toLowerCase() === "kamu");
+        if (myShare) {
+            return myShare.amount;
+        }
+
+        // Jika tidak ada "kamu" di share, tapi kita yang bayar, mungkin kita bayarin orang lain full
+        if (item.split.payer.toLowerCase() === "kamu") {
+            // Kita keluarkan uang sebesar amount (sebagai pengeluaran kita sementara/ditalangin)
+            return item.amount;
+        }
+
+        return 0; // Bukan kita yang bayar, dan kita tidak ada di daftar split
+    }, [item.amount, item.split]);
+
     const [draftTitle, setDraftTitle] = useState(item.title);
     const [draftAmount, setDraftAmount] = useState(String(item.amount));
     const [draftNote, setDraftNote] = useState(item.note || "");
@@ -468,7 +487,7 @@ function TransactionCardComponent({
 
                 <div className="flex shrink-0 flex-col items-end justify-center pl-2">
                     <span className="text-[15px] font-bold text-text-primary">
-                        -Rp{formatAmountIDR(item.amount)}
+                        -Rp{formatAmountIDR(displayAmount)}
                     </span>
                     {item.note && !isExpanded ? (
                         <span className="mt-0.5 max-w-[100px] truncate text-[12px] font-medium text-text-tertiary">
@@ -534,23 +553,23 @@ function TransactionCardComponent({
                                                     ? "bg-brand text-white hover:bg-brand-pressed"
                                                     : "bg-bg-subtle text-text-tertiary"
                                             )}
-                                        data-testid="inline-quick-format-apply"
-                                    >
-                                        {canApplyQuickFormat ? "Pakai hasil ini" : "Sudah sesuai"}
-                                    </button>
-                                    <p className="mt-1 text-[11px] font-medium text-text-tertiary">
-                                        Belum tersimpan. Tekan Simpan kalau sudah pas.
-                                    </p>
-                                </div>
-                            ) : normalizedRawInput.length > 0 ? (
-                                <p className="px-1 text-[12px] font-medium text-danger">
+                                            data-testid="inline-quick-format-apply"
+                                        >
+                                            {canApplyQuickFormat ? "Pakai hasil ini" : "Sudah sesuai"}
+                                        </button>
+                                        <p className="mt-1 text-[11px] font-medium text-text-tertiary">
+                                            Belum tersimpan. Tekan Simpan kalau sudah pas.
+                                        </p>
+                                    </div>
+                                ) : normalizedRawInput.length > 0 ? (
+                                    <p className="px-1 text-[12px] font-medium text-danger">
                                         Format belum kebaca. Coba tulis seperti 3x 15k, atau edit manual.
-                                </p>
-                            ) : (
-                                <p className="px-1 text-[12px] font-medium text-text-tertiary">
+                                    </p>
+                                ) : (
+                                    <p className="px-1 text-[12px] font-medium text-text-tertiary">
                                         Contoh: mcd 3x 15k atau dinner 120 3p.
-                                </p>
-                            )}
+                                    </p>
+                                )}
                                 {formatFeedback ? (
                                     <p className="px-1 text-[12px] font-medium text-success">{formatFeedback}</p>
                                 ) : null}
