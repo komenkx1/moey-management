@@ -7,8 +7,7 @@ import {
   Sun,
   Moon,
   WandSparkles,
-  Clock3,
-  NotebookPen
+  Clock3
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ScreenContainer from "@/components/kemana-ui/ScreenContainer";
@@ -19,7 +18,7 @@ import DateRangeFilter from "@/components/kemana-ui/DateRangeFilter";
 import SummaryHeroCard from "@/components/kemana-ui/SummaryHeroCard";
 import QuickRecallChips, { type QuickRecallItem } from "@/components/kemana-ui/QuickRecallChips";
 import ContextBanner from "@/components/kemana-ui/ContextBanner";
-import { TransactionCard, type TransactionItem } from "@/components/kemana-ui/TransactionCard";
+import type { TransactionItem } from "@/components/kemana-ui/TransactionCard";
 import AddTransactionSheet, {
   type AddTransactionSubmitPayload
 } from "@/components/kemana-ui/AddTransactionSheet";
@@ -28,6 +27,8 @@ import DataToolsSheet from "@/components/kemana-ui/DataToolsSheet";
 import NightCloseReviewSheet from "@/components/kemana-ui/NightCloseReviewSheet";
 import NameOnboardingSheet from "@/components/kemana-ui/NameOnboardingSheet";
 import InsightTabContent from "@/components/kemana-ui/InsightTabContent";
+import NotesTabContent from "@/components/kemana-ui/NotesTabContent";
+import HomeRecentActivitySection from "@/components/kemana-ui/HomeRecentActivitySection";
 import LastEntryGapIndicator from "@/app/LastEntryGapIndicator";
 import { formatAmountCompact, formatAmountIDR } from "@kemana/core/format";
 import { parseQuickAdd } from "@kemana/core/parser";
@@ -1918,130 +1919,34 @@ export default function DashboardPage() {
           onActionClick={() => setIsDataToolsSheetOpen(true)}
         />
 
-        <div className="px-4 py-2">
-          {storageWarning ? (
-            <div className="mb-3 rounded-xl border border-danger/20 bg-danger-soft/60 px-3 py-2 text-[12px] font-medium text-danger">
-              {storageWarning}
-            </div>
-          ) : null}
-
-          <DateRangeFilter
-            value={dateFilter}
-            onChange={handleDateFilterChange}
-            customRange={normalizedCustomRange}
-            onCustomRangeChange={handleCustomDateRangeChange}
-            className="mb-2"
-          />
-
-          <div className="mb-3 mt-2 rounded-[16px] bg-bg-card px-4 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.04)] ring-1 ring-border-subtle">
-            <div className="flex items-center justify-between">
-              <span className="text-[13px] font-semibold text-text-secondary">{summaryStats.periodLabel}</span>
-              <span
-                className={cn(
-                  "rounded-full px-2.5 py-1 text-[11px] font-semibold",
-                  summaryStats.status.tone === "boros"
-                    ? "bg-danger-soft text-danger"
-                    : summaryStats.status.tone === "lumayan"
-                      ? "bg-warning-soft text-warning"
-                      : "bg-bg-subtle text-text-secondary"
-                )}
-              >
-                {summaryStats.status.label}
-              </span>
-            </div>
-            <div className="mt-1 text-[22px] font-bold tracking-tight text-text-primary">
-              -Rp{formatAmountIDR(summaryStats.totalAmount)}
-            </div>
-            <div className="mt-1 text-[12px] font-medium text-text-secondary">{summaryStats.compareText}</div>
-          </div>
-
-          <div className="mb-4 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setIsBulkSheetOpen(true)}
-              className="h-10 rounded-xl border border-border-subtle bg-bg-elevated text-[13px] font-semibold text-text-primary transition-colors hover:border-brand hover:text-brand"
-            >
-              Catat banyak
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsDataToolsSheetOpen(true)}
-              className="h-10 rounded-xl border border-border-subtle bg-bg-elevated text-[13px] font-semibold text-text-primary transition-colors hover:border-brand hover:text-brand"
-            >
-              Data & tools
-            </button>
-          </div>
-
-          <div className="flex flex-col gap-5 pb-[calc(124px+env(safe-area-inset-bottom))]">
-            {orderedDates.map((dateString) => (
-              <div key={dateString} className="flex flex-col gap-2">
-                <div className="sticky top-[calc(var(--safe-header-offset)+74px)] z-10 -mx-4 flex items-center justify-between gap-2 border-b border-border-subtle/70 bg-bg-base/94 px-4 pb-2 pt-3 backdrop-blur-md">
-                  <span className="text-[14px] font-bold text-text-primary">{formatDayLabel(dateString)}</span>
-                  <span className="text-[12px] font-medium text-text-secondary">
-                    -Rp{formatAmountIDR(dailyTotal[dateString] ?? 0)}
-                  </span>
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  {(groupedEntries[dateString] ?? []).map((entry) => {
-                    const transaction = toTransactionItem(entry);
-                    const highlighted = highlightEntryId === transaction.id || pendingScrollToId === transaction.id;
-
-                    return (
-                      <div
-                        key={transaction.id}
-                        data-entry-id={transaction.id}
-                        ref={(element) => {
-                          itemRefs.current.set(transaction.id, element);
-                        }}
-                        className={cn(
-                          highlighted
-                            ? "animate-in fade-in zoom-in rounded-[16px] ring-2 ring-brand duration-300"
-                            : ""
-                        )}
-                      >
-                        <TransactionCard
-                          item={transaction}
-                          isExpanded={expandedIds.has(transaction.id)}
-                          onToggleExpand={() => handleToggleExpand(transaction.id)}
-                          inferCategory={inferCategoryFromText}
-                          onSave={handleSaveTransaction}
-                          onDelete={handleDeleteTransaction}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-
-            {filteredTransactions.length === 0 ? (
-              <div className="animate-in fade-in rounded-2xl border border-dashed border-border-subtle bg-bg-elevated px-4 py-10 text-center">
-                <p className="text-[14px] font-semibold text-text-primary">
-                  {summaryStats.emptyState?.title ?? "Belum ada catatan."}
-                </p>
-                <p className="mt-1 text-[12px] font-medium text-text-secondary">
-                  {summaryStats.emptyState?.subtitle ?? "Mulai dari input cepat atau tombol Catat."}
-                </p>
-              </div>
-            ) : null}
-
-            {notesHasMore ? (
-              <div
-                ref={notesLoadMoreRef}
-                className="rounded-xl border border-border-subtle bg-bg-elevated px-3 py-2 text-center text-[12px] font-medium text-text-secondary"
-              >
-                Memuat catatan lainnya...
-              </div>
-            ) : null}
-
-            {shouldVirtualizeNotes && filteredEntries.length > 0 ? (
-              <div className="text-center text-[11px] font-medium text-text-tertiary">
-                Menampilkan {notesVirtualizationPlan.visibleCount} dari {filteredEntries.length} catatan
-              </div>
-            ) : null}
-          </div>
-        </div>
+        <NotesTabContent
+          storageWarning={storageWarning}
+          dateFilter={dateFilter}
+          onDateFilterChange={handleDateFilterChange}
+          customRange={normalizedCustomRange}
+          onCustomRangeChange={handleCustomDateRangeChange}
+          summaryStats={summaryStats}
+          onOpenBulk={() => setIsBulkSheetOpen(true)}
+          onOpenDataTools={() => setIsDataToolsSheetOpen(true)}
+          orderedDates={orderedDates}
+          dailyTotal={dailyTotal}
+          groupedEntries={groupedEntries}
+          toTransactionItem={toTransactionItem}
+          highlightEntryId={highlightEntryId}
+          pendingScrollToId={pendingScrollToId}
+          itemRefs={itemRefs}
+          expandedIds={expandedIds}
+          onToggleExpand={handleToggleExpand}
+          inferCategoryFromText={inferCategoryFromText}
+          onSaveTransaction={handleSaveTransaction}
+          onDeleteTransaction={handleDeleteTransaction}
+          filteredTransactionsLength={filteredTransactions.length}
+          notesHasMore={notesHasMore}
+          notesLoadMoreRef={notesLoadMoreRef}
+          shouldVirtualizeNotes={shouldVirtualizeNotes}
+          filteredEntriesLength={filteredEntries.length}
+          visibleCount={notesVirtualizationPlan.visibleCount}
+        />
 
         <FabAddButton
           onClick={() => openAddSheet()}
@@ -2377,54 +2282,18 @@ export default function DashboardPage() {
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-3">
-          <h3 className="text-[16px] font-bold text-text-primary">Aktivitas terbaru</h3>
-          <div className="flex flex-col gap-3">
-            {allTransactions.slice(0, 5).map((transaction) => (
-              <div
-                key={transaction.id}
-                data-home-entry-id={transaction.id}
-                ref={(element) => {
-                  homeItemRefs.current.set(transaction.id, element);
-                }}
-                className={cn(
-                  highlightEntryId === transaction.id || homePendingScrollId === transaction.id
-                    ? "animate-in fade-in zoom-in rounded-[16px] ring-2 ring-brand duration-300"
-                    : ""
-                )}
-              >
-                <TransactionCard
-                  item={transaction}
-                  isExpanded={expandedIds.has(transaction.id)}
-                  onToggleExpand={() => handleToggleExpand(transaction.id)}
-                  inferCategory={inferCategoryFromText}
-                  onSave={handleSaveTransaction}
-                  onDelete={handleDeleteTransaction}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2.5">
-          {allTransactions.length > 5 ? <button
-            type="button"
-            onClick={() => setActiveTab("notes")}
-            className="h-11 w-full rounded-xl bg-brand text-[14px] font-semibold text-white shadow-sm transition-colors hover:bg-brand-pressed"
-          >
-            Lihat semua catatan
-          </button> : <div className="empty-state-acitivity">
-            <div className="empty-state-acitivity-icon flex items-center justify-center">
-              <NotebookPen />
-            </div>
-            <div className="empty-state-acitivity-title  text-center my-3">
-              <b>Belum ada catatan</b>
-            </div>
-            <div className="empty-state-acitivity-subtitle  text-center">
-              Yuk mulai catat pengeluaranmu
-            </div>
-          </div>}
-        </div>
+        <HomeRecentActivitySection
+          allTransactions={allTransactions}
+          homeItemRefs={homeItemRefs}
+          highlightEntryId={highlightEntryId}
+          homePendingScrollId={homePendingScrollId}
+          expandedIds={expandedIds}
+          onToggleExpand={handleToggleExpand}
+          inferCategoryFromText={inferCategoryFromText}
+          onSaveTransaction={handleSaveTransaction}
+          onDeleteTransaction={handleDeleteTransaction}
+          onOpenNotes={() => setActiveTab("notes")}
+        />
 
         <div className="h-10" aria-hidden />
       </main>
