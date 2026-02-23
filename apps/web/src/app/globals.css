@@ -60,6 +60,8 @@
     /* Buttons/borders */
     --color-border-subtle: #333333;
 
+    --app-bg: #000000;
+
     --color-text-primary: #FFFFFF;
     --color-text-secondary: #E0E0E0;
     /* Brighter secondary text */
@@ -1263,6 +1265,16 @@ select {
   color: #2a2a28;
 }
 
+.dark .pwa-install-banner {
+  background: #111111;
+  border-color: #333333;
+  color: #FFFFFF;
+}
+
+.dark .pwa-install-banner-text {
+  color: #E0E0E0;
+}
+
 .pwa-install-banner-actions {
   display: flex;
   align-items: center;
@@ -1279,6 +1291,12 @@ select {
   line-height: 1;
   font-size: 18px;
   cursor: pointer;
+}
+
+.dark .pwa-install-close {
+  background: #222222;
+  border-color: #333333;
+  color: #A0A0A0;
 }
 
 .pwa-install-modal-backdrop {

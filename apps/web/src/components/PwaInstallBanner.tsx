@@ -123,12 +123,20 @@ export default function PwaInstallBanner() {
   return (
     <>
       {isVisible ? (
-        <section className="pwa-install-banner" role="status" aria-live="polite" aria-label="Install aplikasi">
-          <div className="pwa-install-banner-text">Install KeMana</div>
-          <div className="pwa-install-banner-actions">
+        <section
+          className="fixed bottom-[calc(env(safe-area-inset-bottom)+20px)] left-1/2 z-[100] flex w-[min(400px,calc(100%-32px))] -translate-x-1/2 items-center justify-between gap-3 rounded-[16px] border border-border-subtle bg-bg-elevated p-3 shadow-xl"
+          role="status"
+          aria-live="polite"
+          aria-label="Install aplikasi"
+        >
+          <div className="ml-1 flex flex-col justify-center">
+            <span className="text-[14px] font-bold text-text-primary">Install KeMana</span>
+            <span className="text-[11px] font-medium text-text-secondary">Akses cepat dari homescreen</span>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
-              className="btn btn-sm secondary"
+              className="rounded-xl bg-brand font-semibold px-3.5 py-2 text-[12px] text-white shadow-sm transition-all hover:bg-brand-pressed active:scale-95"
               onClick={handleInstallClick}
               aria-label={canInstall || isIOS() ? "Install" : "Install (manual)"}
             >
@@ -136,7 +144,7 @@ export default function PwaInstallBanner() {
             </button>
             <button
               type="button"
-              className="pwa-install-close"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-[18px] text-text-tertiary transition-colors hover:bg-bg-subtle hover:text-text-primary active:scale-95"
               onClick={closeBanner}
               aria-label="Tutup banner install"
             >
@@ -154,16 +162,18 @@ export default function PwaInstallBanner() {
             aria-label="Tutup instruksi install"
             onClick={closeIosHelp}
           />
-          <section className="pwa-install-modal" role="dialog" aria-modal="true" aria-label="Instruksi install iOS">
-            <div className="pwa-install-modal-title">Install di iPhone/iPad</div>
-            <ol className="pwa-install-steps">
-              <li>Buka menu Share di Safari.</li>
-              <li>Pilih Add to Home Screen.</li>
-              <li>Tap Add untuk menyimpan ke homescreen.</li>
+          <section className="fixed top-1/2 z-[110] left-1/2 w-[min(400px,calc(100%-40px))] -translate-x-1/2 -translate-y-1/2 rounded-[20px] border border-border-subtle bg-bg-elevated p-5 shadow-2xl flex flex-col gap-4" role="dialog" aria-modal="true" aria-label="Instruksi install iOS">
+            <div className="text-[16px] font-bold text-text-primary">Install di iPhone/iPad</div>
+            <ol className="ml-5 list-decimal flex flex-col gap-1.5 text-[14px] text-text-secondary">
+              <li>Buka menu <span className="font-semibold text-text-primary">Share</span> di Safari.</li>
+              <li>Pilih <span className="font-semibold text-text-primary">Add to Home Screen</span>.</li>
+              <li>Tap <span className="font-semibold text-text-primary">Add</span> untuk menyimpan ke homescreen.</li>
             </ol>
-            <button type="button" className="btn btn-sm" onClick={closeIosHelp}>
-              Mengerti
-            </button>
+            <div className="mt-2 flex justify-end">
+              <button type="button" className="rounded-xl bg-brand font-semibold px-4 py-2.5 text-[13px] text-white shadow-sm transition-all hover:bg-brand-pressed active:scale-95 w-full" onClick={closeIosHelp}>
+                Mengerti
+              </button>
+            </div>
           </section>
         </>
       ) : null}
