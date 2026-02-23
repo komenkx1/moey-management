@@ -267,7 +267,7 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     const entry = await expandEntryByText(page, "dinner");
 
     await entry.getByRole("button", { name: "Bagi rata" }).first().click();
-    await entry.getByPlaceholder("Kamu, Budi, Cici").fill("Kamu, Budi, Cici");
+    await entry.getByPlaceholder("Contoh: Budi, Cici").fill("Budi, Cici");
     await entry.getByRole("button", { name: "Simpan", exact: true }).click();
 
     await expect(entry).toContainText("Split 3");

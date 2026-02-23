@@ -181,6 +181,7 @@ function TransactionCardComponent({
     const [splitEnabled, setSplitEnabled] = useState(Boolean(item.split?.shares?.length));
     const [splitMode, setSplitMode] = useState<"equal" | "custom">(item.split?.mode ?? "equal");
     const [splitPeopleInput, setSplitPeopleInput] = useState(getInitialPeopleText(item));
+    const [splitOthersDraft, setSplitOthersDraft] = useState(getSplitOtherPeopleInput(getInitialPeopleText(item)));
     const [splitCustomDraft, setSplitCustomDraft] = useState<Record<string, string>>(
         getInitialCustomDraft(item)
     );
@@ -199,7 +200,9 @@ function TransactionCardComponent({
         setDraftPaymentMethod(item.paymentMethod || "");
         setSplitEnabled(Boolean(item.split?.shares?.length));
         setSplitMode(item.split?.mode ?? "equal");
-        setSplitPeopleInput(getInitialPeopleText(item));
+        const initialSplitPeopleInput = getInitialPeopleText(item);
+        setSplitPeopleInput(initialSplitPeopleInput);
+        setSplitOthersDraft(getSplitOtherPeopleInput(initialSplitPeopleInput));
         setSplitCustomDraft(getInitialCustomDraft(item));
         setDraftRawInput(item.rawInput || getDefaultParserInput(item));
         setSplitError(null);
@@ -219,10 +222,6 @@ function TransactionCardComponent({
     const parsedDraftAmount = useMemo(() => parseCurrencyInput(draftAmount), [draftAmount]);
     const splitPeople = useMemo(
         () => normalizeSplitPeopleWithLockedSelf(splitPeopleInput),
-        [splitPeopleInput]
-    );
-    const splitOthersInput = useMemo(
-        () => getSplitOtherPeopleInput(splitPeopleInput),
         [splitPeopleInput]
     );
 
@@ -376,13 +375,17 @@ function TransactionCardComponent({
         setDraftRawInput(parsed.rawInput);
 
         if (parsed.splitCount && parsed.splitCount > 1) {
+            const nextPeopleInput = buildSplitPeopleText(parsed.splitCount);
             setSplitEnabled(true);
             setSplitMode("equal");
-            setSplitPeopleInput(buildSplitPeopleText(parsed.splitCount));
+            setSplitPeopleInput(nextPeopleInput);
+            setSplitOthersDraft(getSplitOtherPeopleInput(nextPeopleInput));
         } else {
+            const nextPeopleInput = "Kamu, Teman";
             setSplitEnabled(false);
             setSplitMode("equal");
-            setSplitPeopleInput("Kamu, Teman");
+            setSplitPeopleInput(nextPeopleInput);
+            setSplitOthersDraft(getSplitOtherPeopleInput(nextPeopleInput));
         }
         setSplitCustomDraft({});
         setSplitError(null);
@@ -452,7 +455,9 @@ function TransactionCardComponent({
         setDraftPaymentMethod(item.paymentMethod || "");
         setSplitEnabled(Boolean(item.split?.shares?.length));
         setSplitMode(item.split?.mode ?? "equal");
-        setSplitPeopleInput(getInitialPeopleText(item));
+        const initialSplitPeopleInput = getInitialPeopleText(item);
+        setSplitPeopleInput(initialSplitPeopleInput);
+        setSplitOthersDraft(getSplitOtherPeopleInput(initialSplitPeopleInput));
         setSplitCustomDraft(getInitialCustomDraft(item));
         setDraftRawInput(item.rawInput || getDefaultParserInput(item));
         setSplitError(null);
@@ -744,20 +749,31 @@ function TransactionCardComponent({
                                         </span>
                                         <span className="text-[11px] font-medium text-text-tertiary">Dikunci otomatis</span>
                                     </div>
+                                    <p className="text-[11px] font-medium text-text-tertiary">
+                                        Tambah orang pakai koma. Contoh: Budi, Cici, Deni.
+                                    </p>
                                     <Input
-                                        value={splitOthersInput}
-                                        onChange={(event) =>
-                                            setSplitPeopleInput(toSplitPeopleInputWithLockedSelf(event.target.value))
-                                        }
-                                        placeholder="Kamu, Budi, Cici"
+                                        value={splitOthersDraft}
+                                        onChange={(event) => {
+                                            const rawOthers = event.target.value;
+                                            setSplitOthersDraft(rawOthers);
+                                            setSplitPeopleInput(toSplitPeopleInputWithLockedSelf(rawOthers));
+                                        }}
+                                        onBlur={() => {
+                                            setSplitOthersDraft(getSplitOtherPeopleInput(splitPeopleInput));
+                                        }}
+                                        placeholder="Contoh: Budi, Cici"
                                         className="h-10 rounded-xl bg-bg-base text-[14px]"
                                     />
 
                                     {splitMode === "custom" ? (
                                         <div className="grid gap-2">
                                             {splitPeople.map((person) => (
-                                                <div key={person} className="flex items-center gap-2">
-                                                    <span className="min-w-[72px] text-[12px] font-medium text-text-secondary">
+                                                <div key={person} className="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-2">
+                                                    <span
+                                                        title={person}
+                                                        className="truncate text-[12px] font-medium text-text-secondary"
+                                                    >
                                                         {person}
                                                     </span>
                                                     <Input

@@ -74,6 +74,7 @@ export default function AddTransactionSheet({ isOpen, onClose, onSave, prefill }
   const [splitEnabled, setSplitEnabled] = useState(false);
   const [splitMode, setSplitMode] = useState<"equal" | "custom">("equal");
   const [splitPeopleInput, setSplitPeopleInput] = useState("Kamu, Teman");
+  const [splitOthersDraft, setSplitOthersDraft] = useState("Teman");
   const [splitCustomDraft, setSplitCustomDraft] = useState<Record<string, string>>({});
 
   const { dragY, dragHandleProps } = useBottomSheetDrag({
@@ -97,9 +98,11 @@ export default function AddTransactionSheet({ isOpen, onClose, onSave, prefill }
     setDate(prefill?.date ?? getTodayISO());
     setSplitEnabled(Boolean(prefill?.split?.shares?.length));
     setSplitMode(prefill?.split?.mode ?? "equal");
-    setSplitPeopleInput(
-      toSplitPeopleInputWithLockedSelf(prefill?.split?.shares?.map((share) => share.person).join(", ") || "Kamu, Teman")
+    const initialSplitPeopleInput = toSplitPeopleInputWithLockedSelf(
+      prefill?.split?.shares?.map((share) => share.person).join(", ") || "Kamu, Teman"
     );
+    setSplitPeopleInput(initialSplitPeopleInput);
+    setSplitOthersDraft(getSplitOtherPeopleInput(initialSplitPeopleInput));
     setSplitCustomDraft(
       prefill?.split?.shares?.reduce<Record<string, string>>((acc, share) => {
         acc[share.person] = String(Math.round(share.amount));
@@ -119,10 +122,6 @@ export default function AddTransactionSheet({ isOpen, onClose, onSave, prefill }
   const totalAmount = useMemo(() => unitAmount * quantity, [quantity, unitAmount]);
   const splitPeople = useMemo(
     () => normalizeSplitPeopleWithLockedSelf(splitPeopleInput),
-    [splitPeopleInput]
-  );
-  const splitOthersInput = useMemo(
-    () => getSplitOtherPeopleInput(splitPeopleInput),
     [splitPeopleInput]
   );
   const splitCustomShares = useMemo(
@@ -454,18 +453,33 @@ export default function AddTransactionSheet({ isOpen, onClose, onSave, prefill }
                   </span>
                   <span className="text-[11px] font-medium text-text-tertiary">Dikunci otomatis</span>
                 </div>
+                <p className="text-[11px] font-medium text-text-tertiary">
+                  Tambah orang pakai koma. Contoh: Budi, Cici, Deni.
+                </p>
                 <input
                   type="text"
-                  value={splitOthersInput}
-                  onChange={(event) => setSplitPeopleInput(toSplitPeopleInputWithLockedSelf(event.target.value))}
-                  placeholder="Kamu, Budi, Cici"
+                  value={splitOthersDraft}
+                  onChange={(event) => {
+                    const rawOthers = event.target.value;
+                    setSplitOthersDraft(rawOthers);
+                    setSplitPeopleInput(toSplitPeopleInputWithLockedSelf(rawOthers));
+                  }}
+                  onBlur={() => {
+                    setSplitOthersDraft(getSplitOtherPeopleInput(splitPeopleInput));
+                  }}
+                  placeholder="Contoh: Budi, Cici"
                   className="h-10 w-full rounded-xl border border-border-subtle bg-bg-base px-3 text-[14px] text-text-primary outline-none focus:border-brand"
                 />
                 {splitMode === "custom" ? (
                   <div className="grid gap-2">
                     {splitPeople.map((person) => (
-                      <div key={person} className="flex items-center gap-2">
-                        <span className="min-w-[72px] text-[12px] font-medium text-text-secondary">{person}</span>
+                      <div key={person} className="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-2">
+                        <span
+                          title={person}
+                          className="truncate text-[12px] font-medium text-text-secondary"
+                        >
+                          {person}
+                        </span>
                         <input
                           type="text"
                           inputMode="numeric"
