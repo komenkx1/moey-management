@@ -13,7 +13,8 @@ import {
   Sun,
   Moon,
   WandSparkles,
-  Clock3
+  Clock3,
+  NotebookPen
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ScreenContainer from "@/components/kemana-ui/ScreenContainer";
@@ -1476,7 +1477,7 @@ export default function DashboardPage() {
       const nextText = note ? `${nextTitle} - ${note}` : nextTitle;
       const paymentMethod =
         updatedItem.paymentMethod &&
-        PAYMENT_METHODS.includes(updatedItem.paymentMethod as (typeof PAYMENT_METHODS)[number])
+          PAYMENT_METHODS.includes(updatedItem.paymentMethod as (typeof PAYMENT_METHODS)[number])
           ? (updatedItem.paymentMethod as Entry["paymentMethod"])
           : undefined;
 
@@ -1950,7 +1951,7 @@ export default function DashboardPage() {
 
             <p className="mt-4 text-[13px] font-medium text-text-secondary">Pengeluaranmu</p>
             <p className="mt-1 text-[42px] font-bold leading-none tracking-tight text-text-primary">
-              Rp{formatAmountIDR(insightSevenDay.total)}
+              -Rp{formatAmountIDR(insightSevenDay.total)}
             </p>
             <p className="mt-2 text-[12px] font-medium text-text-secondary">
               {insightSevenDay.hasData
@@ -1976,7 +1977,7 @@ export default function DashboardPage() {
                   {insightSevenDay.windowDays ? "Rata-rata/hari" : "Rata-rata/hari aktif"}
                 </p>
                 <p className="mt-1 text-[15px] font-bold leading-tight text-text-primary sm:text-[16px]">
-                  {insightAverageAmountLabel}
+                  -{insightAverageAmountLabel}
                 </p>
               </div>
             </div>
@@ -2001,7 +2002,7 @@ export default function DashboardPage() {
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">{item.label}</p>
                       <p className="mt-1 text-[14px] font-semibold text-text-primary">{item.value}</p>
                     </div>
-                    <p className="text-right text-[11px] font-medium text-text-secondary">{item.detail}</p>
+                    <p className="text-right text-[11px] font-medium text-text-secondary">-{item.detail}</p>
                   </div>
                 ))}
               </div>
@@ -2027,7 +2028,7 @@ export default function DashboardPage() {
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[13px] font-semibold text-text-primary">{item.category}</span>
                       <span className="text-[12px] font-medium text-text-secondary">
-                        Rp{formatAmountIDR(item.amount)} ({item.percentage}%)
+                        -Rp{formatAmountIDR(item.amount)} ({item.percentage}%)
                       </span>
                     </div>
                     <div className="h-2 rounded-full bg-bg-subtle">
@@ -2104,7 +2105,7 @@ export default function DashboardPage() {
                         {item.dateLabel} • {item.category} • {item.paymentMethod}
                       </p>
                     </div>
-                    <span className="shrink-0 text-[13px] font-bold text-text-primary">Rp{formatAmountIDR(item.amount)}</span>
+                    <span className="shrink-0 text-[13px] font-bold text-text-primary">-Rp{formatAmountIDR(item.amount)}</span>
                   </div>
                 ))}
               </div>
@@ -2193,7 +2194,7 @@ export default function DashboardPage() {
               </span>
             </div>
             <div className="mt-1 text-[22px] font-bold tracking-tight text-text-primary">
-              Rp{formatAmountIDR(summaryStats.totalAmount)}
+              -Rp{formatAmountIDR(summaryStats.totalAmount)}
             </div>
             <div className="mt-1 text-[12px] font-medium text-text-secondary">{summaryStats.compareText}</div>
           </div>
@@ -2221,7 +2222,7 @@ export default function DashboardPage() {
                 <div className="sticky top-[calc(var(--safe-header-offset)+74px)] z-10 flex items-center justify-between gap-2 bg-bg-base/94 pb-2 pt-3 backdrop-blur-md">
                   <span className="text-[14px] font-bold text-text-primary">{formatDayLabel(dateString)}</span>
                   <span className="text-[12px] font-medium text-text-secondary">
-                    Rp{formatAmountIDR(dailyTotal[dateString] ?? 0)}
+                    -Rp{formatAmountIDR(dailyTotal[dateString] ?? 0)}
                   </span>
                 </div>
 
@@ -2351,9 +2352,9 @@ export default function DashboardPage() {
                 <span className="text-[12px] font-bold text-insight-chip-text">
                   {summaryStats.topCategory
                     ? `${summaryStats.topCategory.category} (${Math.max(
-                        1,
-                        Math.round((summaryStats.topCategory.totalAmount / Math.max(1, summaryStats.totalAmount)) * 100)
-                      )}%)`
+                      1,
+                      Math.round((summaryStats.topCategory.totalAmount / Math.max(1, summaryStats.totalAmount)) * 100)
+                    )}%)`
                     : "Belum ada"}
                 </span>
               </div>
@@ -2459,7 +2460,7 @@ export default function DashboardPage() {
                 <p className="mt-0.5 text-[12px] font-medium text-text-secondary">
                   {smartRecallPrompt.subtitle ??
                     (latestEntryInsight
-                      ? `Terakhir: ${latestEntryInsight.title} • Rp${formatAmountIDR(latestEntryInsight.amount)}`
+                      ? `Terakhir: ${latestEntryInsight.title} • -Rp${formatAmountIDR(latestEntryInsight.amount)}`
                       : "Coba catat lagi supaya saran makin akurat.")}
                 </p>
               </div>
@@ -2492,7 +2493,7 @@ export default function DashboardPage() {
               <div className="min-w-0 flex-1">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">Saran</p>
                 <p className="mt-1 text-[14px] font-semibold leading-snug text-text-primary">
-                  {topAdaptiveRecallItem.title} sekitar Rp{formatAmountIDR(topAdaptiveRecallItem.amount)}.
+                  {topAdaptiveRecallItem.title} sekitar -Rp{formatAmountIDR(topAdaptiveRecallItem.amount)}.
                 </p>
               </div>
               <button
@@ -2587,9 +2588,9 @@ export default function DashboardPage() {
             adaptiveRecallItems.length
               ? adaptiveRecallItems
               : [
-                  { id: "r1", category: "Makan", title: "Nasi padang", amount: 25_000 },
-                  { id: "r2", category: "Transport", title: "Gojek kantor", amount: 14_000 }
-                ]
+                { id: "r1", category: "Makan", title: "Nasi padang", amount: 25_000 },
+                { id: "r2", category: "Transport", title: "Gojek kantor", amount: 14_000 }
+              ]
           }
           onSelect={(item) =>
             openAddSheet({
@@ -2650,13 +2651,23 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex flex-col gap-2.5">
-          <button
+          {allTransactions.length > 5 ? <button
             type="button"
             onClick={() => setActiveTab("notes")}
             className="h-11 w-full rounded-xl bg-brand text-[14px] font-semibold text-white shadow-sm transition-colors hover:bg-brand-pressed"
           >
             Lihat semua catatan
-          </button>
+          </button> : <div className="empty-state-acitivity">
+            <div className="empty-state-acitivity-icon flex items-center justify-center">
+              <NotebookPen />
+            </div>
+            <div className="empty-state-acitivity-title  text-center my-3">
+              <b>Belum ada catatan</b>
+            </div>
+            <div className="empty-state-acitivity-subtitle  text-center">
+              Yuk mulai catat pengeluaranmu
+            </div>
+          </div>}
         </div>
 
         <div className="h-10" aria-hidden />
