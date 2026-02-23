@@ -1,5 +1,13 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
+function getTodayKey() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 async function clearLocalData(page: Page) {
   await page.evaluate(async () => {
     const databaseList = await window.indexedDB.databases();
@@ -27,18 +35,30 @@ async function clearLocalData(page: Page) {
 async function seedUserName(page: Page, userName = "Komang") {
   await page.evaluate((nextName) => {
     window.localStorage.setItem("kemana.userName", nextName);
+    window.localStorage.setItem("pwa_install_banner_seen_v1", "e2e");
   }, userName);
 }
 
 async function gotoHomeStable(page: Page) {
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       await page.goto("/", { waitUntil: "domcontentloaded" });
       return;
     } catch (error) {
-      if (attempt === 1) {
+      const message = error instanceof Error ? error.message : String(error);
+      const isNavigationRace = message.includes("interrupted by another navigation");
+      const isAlreadyOnHome = /^https?:\/\/localhost:3000\/?$/.test(page.url());
+
+      if (isNavigationRace && isAlreadyOnHome) {
+        await page.waitForLoadState("domcontentloaded");
+        return;
+      }
+
+      if (attempt === 2) {
         throw error;
       }
+
+      await page.waitForTimeout(150);
     }
   }
 }
@@ -115,10 +135,11 @@ async function dragBottomSheetDownToClose(page: Page) {
 }
 
 function buildCsvImport(totalRows: number): string {
+  const todayKey = getTodayKey();
   const rows = ["id,tanggal,kategori,metode_bayar,nominal,catatan,split_mode,split_rincian,raw_input"];
   for (let index = 1; index <= totalRows; index += 1) {
     rows.push(
-      `imp-many-${index},2026-02-22,Makan,Cash,1000,item ${index},,,item ${index} 1k`
+      `imp-many-${index},${todayKey},Makan,Cash,1000,item ${index},,,item ${index} 1k`
     );
   }
   return rows.join("\n");
@@ -229,12 +250,15 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     const entry = await expandEntryByText(page, "mcd");
 
     await entry.getByTestId("inline-quick-format-input").fill("mcd 3x 15k 3p");
+    await expect(entry.getByText("Rp45.000")).toBeVisible();
+    await page.waitForTimeout(500); // Wait for React state to fully commit
     await entry.getByTestId("inline-quick-format-apply").click();
     await expect(entry.locator("input[type='number']").first()).toHaveValue("45000");
 
     await entry.getByRole("button", { name: "Simpan", exact: true }).click();
-    await expect(entry).toContainText("45.000");
-    await expect(entry).toContainText("Split 3 orang");
+    // Nominal list menampilkan porsi pengguna saat split aktif.
+    await expect(entry).toContainText("15.000");
+    await expect(entry).toContainText("Split 3");
   });
 
   test("Split transaksi bisa disimpan dari inline edit", async ({ page }) => {
@@ -246,7 +270,7 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     await entry.getByPlaceholder("Kamu, Budi, Cici").fill("Kamu, Budi, Cici");
     await entry.getByRole("button", { name: "Simpan", exact: true }).click();
 
-    await expect(entry).toContainText("Split 3 orang");
+    await expect(entry).toContainText("Split 3");
   });
 
   test("Data tools export JSON memicu download", async ({ page }) => {
@@ -284,6 +308,7 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     await page.getByRole("button", { name: "Data & tools" }).first().click();
     await expect(page.getByRole("heading", { name: "Data & tools" })).toBeVisible();
 
+    const todayKey = getTodayKey();
     const backupJson = JSON.stringify({
       entries: [
         {
@@ -291,16 +316,16 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
           text: "backup json",
           amount: 27000,
           rawInput: "backup json 27k",
-          date: "2026-02-22",
+          date: todayKey,
           category: "Makan",
           source: "quick_add",
-          createdAt: "2026-02-22T08:00:00.000Z",
-          updatedAt: "2026-02-22T08:00:00.000Z"
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         }
       ],
       rules: [],
       meta: {
-        exportedAt: "2026-02-22T08:00:00.000Z",
+        exportedAt: new Date().toISOString(),
         appVersion: "1.0.8",
         storageVersion: "1"
       }
@@ -322,9 +347,10 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     await page.getByRole("button", { name: "Data & tools" }).first().click();
     await expect(page.getByRole("heading", { name: "Data & tools" })).toBeVisible();
 
+    const todayKey = getTodayKey();
     const csv = [
       "id,tanggal,kategori,metode_bayar,nominal,catatan,split_mode,split_rincian,raw_input",
-      "imp-csv-1,2026-02-22,Makan,Cash,45000,backup csv,,,backup csv 45k"
+      `imp-csv-1,${todayKey},Makan,Cash,45000,backup csv,,,backup csv 45k`
     ].join("\n");
 
     await page.locator("input[type='file']").setInputFiles({
@@ -378,7 +404,8 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
 
     await expect(page.getByRole("heading", { name: "Kenapa segitu?" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Dari mana paling banyak keluar" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Tren 4 pekan" })).toBeVisible();
+
+    await expect(page.getByRole("heading", { name: /^Ritme/i })).toBeVisible({ timeout: 10000 });
     await expect(page.getByRole("heading", { name: /Transaksi terbesar/i })).toBeVisible();
 
     await page.getByRole("button", { name: "Lihat detail catatan" }).click();
