@@ -1019,7 +1019,7 @@ export default function DashboardPage() {
     [insightTrendSeriesDisplay.length]
   );
   const trendCompactItemWidth = useMemo(
-    () => `calc((100% - ${(trendCompactSlotCount - 1) * 6}px) / ${trendCompactSlotCount})`,
+    () => `min(72px, max(56px, calc((100% - ${(trendCompactSlotCount - 1) * 10}px) / ${trendCompactSlotCount})))`,
     [trendCompactSlotCount]
   );
 
@@ -1963,7 +1963,7 @@ export default function DashboardPage() {
         <TopAppBar title="Insight" />
 
         <main className="flex flex-col gap-3 px-4 py-2">
-          <div className="sticky top-[calc(var(--safe-header-offset)+74px)] z-20 bg-bg-base/94 pb-2 pt-1 backdrop-blur-md">
+          <div className="sticky top-[calc(var(--safe-header-offset,env(safe-area-inset-top))+74px)] z-20 bg-bg-base/94 pb-2 pt-1 backdrop-blur-md">
             <DateRangeFilter
               value={dateFilter}
               onChange={handleDateFilterChange}
@@ -2116,12 +2116,12 @@ export default function DashboardPage() {
             <div ref={insightTrendScrollRef} className="mt-4 overflow-x-auto pb-1 no-scrollbar">
               <div
                 className={cn(
-                  "flex items-start gap-1.5",
+                  "flex items-start gap-2.5",
                   isTrendChartOverflowing
                     ? "w-max min-w-full justify-start"
                     : insightTrendSeries.length === 1
                       ? "w-full justify-center"
-                      : "w-full justify-between"
+                      : "w-full justify-center"
                 )}
               >
                 {insightTrendSeriesDisplay.map((bucket, index) => {
@@ -2139,7 +2139,7 @@ export default function DashboardPage() {
                       )}
                       style={isTrendChartOverflowing ? undefined : { width: trendCompactItemWidth }}
                     >
-                      <div className="flex h-28 w-[48px] items-end rounded-xl bg-bg-subtle/80 px-1.5 pb-1.5">
+                      <div className="flex h-28 w-full max-w-[56px] items-end rounded-xl bg-bg-subtle/80 px-1.5 pb-1.5">
                         <div
                           className={cn(
                             "w-full rounded-lg transition-[height]",
