@@ -609,10 +609,12 @@ export default function DashboardPage() {
   const [isNamePromptOpen, setIsNamePromptOpen] = useState(false);
   const [notesRenderCount, setNotesRenderCount] = useState(NOTES_RENDER_CHUNK);
   const [customDateRange, setCustomDateRange] = useState<CustomDateRange>(() => getDefaultCustomDateRange());
+  const [isTrendChartOverflowing, setIsTrendChartOverflowing] = useState(false);
 
   const itemRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
   const homeItemRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
   const notesLoadMoreRef = useRef<HTMLDivElement | null>(null);
+  const insightTrendScrollRef = useRef<HTMLDivElement | null>(null);
   const quickInputRef = useRef<HTMLInputElement | null>(null);
   const undoToastPayloadRef = useRef<UndoToastPayload | null>(null);
   const movedToastPayloadRef = useRef<MovedToastPayload | null>(null);
@@ -1008,6 +1010,38 @@ export default function DashboardPage() {
     () => Math.max(...insightTrendSeries.map((item) => item.total), 0),
     [insightTrendSeries]
   );
+
+  useEffect(() => {
+    if (activeTab !== "insight") {
+      setIsTrendChartOverflowing(false);
+      return;
+    }
+
+    const node = insightTrendScrollRef.current;
+    if (!node) {
+      setIsTrendChartOverflowing(false);
+      return;
+    }
+
+    const updateOverflowState = () => {
+      setIsTrendChartOverflowing(node.scrollWidth - node.clientWidth > 4);
+    };
+
+    updateOverflowState();
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(updateOverflowState);
+      resizeObserver.observe(node);
+    } else {
+      window.addEventListener("resize", updateOverflowState);
+    }
+
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", updateOverflowState);
+    };
+  }, [activeTab, insightTrendSeries]);
 
   const quickPreview = useMemo(() => {
     if (!debouncedQuickInput.trim()) {
@@ -2058,36 +2092,51 @@ export default function DashboardPage() {
               {trendSubtitle}
             </p>
 
-            <div className="mt-4 flex w-full justify-between gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-              {insightTrendSeries.map((bucket, index) => {
-                const isLatest = index === insightTrendSeries.length - 1;
-                const height = insightMaxTrendTotal
-                  ? Math.max(16, Math.round((bucket.total / insightMaxTrendTotal) * 100))
-                  : 16;
+            {isTrendChartOverflowing ? (
+              <p className="mt-2 text-[10px] font-medium text-text-tertiary">
+                Geser chart ke kanan untuk lihat semuanya.
+              </p>
+            ) : null}
 
-                return (
-                  <div key={bucket.label} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-                    <div className="flex h-28 w-full max-w-[48px] items-end rounded-xl bg-bg-subtle/80 px-1.5 pb-1.5">
-                      <div
+            <div ref={insightTrendScrollRef} className="mt-4 overflow-x-auto pb-1 no-scrollbar">
+              <div
+                className={cn(
+                  "flex w-max min-w-full items-start gap-1.5",
+                  isTrendChartOverflowing ? "justify-start" : "justify-center"
+                )}
+              >
+                {insightTrendSeries.map((bucket, index) => {
+                  const isLatest = index === insightTrendSeries.length - 1;
+                  const height = insightMaxTrendTotal
+                    ? Math.max(16, Math.round((bucket.total / insightMaxTrendTotal) * 100))
+                    : 16;
+
+                  return (
+                    <div key={`${bucket.label}-${index}`} className="flex w-[56px] shrink-0 flex-col items-center gap-2">
+                      <div className="flex h-28 w-[48px] items-end rounded-xl bg-bg-subtle/80 px-1.5 pb-1.5">
+                        <div
+                          className={cn(
+                            "w-full rounded-lg transition-[height]",
+                            isLatest ? "bg-brand shadow-[0_4px_14px_rgba(37,99,235,0.24)]" : "bg-brand/35"
+                          )}
+                          style={{ height: `${height}%` }}
+                        />
+                      </div>
+                      <span className="w-full truncate px-0.5 text-center text-[10px] font-semibold text-text-secondary">
+                        {bucket.label}
+                      </span>
+                      <span
                         className={cn(
-                          "w-full rounded-lg transition-[height]",
-                          isLatest ? "bg-brand shadow-[0_4px_14px_rgba(37,99,235,0.24)]" : "bg-brand/35"
+                          "w-full truncate text-center text-[10px] font-semibold",
+                          isLatest ? "text-brand" : "text-text-tertiary"
                         )}
-                        style={{ height: `${height}%` }}
-                      />
+                      >
+                        {bucket.total > 0 ? "Rp" + formatAmountCompact(bucket.total) : "Rp0"}
+                      </span>
                     </div>
-                    <span className="text-center text-[10px] font-semibold text-text-secondary w-full truncate px-0.5">{bucket.label}</span>
-                    <span
-                      className={cn(
-                        "text-center text-[10px] font-semibold",
-                        isLatest ? "text-brand" : "text-text-tertiary"
-                      )}
-                    >
-                      {bucket.total > 0 ? "Rp" + formatAmountCompact(bucket.total) : "Rp0"}
-                    </span>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </section>
 
