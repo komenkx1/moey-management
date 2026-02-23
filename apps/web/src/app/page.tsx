@@ -76,7 +76,11 @@ import {
   splitSubtitleItems,
   sumAmount,
   toDateKey,
-  warningShortText
+  warningShortText,
+  generateTrendSeries,
+  getTrendGranularity,
+  getTrendTitle,
+  getTrendSubtitle
 } from "@/lib/kemana-utils";
 import {
   deriveNotesVirtualizationPlan,
@@ -984,26 +988,25 @@ export default function DashboardPage() {
     return `Rp${formatAmountIDR(amount)}`;
   }, [insightSevenDay.averagePerDay]);
 
-  const insightWeeklySeries = useMemo(() => {
-    const now = new Date();
-    const labels = ["4 minggu lalu", "3 minggu lalu", "2 minggu lalu", "Pekan ini"];
+  const insightTrendSeries = useMemo(() => {
+    return generateTrendSeries(entries, dateFilter, normalizedCustomRange, new Date());
+  }, [entries, dateFilter, normalizedCustomRange]);
 
-    return labels.map((label, index) => {
-      const endOffset = -(3 - index) * 7;
-      const startOffset = endOffset - 6;
-      const startKey = toDateKey(offsetDate(now, startOffset));
-      const endKey = toDateKey(offsetDate(now, endOffset));
-      const bucketEntries = filteredEntries.filter((entry) => entry.date >= startKey && entry.date <= endKey);
+  const trendGranularity = useMemo(() => {
+    return getTrendGranularity(dateFilter, normalizedCustomRange, new Date());
+  }, [dateFilter, normalizedCustomRange]);
 
-      return {
-        label,
-        total: sumAmount(bucketEntries)
-      };
-    });
-  }, [filteredEntries]);
-  const insightMaxWeekTotal = useMemo(
-    () => Math.max(...insightWeeklySeries.map((item) => item.total), 0),
-    [insightWeeklySeries]
+  const trendTitle = useMemo(() => {
+    return getTrendTitle(dateFilter, trendGranularity, normalizedCustomRange, new Date());
+  }, [dateFilter, trendGranularity, normalizedCustomRange]);
+
+  const trendSubtitle = useMemo(() => {
+    return getTrendSubtitle(trendGranularity);
+  }, [trendGranularity]);
+
+  const insightMaxTrendTotal = useMemo(
+    () => Math.max(...insightTrendSeries.map((item) => item.total), 0),
+    [insightTrendSeries]
   );
 
   const quickPreview = useMemo(() => {
@@ -2049,22 +2052,22 @@ export default function DashboardPage() {
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-soft text-brand">
                 <CalendarDays className="h-4.5 w-4.5" />
               </div>
-              <h3 className="text-[16px] font-bold text-text-primary">Tren 4 pekan</h3>
+              <h3 className="text-[16px] font-bold text-text-primary">{trendTitle}</h3>
             </div>
             <p className="mt-1 text-[12px] font-medium text-text-secondary">
-              Biar kamu bisa lihat ritme pengeluaran naik/turun dari minggu ke minggu.
+              {trendSubtitle}
             </p>
 
-            <div className="mt-4 grid grid-cols-4 gap-2">
-              {insightWeeklySeries.map((week, index) => {
-                const isLatest = index === insightWeeklySeries.length - 1;
-                const height = insightMaxWeekTotal
-                  ? Math.max(16, Math.round((week.total / insightMaxWeekTotal) * 100))
+            <div className="mt-4 flex w-full justify-between gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+              {insightTrendSeries.map((bucket, index) => {
+                const isLatest = index === insightTrendSeries.length - 1;
+                const height = insightMaxTrendTotal
+                  ? Math.max(16, Math.round((bucket.total / insightMaxTrendTotal) * 100))
                   : 16;
 
                 return (
-                  <div key={week.label} className="flex min-w-0 flex-col items-center gap-2">
-                    <div className="flex h-28 w-full items-end rounded-xl bg-bg-subtle/80 px-1.5 pb-1.5">
+                  <div key={bucket.label} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+                    <div className="flex h-28 w-full max-w-[48px] items-end rounded-xl bg-bg-subtle/80 px-1.5 pb-1.5">
                       <div
                         className={cn(
                           "w-full rounded-lg transition-[height]",
@@ -2073,14 +2076,14 @@ export default function DashboardPage() {
                         style={{ height: `${height}%` }}
                       />
                     </div>
-                    <span className="text-center text-[10px] font-semibold text-text-secondary">{week.label}</span>
+                    <span className="text-center text-[10px] font-semibold text-text-secondary w-full truncate px-0.5">{bucket.label}</span>
                     <span
                       className={cn(
                         "text-center text-[10px] font-semibold",
                         isLatest ? "text-brand" : "text-text-tertiary"
                       )}
                     >
-                      Rp{formatAmountCompact(week.total)}
+                      {bucket.total > 0 ? "Rp" + formatAmountCompact(bucket.total) : "Rp0"}
                     </span>
                   </div>
                 );
