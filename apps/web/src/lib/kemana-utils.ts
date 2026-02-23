@@ -553,12 +553,12 @@ export function getSummaryStats(params: {
   const emptyState =
     filteredEntries.length === 0
       ? {
-          title:
-            preset === "custom"
-              ? "Belum ada catatan di rentang custom"
-              : `Belum ada catatan di ${getFilterLabel(preset, customRange, now).toLowerCase()}`,
-          subtitle: "Coba ubah rentang tanggal."
-        }
+        title:
+          preset === "custom"
+            ? "Belum ada catatan di rentang custom"
+            : `Belum ada catatan di ${getFilterLabel(preset, customRange, now).toLowerCase()}`,
+        subtitle: "Coba ubah rentang tanggal."
+      }
       : null;
   const normalizedCustomRange = normalizeCustomDateRange(customRange, now);
   const dayCount =
@@ -568,7 +568,7 @@ export function getSummaryStats(params: {
         ? 30
         : preset === "custom"
           ? getCustomRangeDayCount(normalizedCustomRange)
-        : Math.max(1, new Set(filteredEntries.map((entry) => entry.date)).size);
+          : Math.max(1, new Set(filteredEntries.map((entry) => entry.date)).size);
   const averageForRange = totalAmount / dayCount;
 
   return {
@@ -580,8 +580,8 @@ export function getSummaryStats(params: {
     sevenDayAverage,
     compareText:
       preset === "all"
-        ? `Rata-rata per hari aktif: Rp${formatAmountIDR(Math.round(averageForRange))}`
-        : `Rata-rata ${dayCount} hari: Rp${formatAmountIDR(Math.round(averageForRange))}`,
+        ? `Rata-rata per hari aktif: -Rp${formatAmountIDR(Math.round(averageForRange))}`
+        : `Rata-rata ${dayCount} hari: -Rp${formatAmountIDR(Math.round(averageForRange))}`,
     status,
     emptyState
   };

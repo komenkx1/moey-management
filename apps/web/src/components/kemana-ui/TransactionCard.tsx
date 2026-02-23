@@ -481,7 +481,6 @@ function TransactionCardComponent({
                     <span className="mt-0.5 truncate text-[12px] font-medium text-text-tertiary">
                         {formatDateLabel(item.time)}
                         {item.paymentMethod ? ` • ${getPaymentMethodText(item.paymentMethod)}` : ""}
-                        {item.split?.shares?.length ? ` • Split ${item.split.shares.length} orang` : ""}
                     </span>
                 </div>
 
@@ -489,7 +488,11 @@ function TransactionCardComponent({
                     <span className="text-[15px] font-bold text-text-primary">
                         -Rp{formatAmountIDR(displayAmount)}
                     </span>
-                    {item.note && !isExpanded ? (
+                    {item.split?.shares?.length ? (
+                        <div className="mt-1 shrink-0 rounded-full bg-bg-subtle px-2 py-0.5 text-[10px] font-semibold text-text-secondary">
+                            Split {item.split.shares.length}
+                        </div>
+                    ) : item.note && !isExpanded ? (
                         <span className="mt-0.5 max-w-[100px] truncate text-[12px] font-medium text-text-tertiary">
                             {item.note}
                         </span>
@@ -500,6 +503,24 @@ function TransactionCardComponent({
             {isExpanded ? (
                 <div className="animate-in slide-in-from-top-2 fade-in border-t border-border-subtle bg-bg-base/30 p-4 duration-200">
                     <div className="flex flex-col gap-4">
+                        {item.split?.shares?.length ? (
+                            <div className="rounded-xl border border-border-subtle bg-bg-subtle px-3 py-2.5">
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
+                                    Info Split ({item.split.shares.length} orang)
+                                </p>
+                                <div className="mt-1.5 flex flex-col gap-1">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[12px] font-medium text-text-secondary">Kamu Bayar</span>
+                                        <span className="text-[12px] font-semibold text-text-primary">-Rp{formatAmountIDR(displayAmount)}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[12px] font-medium text-text-secondary">Total tagihan</span>
+                                        <span className="text-[12px] font-semibold text-text-primary">-Rp{formatAmountIDR(item.amount)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : null}
+
                         <div className="grid gap-1.5">
                             <label className="px-1 text-[12px] font-semibold text-text-secondary">Nama catatan</label>
                             <Input

@@ -34,7 +34,7 @@ export default function SummaryHeroCard({
                 <div className="mt-1 flex flex-col gap-0">
                     <h2 className="text-[14px] font-medium text-text-secondary">Pengeluaran</h2>
                     <div className="text-[32px] font-bold tracking-tight text-text-primary">
-                        Rp{formatAmountIDR(expense)}
+                        -Rp{formatAmountIDR(expense)}
                     </div>
                 </div>
             </div>
@@ -47,7 +47,7 @@ export default function SummaryHeroCard({
                 <div className="flex flex-col gap-0.5">
                     <span className="text-[12px] font-medium text-text-tertiary">Rata-rata harian</span>
                     <span className="text-[14px] font-semibold text-text-primary">
-                        Rp{formatAmountIDR(roundedAveragePerDay)}/hari
+                        -Rp{formatAmountIDR(roundedAveragePerDay)}/hari
                     </span>
                 </div>
             </div>
