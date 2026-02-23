@@ -1,14 +1,19 @@
 import { describe, expect, it } from "vitest";
 import type { Entry } from "@kemana/core/types";
 import {
+  deriveAdaptiveHint,
+  deriveAdaptiveRecallItems,
   deriveNotesVirtualizationPlan,
   deriveInsightCoachCopy,
   deriveInsightSummary,
   deriveInsightSevenDay,
   deriveInsightTrendBadge,
   deriveInsightWhyCards,
+  deriveLatestEntryInsight,
+  deriveQuickHistorySuggestions,
   deriveQuickFormatTemplates,
   extractQuickFormatKeyword,
+  getQuickInputPlaceholder,
   getInitialNotesRenderCount,
   getNextNotesRenderCount,
   getEntryActivityTimestamp
@@ -254,6 +259,124 @@ describe("dashboard-page-utils", () => {
     expect(summary.total).toBe(120000);
     expect(summary.windowDays).toBe(3);
     expect(summary.comparisonLabel).toBe("3 hari sebelumnya");
+  });
+
+  it("deriveQuickHistorySuggestions urut berdasarkan frekuensi lalu recency", () => {
+    const entries: Entry[] = [
+      makeEntry({
+        id: "h-1",
+        text: "Mcd - pagi",
+        date: "2026-02-22",
+        createdAt: "2026-02-22T10:00:00.000Z"
+      }),
+      makeEntry({
+        id: "h-2",
+        text: "Mcd - sore",
+        date: "2026-02-21",
+        createdAt: "2026-02-21T10:00:00.000Z"
+      }),
+      makeEntry({
+        id: "h-3",
+        text: "Mie ayam",
+        date: "2026-02-22",
+        createdAt: "2026-02-22T11:00:00.000Z"
+      })
+    ];
+
+    const suggestions = deriveQuickHistorySuggestions(entries, "mc");
+    expect(suggestions[0]).toBe("Mcd");
+    expect(suggestions.length).toBe(1);
+  });
+
+  it("deriveAdaptiveRecallItems mengembalikan maksimal 6 item dengan amount rata-rata", () => {
+    const now = Date.parse("2026-02-22T12:00:00.000Z");
+    const items = deriveAdaptiveRecallItems(
+      [
+        makeEntry({
+          id: "a1",
+          text: "Kopi",
+          amount: 10000,
+          date: "2026-02-22",
+          createdAt: "2026-02-22T10:00:00.000Z"
+        }),
+        makeEntry({
+          id: "a2",
+          text: "Kopi",
+          amount: 20000,
+          date: "2026-02-21",
+          createdAt: "2026-02-21T10:00:00.000Z"
+        }),
+        makeEntry({
+          id: "a3",
+          text: "Makan siang",
+          amount: 35000,
+          date: "2026-02-20",
+          createdAt: "2026-02-20T10:00:00.000Z"
+        })
+      ],
+      now
+    );
+
+    expect(items.length).toBeGreaterThan(0);
+    const kopi = items.find((item) => item.title === "Kopi");
+    expect(kopi?.amount).toBe(15000);
+    expect(items.every((item) => item.amount > 0)).toBe(true);
+  });
+
+  it("deriveLatestEntryInsight dan deriveAdaptiveHint menghasilkan copy yang tepat", () => {
+    const entries: Entry[] = [
+      makeEntry({
+        id: "l-1",
+        text: "Nasi uduk",
+        amount: 18000,
+        createdAt: "2026-02-21T08:00:00.000Z"
+      }),
+      makeEntry({
+        id: "l-2",
+        text: "Makan malam",
+        amount: 42000,
+        createdAt: "2026-02-22T20:00:00.000Z"
+      })
+    ];
+
+    const latest = deriveLatestEntryInsight(entries);
+    expect(latest?.title).toBe("Makan malam");
+    expect(latest?.amount).toBe(42000);
+
+    const hint = deriveAdaptiveHint({
+      id: "recall-1",
+      category: "Makan",
+      title: "Makan malam",
+      amount: 42000
+    });
+    expect(hint).toContain("Makan malam");
+    expect(deriveAdaptiveHint(null)).toContain("Belum ada pola");
+  });
+
+  it("getQuickInputPlaceholder mengikuti smart recall, primed, dan jam malam", () => {
+    expect(
+      getQuickInputPlaceholder({
+        hasSmartRecallPrompt: true,
+        recallInputPrimed: false,
+        now: new Date("2026-02-22T09:00:00")
+      })
+    ).toBe("Barusan apa?");
+
+    expect(
+      getQuickInputPlaceholder({
+        hasSmartRecallPrompt: false,
+        recallInputPrimed: true,
+        now: new Date("2026-02-22T09:00:00")
+      })
+    ).toBe("Barusan apa?");
+
+    expect(
+      getQuickInputPlaceholder({
+        hasSmartRecallPrompt: false,
+        recallInputPrimed: false,
+        now: new Date("2026-02-22T20:00:00")
+      })
+    ).toBe("Keluar apa hari ini?");
   });
 
   it("virtualization plan aktif saat item > 1000 dan window awal 220", () => {
