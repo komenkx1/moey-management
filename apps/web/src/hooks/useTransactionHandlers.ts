@@ -33,6 +33,7 @@ interface UndoToastPayload {
 interface UseTransactionHandlersProps {
   entries: Entry[];
   setEntries: (entries: Entry[] | ((prev: Entry[]) => Entry[])) => void;
+  flushEntries?: () => void; // Optional flush function for immediate persistence
   rules: CategoryRules;
   setRules: (rules: CategoryRules | ((prev: CategoryRules) => CategoryRules)) => void;
   dateFilter: DateFilterPreset;
@@ -54,6 +55,7 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
   const {
     entries,
     setEntries,
+    flushEntries,
     rules,
     setRules,
     dateFilter,
@@ -229,6 +231,9 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
               return next;
             });
 
+            // Flush immediately for undo operations
+            flushEntries?.();
+
             undoToastPayloadRef.current = null;
             toast.dismiss(TOAST_IDS.UNDO);
             toast.success("Catatan dikembalikan.");
@@ -241,8 +246,11 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
           undoToastPayloadRef.current = null;
         }
       });
+
+      // Flush immediately after showing toast for delete operations
+      flushEntries?.();
     },
-    [setEntries]
+    [setEntries, flushEntries]
   );
 
   const handleQuickAddSubmit = useCallback(
@@ -275,6 +283,10 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
       };
 
       setEntries((prev) => [nextEntry, ...prev]);
+      
+      // Flush immediately for quick add to ensure UI updates
+      flushEntries?.();
+      
       setExpandedIds(new Set([nextEntry.id]));
       setHomePendingScrollId(nextEntry.id);
       setHighlightEntryId(nextEntry.id);
@@ -298,6 +310,7 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
       setHighlightEntryId,
       setDebouncedQuickInput,
       setEntries,
+      flushEntries,
       setQuickError,
       setQuickInput,
       setRecallInputPrimed,
@@ -342,11 +355,15 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
       };
 
       setEntries((prev) => [nextEntry, ...prev]);
+      
+      // Flush immediately for sheet creation
+      flushEntries?.();
+      
       dismissRecallForSession();
       setRecallInputPrimed(false);
       toast.success("Catatan tersimpan.");
     },
-    [dismissRecallForSession, setEntries, setRecallInputPrimed]
+    [dismissRecallForSession, setEntries, flushEntries, setRecallInputPrimed]
   );
 
   return {

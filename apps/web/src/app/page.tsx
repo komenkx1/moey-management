@@ -23,6 +23,7 @@ import { PAYMENT_METHODS, type Category } from "@kemana/core/types";
 import type { Entry, ParseQuickAddResult } from "@kemana/core/types";
 import { useDashboardState } from "@/hooks/useDashboardState";
 import { useTransactionHandlers } from "@/hooks/useTransactionHandlers";
+import { useDebouncedEntries } from "@/hooks/useDebouncedEntries";
 import {
   useEntries,
   useRules,
@@ -135,6 +136,13 @@ interface ParsedBulkLine extends BulkPreviewLine {
 export default function DashboardPage() {
   // Use granular store hooks for better performance
   const { entries, setEntries } = useEntries();
+  
+  // Debounce storage writes for better performance
+  const { debouncedSetEntries, flushPendingUpdates } = useDebouncedEntries(
+    setEntries,
+    300 // 300ms debounce
+  );
+  
   const { rules, setRules } = useRules();
   const { isStorageReady, setIsStorageReady, storageWarning, setStorageWarning } = useStorageState();
   const { dateFilter, setDateFilter } = useDateFilter();
@@ -227,7 +235,8 @@ export default function DashboardPage() {
     movedToastPayloadRef: movedToastPayloadRefFromHook
   } = useTransactionHandlers({
     entries,
-    setEntries,
+    setEntries: debouncedSetEntries, // Use debounced version
+    flushEntries: flushPendingUpdates, // Flush function for immediate persistence
     rules,
     setRules,
     dateFilter,
@@ -343,11 +352,12 @@ export default function DashboardPage() {
   useEffect(() => {
     return () => {
       isUnmountingRef.current = true;
+      flushPendingUpdates(); // Flush any pending debounced updates
       cancelEntriesPersistRef.current?.();
       toast.dismiss(TOAST_IDS.UNDO);
       toast.dismiss(TOAST_IDS.MOVED);
     };
-  }, []);
+  }, [flushPendingUpdates]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -1030,13 +1040,13 @@ export default function DashboardPage() {
       };
     });
 
-    setEntries((prev) => [...newEntries.reverse(), ...prev]);
+    debouncedSetEntries((prev) => [...newEntries.reverse(), ...prev]);
     setBulkInput("");
     setBulkOpen(false);
     dismissRecallForSession();
     setRecallInputPrimed(false);
     toast.success(`${newEntries.length} catatan berhasil ditambahkan.`);
-  }, [bulkDraftLines, dismissRecallForSession, rules, setEntries, setRecallInputPrimed]);
+  }, [bulkDraftLines, dismissRecallForSession, rules, debouncedSetEntries, setRecallInputPrimed]);
 
   const handleExportJson = useCallback(() => {
     const payload = createBackupPayload(entries, rules, "kemana-web");

@@ -1,0 +1,51 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e5]:
+        - heading "Catatan" [level=1] [ref=e6]
+        - generic "Versi aplikasi v2.0.35" [ref=e7]: v2.0.35
+      - button "Action" [ref=e8]:
+        - img [ref=e9]
+    - generic [ref=e12]:
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - button "Hari ini" [pressed] [ref=e15]
+          - button "7 hari" [ref=e16]
+          - button "30 hari" [ref=e17]
+          - button "Semua" [ref=e18]
+        - button "Filter rentang tanggal custom" [ref=e19]:
+          - generic [ref=e20]:
+            - img [ref=e21]
+            - generic [ref=e23]: Custom tanggal
+          - generic [ref=e24]: Pilih
+      - generic [ref=e25]:
+        - generic [ref=e26]:
+          - generic [ref=e27]: Hari ini
+          - generic [ref=e28]: Hemat 🎉
+        - generic [ref=e29]: "-Rp0"
+        - generic [ref=e30]: Baru 0 hari data, insight masih awal.
+      - generic [ref=e31]:
+        - button "Catat banyak" [ref=e32]
+        - button "Data & tools" [ref=e33]
+      - generic [ref=e35]:
+        - paragraph [ref=e36]: Catat pengeluaran pertamamu
+        - paragraph [ref=e37]: Biar tau uangmu kemana
+    - button "Catat pengeluaran":
+      - img
+      - generic: Catat
+    - navigation [ref=e38]:
+      - button "Beranda" [ref=e39]:
+        - img [ref=e41]
+        - generic [ref=e44]: Beranda
+      - button "Catatan" [ref=e45]:
+        - img [ref=e48]
+        - generic [ref=e51]: Catatan
+      - button "Insight" [ref=e52]:
+        - img [ref=e54]
+        - generic [ref=e57]: Insight
+  - region "Notifications alt+T"
+  - alert [ref=e58]
+```
