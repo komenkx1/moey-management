@@ -1,6 +1,4 @@
-const DEBUG_PERF_KEY = "DEBUG_PERF";
-const QUICK_ADD_ACK_SAMPLES_KEY = "kemana.perf.quickAddAck.v1";
-const MAX_SAMPLES = 50;
+import { STORAGE_KEYS, MAX_PERF_SAMPLES, BACKGROUND_TASK_TIMEOUT_MS } from "./constants";
 
 interface QuickAddAckSample {
   durationMs: number;
@@ -25,7 +23,7 @@ function isPerfDebugEnabled(): boolean {
   }
 
   try {
-    return window.localStorage.getItem(DEBUG_PERF_KEY) === "true";
+    return window.localStorage.getItem(STORAGE_KEYS.PERF_DEBUG) === "true";
   } catch {
     return false;
   }
@@ -52,11 +50,11 @@ export function recordQuickAddAck(durationMs: number): void {
   };
 
   try {
-    const raw = window.localStorage.getItem(QUICK_ADD_ACK_SAMPLES_KEY);
+    const raw = window.localStorage.getItem(STORAGE_KEYS.QUICK_ADD_ACK_SAMPLES);
     const parsed = raw ? (JSON.parse(raw) as unknown) : [];
     const currentSamples = Array.isArray(parsed) ? parsed.filter(isAckSample) : [];
-    const nextSamples = [...currentSamples, sample].slice(-MAX_SAMPLES);
-    window.localStorage.setItem(QUICK_ADD_ACK_SAMPLES_KEY, JSON.stringify(nextSamples));
+    const nextSamples = [...currentSamples, sample].slice(-MAX_PERF_SAMPLES);
+    window.localStorage.setItem(STORAGE_KEYS.QUICK_ADD_ACK_SAMPLES, JSON.stringify(nextSamples));
 
     const perfWindow = window as PerfWindow;
     perfWindow.__KEMANA_PERF__ = {
@@ -78,7 +76,7 @@ export function scheduleBackgroundTask(task: () => void): () => void {
   if (typeof perfWindow.requestIdleCallback === "function") {
     const handle = perfWindow.requestIdleCallback(() => {
       task();
-    }, { timeout: 700 });
+    }, { timeout: BACKGROUND_TASK_TIMEOUT_MS });
 
     return () => {
       if (typeof perfWindow.cancelIdleCallback === "function") {

@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-
-const CONNECTION_BADGE_DURATION_MS = 2400;
-const UPDATE_BANNER_DISMISSED_SESSION_KEY = "kemana.updateBanner.dismissedSession.v1";
-const UPDATE_APPLIED_KEY = "kemana.updateApplied.v1";
+import { 
+  CONNECTION_BADGE_DURATION_MS, 
+  STORAGE_KEYS, 
+  UPDATE_CHECK_INTERVAL_MS 
+} from "@/lib/constants";
 
 export default function SWRegister() {
   const [connectionStatus, setConnectionStatus] = useState<"online" | "offline">("online");
@@ -39,13 +40,13 @@ export default function SWRegister() {
     }
 
     try {
-      setIsUpdateBannerDismissed(window.sessionStorage.getItem(UPDATE_BANNER_DISMISSED_SESSION_KEY) === "1");
+      setIsUpdateBannerDismissed(window.sessionStorage.getItem(STORAGE_KEYS.UPDATE_BANNER_DISMISSED_SESSION) === "1");
       
       // Check if update was just applied - if so, clear the flag and don't show banner
-      const updateApplied = window.localStorage.getItem(UPDATE_APPLIED_KEY);
+      const updateApplied = window.localStorage.getItem(STORAGE_KEYS.UPDATE_APPLIED);
       if (updateApplied) {
         updateAppliedRef.current = true;
-        window.localStorage.removeItem(UPDATE_APPLIED_KEY);
+        window.localStorage.removeItem(STORAGE_KEYS.UPDATE_APPLIED);
         setIsUpdateBannerDismissed(true);
       }
     } catch {
@@ -153,10 +154,9 @@ export default function SWRegister() {
         document.addEventListener("visibilitychange", handleVisibilityChange);
 
         // 2. Cek otomatis berjalan berkala (misal: setiap 2 jam) jika app didiamkan terus-menerus
-        const UPDATE_INTERVAL_MS = 2 * 60 * 60 * 1000;
         const intervalId = setInterval(() => {
           registration.update().catch(() => { });
-        }, UPDATE_INTERVAL_MS);
+        }, UPDATE_CHECK_INTERVAL_MS);
 
         return () => {
           document.removeEventListener("visibilitychange", handleVisibilityChange);
@@ -174,7 +174,7 @@ export default function SWRegister() {
   const handleDismissUpdate = useCallback(() => {
     setIsUpdateBannerDismissed(true);
     try {
-      window.sessionStorage.setItem(UPDATE_BANNER_DISMISSED_SESSION_KEY, "1");
+      window.sessionStorage.setItem(STORAGE_KEYS.UPDATE_BANNER_DISMISSED_SESSION, "1");
     } catch {
       // Ignore sessionStorage errors.
     }
@@ -188,7 +188,7 @@ export default function SWRegister() {
     
     // Mark that update is being applied so we don't show banner after reload
     try {
-      window.localStorage.setItem(UPDATE_APPLIED_KEY, "1");
+      window.localStorage.setItem(STORAGE_KEYS.UPDATE_APPLIED, "1");
     } catch {
       // Ignore localStorage errors
     }
