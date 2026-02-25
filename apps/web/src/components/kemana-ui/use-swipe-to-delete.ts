@@ -136,7 +136,13 @@ export function useSwipeToDelete({
         return;
       }
 
-      if (event.pointerType === "mouse" && event.button !== 0) {
+      // Keep desktop clicks reliable for expand/collapse.
+      // Swipe-to-delete is intended for touch interaction.
+      if (event.pointerType === "mouse") {
+        return;
+      }
+
+      if (event.button !== 0) {
         return;
       }
 

@@ -247,11 +247,13 @@ export default function AddTransactionSheet({ isOpen, onClose, onSave, prefill }
       />
       <div
         className={cn(
-          "absolute inset-x-0 bottom-0 flex max-h-[92dvh] flex-col rounded-t-[24px] bg-bg-base shadow-2xl sm:mx-auto sm:max-w-md",
-          !isOpen && "translate-y-full transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
+          "absolute inset-x-0 bottom-0 flex max-h-[92dvh] flex-col rounded-t-[24px] bg-bg-base shadow-2xl will-change-transform sm:mx-auto sm:max-w-md",
+          "transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          isOpen ? "translate-y-0" : "translate-y-full",
+          dragY > 0 && "transition-none"
         )}
-        style={{ 
-          transform: isOpen ? (dragY > 0 ? `translateY(${dragY}px)` : 'translateY(0)') : undefined 
+        style={{
+          transform: isOpen && dragY > 0 ? `translateY(${dragY}px)` : undefined
         }}
       >
         <div

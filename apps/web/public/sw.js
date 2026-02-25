@@ -1,4 +1,4 @@
-const CACHE_NAME = "kemana-2.0.43";
+const CACHE_NAME = "kemana-2.0.5";
 const PRECACHE_URLS = [
   "/",
   "/manifest.webmanifest",

@@ -485,10 +485,11 @@ function TransactionCardComponent({
     return (
         <div
             className={cn(
-                "group relative flex flex-col overflow-hidden rounded-2xl bg-bg-elevated transition-all outline-none",
+                "group relative flex flex-col overflow-hidden rounded-2xl bg-bg-elevated outline-none",
+                "transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
                 isExpanded
                     ? "my-1 scale-[1.005] ring-1 ring-border-subtle shadow-[0_8px_24px_rgba(15,23,42,0.08)]"
-                    : "hover:bg-bg-subtle active:scale-[0.99]",
+                    : "hover:bg-bg-subtle active:scale-[0.985]",
                 className
             )}
         >
@@ -505,27 +506,30 @@ function TransactionCardComponent({
                     }}
                     style={{
                         opacity: swipeX < -5 ? 1 : 0,
-                        transition: 'opacity 0.1s ease-out'
+                        transition: 'opacity 0.1s ease-out',
+                        pointerEvents: swipeX < -5 ? "auto" : "none"
                     }}
                 >
-                    <button
-                        type="button"
-                        data-swipe-delete-action="true"
-                        onPointerDownCapture={(event) => {
-                            event.stopPropagation();
-                        }}
-                        onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (onDelete) {
-                                onDelete(item.id);
-                            }
-                        }}
-                        className="flex h-12 w-12 items-center justify-center rounded-full outline-none focus:outline-none active:bg-danger-pressed transition-colors"
-                        aria-label="Hapus transaksi"
-                    >
-                        <Trash2 className="h-5 w-5 text-white" />
-                    </button>
+                    {swipeX < -5 ? (
+                        <button
+                            type="button"
+                            data-swipe-delete-action="true"
+                            onPointerDownCapture={(event) => {
+                                event.stopPropagation();
+                            }}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (onDelete) {
+                                    onDelete(item.id);
+                                }
+                            }}
+                            className="flex h-12 w-12 items-center justify-center rounded-full outline-none focus:outline-none active:bg-danger-pressed transition-colors"
+                            aria-label="Hapus transaksi"
+                        >
+                            <Trash2 className="h-5 w-5 text-white" />
+                        </button>
+                    ) : null}
                 </div>
             )}
 
@@ -582,7 +586,7 @@ function TransactionCardComponent({
                 </button>
 
                 {isExpanded ? (
-                <div className="animate-in slide-in-from-top-2 fade-in border-t border-border-subtle bg-bg-base/30 p-4 duration-200">
+                <div className="animate-in slide-in-from-top-2 fade-in border-t border-border-subtle bg-bg-base/30 p-4 duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]">
                     <div className="flex flex-col gap-4">
                         {item.split?.shares?.length ? (
                             <div className="rounded-xl border border-border-subtle bg-bg-subtle px-3 py-2.5">
