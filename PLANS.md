@@ -1,6 +1,6 @@
 # KeMana MVP Masterplan
 
-## 0. Progress Snapshot (Per 21 Februari 2026)
+## 0. Progress Snapshot (Per 25 Februari 2026)
 ### Sudah Selesai (Phase 0/1)
 - Arsitektur repo aktif: `apps/web`, `packages/core`, `packages/storage` (core logic terpisah dari UI Next.js).
 - Quick Add parser production-ready untuk pola utama:
@@ -73,9 +73,9 @@
 - Sonner migration selesai untuk undo/action toast beserta deduplikasi notifikasi.
 
 ### Sedang Berjalan
-- Polishing UX dense layout, microcopy, dan indikator status online/offline.
-- Validasi dampak habit loop (Smart Recall + Night Close) pada konsistensi catat harian creator.
-- Dokumentasi deployment/release untuk flow solo dev + GitHub/Vercel.
+- Dogfooding intensif untuk validasi habit loop (Smart Recall + Night Close) pada konsistensi catat harian.
+- Monitoring performa dan stabilitas untuk identifikasi edge cases.
+- Persiapan dokumentasi user-facing untuk onboarding awal.
 
 ### Belum Diaktifkan (Tetap Sesuai Desain)
 - Backend Supabase, RLS, auth, sync queue, conflict resolution.

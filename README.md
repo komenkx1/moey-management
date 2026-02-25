@@ -2,7 +2,7 @@
 
 KeMana adalah aplikasi pencatatan pengeluaran single-device, local-first, dengan fokus input cepat: "Biar tau uangmu kemana".
 
-## Progress Terkini (22 Feb 2026)
+## Progress Terkini (25 Feb 2026)
 
 - Import/Export `JSON + CSV` sudah stabil (nama file jelas, parser CSV + fallback format).
 - Kompatibilitas data lama untuk metode bayar (`Lainnya`/`Belum pilih`) dinormalisasi aman ke `Unknown`.
@@ -43,15 +43,16 @@ npm run dev
 
 Buka `http://localhost:3000`.
 
-## Status Test (22 Feb 2026)
+## Status Test (25 Feb 2026)
 
 - Unit test: `107/107` lulus (`npm test`).
 - E2E test: `17/17` lulus (`npx playwright test`, Chromium).
-- Cakupan tambahan terbaru:
+- Cakupan test mencakup semua flow inti MVP Phase 1:
   - offline simulation end-to-end (quick add + list),
   - drag-close bottom sheet lintas halaman,
   - SW update banner waiting/dismiss session,
   - virtualisasi list threshold `1000+` item.
+- Aplikasi siap untuk dogfooding intensif.
 
 ## Benchmark Ack (Perceived)
 

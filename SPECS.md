@@ -1,6 +1,6 @@
 # KeMana MVP Specs
 
-## 0. Status Implementasi (Per 21 Februari 2026)
+## 0. Status Implementasi (Per 25 Februari 2026)
 - [x] Quick Add parser + warning system terstruktur.
 - [x] Quick Add inline addition (`+`) dengan total otomatis.
 - [x] Quick Add qty-aware parsing (`3x 15k`, `x3 15k`, `15k x3`, `3 x 15k`).

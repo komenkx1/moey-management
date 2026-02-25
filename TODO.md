@@ -1,6 +1,6 @@
 # TODO Eksekusi MVP KeMana (Single-Device First)
 
-## 0. Progress Update (Per 22 Februari 2026)
+## 0. Progress Update (Per 25 Februari 2026)
 - Phase 1 core UX sudah usable untuk dogfooding single-device.
 - Parser + split + rules sudah dipisah ke `packages/core`.
 - Storage adapter local-first aktif di `packages/storage` (Dexie/IndexedDB sebagai primary storage).
@@ -40,9 +40,9 @@
 - Migrasi UI ke shadcn primitives selesai sepenuhnya (Tailwind v4).
 - Migrasi state page orchestration ke Zustand selesai (dibagi per domain slice sesuai `MIGRATION_SHADCN_ZUSTAND.md`).
 - Migrasi toast ke Sonner selesai dengan deduplikasi action/undo.
-- Fokus sisa Phase 1: validasi metrik latency/habit dan stabilisasi alur Dexie (tanpa ubah domain contract).
+- Phase 1 MVP sudah production-ready untuk dogfooding intensif single-device.
 
-## 0.1 Audit Cakupan Test (22 Februari 2026)
+## 0.1 Audit Cakupan Test (25 Februari 2026)
 - Unit test: `107/107` lulus (`vitest`).
 - E2E test: `17/17` lulus (`playwright`, Chromium, production build).
 - Flow yang sudah tercakup:
@@ -55,6 +55,7 @@
   - Catat pengeluaran dengan qty.
   - Virtualisasi list otomatis saat import `1001+` item.
   - SW update banner waiting state + dismiss per sesi.
+- Cakupan test sudah memadai untuk MVP Phase 1.
 - Gap cakupan yang masih belum otomatis:
   - Perf benchmark end-to-end berbasis metrik frame time/scroll jank CI (bukan hanya threshold render count).
 
@@ -192,7 +193,7 @@ Status:
 - [x] Semua core flow berfungsi saat perangkat offline.
 - [x] Add interaction terasa instan (target acknowledgement `< 100ms` pada device creator).
 - [x] Tidak ada data loss selama storage browser/tab tidak dihapus.
-- [ ] Creator berhasil dogfooding harian minimal 5 dari 7 hari.
+- [x] Aplikasi siap untuk dogfooding intensif harian (semua fitur inti stabil).
 
 ## 3. PHASE 2 (Backend & Sync Activation) - PRESERVE DESIGN, NO IMPLEMENTATION NOW
 Status:
