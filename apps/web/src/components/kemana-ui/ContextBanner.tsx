@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { cn } from "@/lib/utils";
 import { Clock, Moon, ChevronRight } from "lucide-react";
 
@@ -14,7 +15,7 @@ interface ContextBannerProps {
     className?: string;
 }
 
-export default function ContextBanner({
+function ContextBanner({
     variant,
     title,
     subtitle,
@@ -88,3 +89,16 @@ export default function ContextBanner({
         </div>
     );
 }
+
+
+// Memoize to prevent re-renders when content doesn't change
+export default memo(ContextBanner, (prev, next) => {
+  return (
+    prev.variant === next.variant &&
+    prev.title === next.title &&
+    prev.subtitle === next.subtitle &&
+    prev.actionLabel === next.actionLabel &&
+    prev.secondaryActionLabel === next.secondaryActionLabel &&
+    prev.className === next.className
+  );
+});

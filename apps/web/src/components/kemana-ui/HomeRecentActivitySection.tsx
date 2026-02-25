@@ -1,4 +1,4 @@
-import type { ComponentProps, MutableRefObject } from "react";
+import { memo, type ComponentProps, type MutableRefObject } from "react";
 import { NotebookPen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TransactionCard, type TransactionItem } from "@/components/kemana-ui/TransactionCard";
@@ -16,7 +16,7 @@ interface HomeRecentActivitySectionProps {
   onOpenNotes: () => void;
 }
 
-export default function HomeRecentActivitySection({
+function HomeRecentActivitySection({
   allTransactions,
   homeItemRefs,
   highlightEntryId,
@@ -85,3 +85,29 @@ export default function HomeRecentActivitySection({
     </>
   );
 }
+
+
+// Memoize to prevent re-renders when parent state changes but props don't
+export default memo(HomeRecentActivitySection, (prev, next) => {
+  // Check if transactions array changed (first 5 items)
+  const prevTransactions = prev.allTransactions.slice(0, 5);
+  const nextTransactions = next.allTransactions.slice(0, 5);
+  
+  if (prevTransactions.length !== nextTransactions.length) {
+    return false;
+  }
+  
+  for (let i = 0; i < prevTransactions.length; i++) {
+    if (prevTransactions[i].id !== nextTransactions[i].id) {
+      return false;
+    }
+  }
+  
+  // Check other props
+  return (
+    prev.highlightEntryId === next.highlightEntryId &&
+    prev.homePendingScrollId === next.homePendingScrollId &&
+    prev.expandedIds === next.expandedIds &&
+    prev.allTransactions.length === next.allTransactions.length
+  );
+});

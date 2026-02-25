@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { cn } from "@/lib/utils";
 import { formatAmountIDR } from "@kemana/core/format";
 
@@ -10,7 +11,7 @@ interface SummaryHeroCardProps {
     children?: React.ReactNode;
 }
 
-export default function SummaryHeroCard({
+function SummaryHeroCard({
     expense,
     transactionCount,
     averagePerDay,
@@ -60,3 +61,15 @@ export default function SummaryHeroCard({
         </div>
     );
 }
+
+
+// Memoize to prevent re-renders when values don't change
+export default memo(SummaryHeroCard, (prev, next) => {
+  return (
+    prev.expense === next.expense &&
+    prev.transactionCount === next.transactionCount &&
+    prev.averagePerDay === next.averagePerDay &&
+    prev.periodLabel === next.periodLabel &&
+    prev.className === next.className
+  );
+});

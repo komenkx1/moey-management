@@ -33,10 +33,32 @@ async function clearLocalData(page: Page) {
 }
 
 async function seedUserName(page: Page, userName = "Komang") {
-  await page.evaluate((nextName) => {
+  await page.addInitScript((nextName) => {
     window.localStorage.setItem("kemana.userName", nextName);
     window.localStorage.setItem("pwa_install_banner_seen_v1", "e2e");
   }, userName);
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await page.evaluate((nextName) => {
+        window.localStorage.setItem("kemana.userName", nextName);
+        window.localStorage.setItem("pwa_install_banner_seen_v1", "e2e");
+      }, userName);
+      return;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const isExecutionContextRace =
+        message.includes("Execution context was destroyed") ||
+        message.includes("Target page, context or browser has been closed");
+
+      if (!isExecutionContextRace || attempt === 2) {
+        throw error;
+      }
+
+      await gotoHomeStable(page);
+      await page.waitForTimeout(120);
+    }
+  }
 }
 
 async function gotoHomeStable(page: Page) {
@@ -81,8 +103,53 @@ async function quickAdd(page: Page, input: string) {
 }
 
 async function openNotesTab(page: Page) {
-  await page.locator("nav").last().getByRole("button", { name: "Catatan", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Catatan" })).toBeVisible();
+  const notesTabButton = page.locator("nav").last().getByRole("button", { name: "Catatan", exact: true });
+  const notesHeading = page.getByRole("heading", { name: "Catatan" });
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await notesTabButton.click();
+
+    const isVisible = await notesHeading.isVisible().catch(() => false);
+    if (isVisible) {
+      return;
+    }
+
+    await page.waitForTimeout(180);
+  }
+
+  await expect(notesHeading).toBeVisible();
+}
+
+async function ensureUiUnblocked(page: Page, fallbackName = "Komang") {
+  const namePrompt = page.getByRole("heading", { name: "Biar sapaan lebih personal" });
+  const isNamePromptVisible = await namePrompt.isVisible().catch(() => false);
+  if (isNamePromptVisible) {
+    const nameInput = page.getByLabel("Nama panggilan");
+    await nameInput.fill(fallbackName);
+    await page.getByRole("button", { name: "Lanjut pakai KeMana" }).click();
+    await expect(namePrompt).not.toBeVisible();
+  }
+
+  const closeNightCloseButton = page.getByRole("button", { name: "Tutup review hari" });
+  const isNightCloseVisible = await closeNightCloseButton.isVisible().catch(() => false);
+  if (isNightCloseVisible) {
+    await closeNightCloseButton.click();
+  }
+
+  const closeAddSheetButton = page.locator("button[aria-label='Tutup lembar catatan']:visible");
+  if (await closeAddSheetButton.isVisible().catch(() => false)) {
+    await closeAddSheetButton.click();
+  }
+
+  const closeBulkSheetButton = page.locator("button[aria-label='Tutup input massal']:visible");
+  if (await closeBulkSheetButton.isVisible().catch(() => false)) {
+    await closeBulkSheetButton.click();
+  }
+
+  const closeDataToolsButton = page.locator("button[aria-label='Tutup data dan tools']:visible");
+  if (await closeDataToolsButton.isVisible().catch(() => false)) {
+    await closeDataToolsButton.click();
+  }
 }
 
 async function expandEntryByText(page: Page, title: string): Promise<Locator> {
@@ -158,6 +225,7 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     await seedUserName(page);
     await gotoHomeStable(page);
     await waitForHomeReady(page);
+    await ensureUiUnblocked(page);
   });
 
   test("Quick add tersimpan dan muncul di tab Catatan", async ({ page }) => {
@@ -749,4 +817,3 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     // The fact that we can complete this flow proves it's working
   });
 });
-

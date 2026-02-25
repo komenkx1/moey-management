@@ -192,25 +192,17 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
 
   const handleDeleteTransaction = useCallback(
     (id: string) => {
-      let undoPayload: UndoToastPayload | null = null;
-
-      setEntries((prev) => {
-        const deletedIndex = prev.findIndex((entry) => entry.id === id);
-        if (deletedIndex === -1) {
-          return prev;
-        }
-
-        undoPayload = {
-          entry: prev[deletedIndex],
-          index: deletedIndex
-        };
-
-        return prev.filter((entry) => entry.id !== id);
-      });
-
-      if (!undoPayload) {
+      const deletedIndex = entries.findIndex((entry) => entry.id === id);
+      if (deletedIndex === -1) {
         return;
       }
+
+      const undoPayload: UndoToastPayload = {
+        entry: entries[deletedIndex],
+        index: deletedIndex
+      };
+
+      setEntries((prev) => prev.filter((entry) => entry.id !== id));
 
       undoToastPayloadRef.current = undoPayload;
       toast("Catatan dihapus.", {
@@ -250,7 +242,7 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
       // Flush immediately after showing toast for delete operations
       flushEntries?.();
     },
-    [setEntries, flushEntries]
+    [entries, setEntries, flushEntries]
   );
 
   const handleQuickAddSubmit = useCallback(

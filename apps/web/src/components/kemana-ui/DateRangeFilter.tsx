@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { cn } from "@/lib/utils";
 import {
   FILTER_OPTIONS,
@@ -18,7 +19,7 @@ interface DateRangeFilterProps {
   className?: string;
 }
 
-export default function DateRangeFilter({
+function DateRangeFilter({
   value,
   onChange,
   options = FILTER_OPTIONS,
@@ -154,3 +155,14 @@ export default function DateRangeFilter({
     </div>
   );
 }
+
+
+// Memoize to prevent re-renders when filter value doesn't change
+export default memo(DateRangeFilter, (prev, next) => {
+  return (
+    prev.value === next.value &&
+    prev.customRange?.start === next.customRange?.start &&
+    prev.customRange?.end === next.customRange?.end &&
+    prev.className === next.className
+  );
+});

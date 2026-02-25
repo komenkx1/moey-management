@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from "react";
+import { memo, ReactNode, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { formatAmountIDR } from "@kemana/core/format";
 import { Coffee, Utensils, Car, ShoppingBag, Receipt, MoreHorizontal } from "lucide-react";
@@ -25,7 +25,7 @@ const CategoryIcons: Record<string, ReactNode> = {
     Lainnya: <MoreHorizontal className="h-4 w-4" />
 };
 
-export default function QuickRecallChips({ items, onSelect, className }: QuickRecallChipsProps) {
+function QuickRecallChips({ items, onSelect, className }: QuickRecallChipsProps) {
     const [isMounted, setIsMounted] = useState(false);
 
     useEffect(() => {
@@ -74,3 +74,20 @@ export default function QuickRecallChips({ items, onSelect, className }: QuickRe
         </div>
     );
 }
+
+
+// Memoize to prevent re-renders when items don't change
+export default memo(QuickRecallChips, (prev, next) => {
+  if (prev.items.length !== next.items.length) {
+    return false;
+  }
+  
+  // Check if items array changed
+  for (let i = 0; i < prev.items.length; i++) {
+    if (prev.items[i].id !== next.items[i].id) {
+      return false;
+    }
+  }
+  
+  return prev.className === next.className;
+});
