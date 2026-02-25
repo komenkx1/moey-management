@@ -59,16 +59,8 @@ function HomeRecentActivitySection({
         </div>
       </div>
 
-      <div className="flex flex-col gap-2.5">
-        {allTransactions.length > 5 ? (
-          <button
-            type="button"
-            onClick={onOpenNotes}
-            className="h-11 w-full rounded-xl bg-brand text-[14px] font-semibold text-white shadow-sm transition-colors hover:bg-brand-pressed"
-          >
-            Lihat semua catatan
-          </button>
-        ) : (
+      {allTransactions.length === 0 ? (
+        <div className="flex flex-col gap-2.5">
           <div className="empty-state-acitivity">
             <div className="empty-state-acitivity-icon flex items-center justify-center">
               <NotebookPen />
@@ -80,8 +72,18 @@ function HomeRecentActivitySection({
               Yuk mulai catat pengeluaranmu
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      ) : allTransactions.length > 5 ? (
+        <div className="flex flex-col gap-2.5">
+          <button
+            type="button"
+            onClick={onOpenNotes}
+            className="h-11 w-full rounded-xl bg-brand text-[14px] font-semibold text-white shadow-sm transition-colors hover:bg-brand-pressed"
+          >
+            Lihat semua catatan
+          </button>
+        </div>
+      ) : null}
     </>
   );
 }
