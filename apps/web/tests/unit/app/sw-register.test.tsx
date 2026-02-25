@@ -23,6 +23,7 @@ describe("SWRegister update banner", () => {
     container = document.createElement("div");
     document.body.appendChild(container);
     window.sessionStorage.clear();
+    window.localStorage.clear();
     originalServiceWorkerDescriptor = Object.getOwnPropertyDescriptor(window.navigator, "serviceWorker");
   });
 

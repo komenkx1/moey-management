@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 
 const CONNECTION_BADGE_DURATION_MS = 2400;
 const UPDATE_BANNER_DISMISSED_SESSION_KEY = "kemana.updateBanner.dismissedSession.v1";
+const UPDATE_APPLIED_KEY = "kemana.updateApplied.v1";
 
 export default function SWRegister() {
   const [connectionStatus, setConnectionStatus] = useState<"online" | "offline">("online");
@@ -14,6 +15,7 @@ export default function SWRegister() {
   const hasReloadedRef = useRef(false);
   const lastConnectionStateRef = useRef<boolean | null>(null);
   const hideConnectionBadgeTimeoutRef = useRef<number | null>(null);
+  const updateAppliedRef = useRef(false);
 
   const clearConnectionBadgeTimer = useCallback(() => {
     if (hideConnectionBadgeTimeoutRef.current !== null) {
@@ -38,6 +40,14 @@ export default function SWRegister() {
 
     try {
       setIsUpdateBannerDismissed(window.sessionStorage.getItem(UPDATE_BANNER_DISMISSED_SESSION_KEY) === "1");
+      
+      // Check if update was just applied - if so, clear the flag and don't show banner
+      const updateApplied = window.localStorage.getItem(UPDATE_APPLIED_KEY);
+      if (updateApplied) {
+        updateAppliedRef.current = true;
+        window.localStorage.removeItem(UPDATE_APPLIED_KEY);
+        setIsUpdateBannerDismissed(true);
+      }
     } catch {
       setIsUpdateBannerDismissed(false);
     }
@@ -89,6 +99,11 @@ export default function SWRegister() {
     let isMounted = true;
 
     const markUpdateReady = (registration: ServiceWorkerRegistration) => {
+      // Don't show banner if update was just applied
+      if (updateAppliedRef.current) {
+        return;
+      }
+      
       waitingRegistrationRef.current = registration;
       if (isMounted) {
         setUpdateReady(true);
@@ -170,6 +185,14 @@ export default function SWRegister() {
     if (!waitingWorker) {
       return;
     }
+    
+    // Mark that update is being applied so we don't show banner after reload
+    try {
+      window.localStorage.setItem(UPDATE_APPLIED_KEY, "1");
+    } catch {
+      // Ignore localStorage errors
+    }
+    
     waitingWorker.postMessage({ type: "SKIP_WAITING" });
   };
 
