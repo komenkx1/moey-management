@@ -44,6 +44,72 @@ describe("Trend Chart Utils", () => {
         expect(buckets[buckets.length - 2].label).toBe("Pekan lalu");
     });
 
+    it("should use calendar week (Monday-Sunday) for week granularity", () => {
+        // Test date: Wednesday, Feb 25, 2026
+        const testNow = new Date("2026-02-25T10:00:00");
+        
+        // Create entries across different weeks
+        const entries: Entry[] = [
+            // This week (Mon Feb 23 - Sun Mar 1)
+            {
+                id: "this-week-mon",
+                text: "senin ini",
+                amount: 50000,
+                date: "2026-02-23", // Monday
+                category: "Makan",
+                source: "quick_add",
+                createdAt: "2026-02-23T12:00:00",
+                updatedAt: "2026-02-23T12:00:00"
+            },
+            {
+                id: "this-week-wed",
+                text: "rabu ini",
+                amount: 30000,
+                date: "2026-02-25", // Wednesday (today)
+                category: "Makan",
+                source: "quick_add",
+                createdAt: "2026-02-25T10:00:00",
+                updatedAt: "2026-02-25T10:00:00"
+            },
+            // Last week (Mon Feb 16 - Sun Feb 22)
+            {
+                id: "last-week-sun",
+                text: "minggu lalu",
+                amount: 100000,
+                date: "2026-02-22", // Sunday
+                category: "Belanja",
+                source: "quick_add",
+                createdAt: "2026-02-22T14:00:00",
+                updatedAt: "2026-02-22T14:00:00"
+            },
+            {
+                id: "last-week-thu",
+                text: "kamis lalu",
+                amount: 40000,
+                date: "2026-02-19", // Thursday
+                category: "Makan",
+                source: "quick_add",
+                createdAt: "2026-02-19T18:00:00",
+                updatedAt: "2026-02-19T18:00:00"
+            }
+        ];
+
+        const buckets = generateTrendSeries(entries, "30d", null, testNow);
+        
+        // Find "Pekan ini" and "Pekan lalu" buckets
+        const thisWeekBucket = buckets.find(b => b.label === "Pekan ini");
+        const lastWeekBucket = buckets.find(b => b.label === "Pekan lalu");
+        
+        expect(thisWeekBucket).toBeDefined();
+        expect(lastWeekBucket).toBeDefined();
+        
+        // "Pekan ini" should only include Mon Feb 23 and Wed Feb 25
+        expect(thisWeekBucket?.total).toBe(80000); // 50k + 30k
+        
+        // "Pekan lalu" should include Thu Feb 19 and Sun Feb 22
+        expect(lastWeekBucket?.total).toBe(140000); // 40k + 100k
+    });
+
     it("maps local hour into Pagi/Siang/Sore/Malam correctly", () => {
         const entries: Entry[] = [
             {

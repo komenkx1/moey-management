@@ -418,6 +418,30 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     await expect(page.getByRole("heading", { name: "Catatan" })).toBeVisible();
   });
 
+  test("Insight trend chart menggunakan calendar week (Senin-Minggu)", async ({ page }) => {
+    // Add entries for testing calendar week grouping
+    await quickAdd(page, "senin ini 50k");
+    await quickAdd(page, "rabu ini 30k");
+    
+    await page.locator("nav").last().getByRole("button", { name: "Insight", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Insight" })).toBeVisible();
+    
+    // Switch to 30 hari filter to see weekly trend
+    const thirtyDayFilter = page.getByRole("button", { name: "30 hari", exact: true });
+    await thirtyDayFilter.click();
+    await expect(thirtyDayFilter).toHaveAttribute("aria-pressed", "true");
+    
+    // Verify trend chart is visible
+    await expect(page.getByRole("heading", { name: /^Ritme/i })).toBeVisible({ timeout: 10000 });
+    
+    // Verify "Pekan ini" label exists in the chart
+    await expect(page.getByText("Pekan ini")).toBeVisible();
+    
+    // The chart should show weekly buckets
+    const trendSection = page.locator("section").filter({ hasText: /^Ritme/i }).first();
+    await expect(trendSection).toBeVisible();
+  });
+
   test("Bottom sheet close flow stabil (Add/Bulk/Data tools)", async ({ page }) => {
     await openNotesTab(page);
     await page.getByRole("button", { name: "Catat pengeluaran" }).click();

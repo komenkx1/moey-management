@@ -68,6 +68,31 @@ export interface TrendBucket {
   total: number;
 }
 
+/**
+ * Get the Monday of the week for a given date (ISO 8601 week standard)
+ * @param date - The date to find the Monday for
+ * @returns The Monday of that week
+ */
+function getMondayOfWeek(date: Date): Date {
+  const day = date.getDay();
+  // Sunday = 0, Monday = 1, ..., Saturday = 6
+  // If Sunday (0), go back 6 days. Otherwise, go back (day - 1) days
+  const diff = day === 0 ? -6 : 1 - day;
+  return offsetDate(date, diff);
+}
+
+/**
+ * Get the Sunday of the week for a given date (ISO 8601 week standard)
+ * @param date - The date to find the Sunday for
+ * @returns The Sunday of that week
+ */
+function getSundayOfWeek(date: Date): Date {
+  const day = date.getDay();
+  // If Sunday (0), it's already Sunday. Otherwise, go forward to next Sunday
+  const diff = day === 0 ? 0 : 7 - day;
+  return offsetDate(date, diff);
+}
+
 export function generateTrendSeries(
   entries: Entry[],
   preset: DateFilterPreset,
@@ -154,18 +179,22 @@ export function generateTrendSeries(
       buckets.push({ label, total: sumAmount(bucketEntries) });
     }
   } else if (granularity === "week") {
+    // Use calendar weeks (Monday-Sunday) instead of rolling 7-day periods
+    const currentWeekMonday = getMondayOfWeek(now);
+    const currentWeekSunday = getSundayOfWeek(now);
+    
+    // Determine how many weeks back we need to go
     const rangeDays = getCustomRangeDayCount({ start: toDateKey(startDate), end: toDateKey(endDate) });
     const numWeeks = Math.max(1, Math.ceil(rangeDays / 7));
     const maxWeeks = Math.min(10, numWeeks);
 
     for (let i = maxWeeks - 1; i >= 0; i--) {
-      const endOffset = -i * 7;
-      const startOffset = endOffset - 6;
-      const dStart = offsetDate(endDate, startOffset);
-      const dEnd = offsetDate(endDate, endOffset);
+      // Calculate the Monday and Sunday for each week going backwards
+      const weekMonday = offsetDate(currentWeekMonday, -i * 7);
+      const weekSunday = offsetDate(weekMonday, 6);
 
-      const startKey = toDateKey(dStart);
-      const endKey = toDateKey(dEnd);
+      const startKey = toDateKey(weekMonday);
+      const endKey = toDateKey(weekSunday);
 
       const bucketEntries = scopedEntries.filter((e) => e.date >= startKey && e.date <= endKey);
 
