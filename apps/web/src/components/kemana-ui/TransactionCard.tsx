@@ -18,6 +18,7 @@ import {
 import { Coffee, Utensils, Car, ShoppingBag, Receipt, MoreHorizontal, Trash2, Users, CalendarDays } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useSwipeToDelete } from "./use-swipe-to-delete";
 
 export interface TransactionItem {
     id: string;
@@ -465,56 +466,122 @@ function TransactionCardComponent({
 
     const splitSummary = draftSplit?.shares.slice(0, 3) ?? [];
 
+    const { swipeX, isRevealed, isSwiping, isSnapping, reset: resetSwipe, swipeHandleProps } = useSwipeToDelete({
+        onDelete: () => {
+            if (onDelete) {
+                onDelete(item.id);
+            }
+        },
+        enabled: !isExpanded
+    });
+
+    // Reset swipe when card is expanded
+    useEffect(() => {
+        if (isExpanded) {
+            resetSwipe();
+        }
+    }, [isExpanded, resetSwipe]);
+
     return (
         <div
             className={cn(
-                "group flex flex-col overflow-hidden rounded-2xl bg-bg-elevated transition-all",
+                "group relative flex flex-col overflow-hidden rounded-2xl bg-bg-elevated transition-all outline-none",
                 isExpanded
                     ? "my-1 scale-[1.005] ring-1 ring-border-subtle shadow-[0_8px_24px_rgba(15,23,42,0.08)]"
                     : "hover:bg-bg-subtle active:scale-[0.99]",
                 className
             )}
         >
-            <button
-                onClick={onToggleExpand}
-                className="flex w-full items-center gap-3 p-4 text-left focus:outline-none"
-            >
-                <div
-                    className={cn(
-                        "flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition-colors",
-                        "bg-bg-subtle text-text-secondary group-hover:bg-brand-soft group-hover:text-brand"
-                    )}
+            {/* Delete button background - revealed on swipe */}
+            {!isExpanded && (
+                <div 
+                    data-swipe-delete-action="true"
+                    className="absolute inset-y-0 right-0 z-0 flex w-20 items-center justify-center bg-danger rounded-r-2xl overflow-hidden"
+                    onPointerDownCapture={(event) => {
+                        event.stopPropagation();
+                    }}
+                    onClick={(event) => {
+                        event.stopPropagation();
+                    }}
+                    style={{
+                        opacity: swipeX < -5 ? 1 : 0,
+                        transition: 'opacity 0.1s ease-out'
+                    }}
                 >
-                    {CategoryIcons[item.category] || CategoryIcons["Lainnya"]}
+                    <button
+                        type="button"
+                        data-swipe-delete-action="true"
+                        onPointerDownCapture={(event) => {
+                            event.stopPropagation();
+                        }}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (onDelete) {
+                                onDelete(item.id);
+                            }
+                        }}
+                        className="flex h-12 w-12 items-center justify-center rounded-full outline-none focus:outline-none active:bg-danger-pressed transition-colors"
+                        aria-label="Hapus transaksi"
+                    >
+                        <Trash2 className="h-5 w-5 text-white" />
+                    </button>
                 </div>
+            )}
 
-                <div className="flex min-w-0 flex-1 flex-col justify-center">
-                    <span className="truncate text-[15px] font-bold text-text-primary">
-                        {item.title}
-                    </span>
-                    <span className="mt-0.5 truncate text-[12px] font-medium text-text-tertiary">
-                        {formatDateLabel(item.time)}
-                        {item.paymentMethod ? ` • ${getPaymentMethodText(item.paymentMethod)}` : ""}
-                    </span>
-                </div>
+            {/* Main card content - swipeable */}
+            <div
+                className={cn(
+                    "relative z-10 flex flex-col bg-bg-elevated outline-none",
+                    !isExpanded && "touch-pan-y",
+                    !isExpanded && isSnapping && "transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                )}
+                style={{
+                    transform: !isExpanded ? `translateX(${swipeX}px)` : undefined,
+                    pointerEvents: isRevealed ? 'none' : 'auto'
+                }}
+                {...(!isExpanded ? swipeHandleProps : {})}
+            >
+                <button
+                    onClick={onToggleExpand}
+                    className="flex w-full items-center gap-3 p-4 text-left outline-none focus:outline-none focus-visible:outline-none"
+                >
+                    <div
+                        className={cn(
+                            "flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition-colors",
+                            "bg-bg-subtle text-text-secondary group-hover:bg-brand-soft group-hover:text-brand"
+                        )}
+                    >
+                        {CategoryIcons[item.category] || CategoryIcons["Lainnya"]}
+                    </div>
 
-                <div className="flex shrink-0 flex-col items-end justify-center pl-2">
-                    <span className="text-[15px] font-bold text-text-primary">
-                        -Rp{formatAmountIDR(displayAmount)}
-                    </span>
-                    {item.split?.shares?.length ? (
-                        <div className="mt-1 shrink-0 rounded-full bg-bg-subtle px-2 py-0.5 text-[10px] font-semibold text-text-secondary">
-                            Split {item.split.shares.length}
-                        </div>
-                    ) : item.note && !isExpanded ? (
-                        <span className="mt-0.5 max-w-[100px] truncate text-[12px] font-medium text-text-tertiary">
-                            {item.note}
+                    <div className="flex min-w-0 flex-1 flex-col justify-center">
+                        <span className="truncate text-[15px] font-bold text-text-primary">
+                            {item.title}
                         </span>
-                    ) : null}
-                </div>
-            </button>
+                        <span className="mt-0.5 truncate text-[12px] font-medium text-text-tertiary">
+                            {formatDateLabel(item.time)}
+                            {item.paymentMethod ? ` • ${getPaymentMethodText(item.paymentMethod)}` : ""}
+                        </span>
+                    </div>
 
-            {isExpanded ? (
+                    <div className="flex shrink-0 flex-col items-end justify-center pl-2">
+                        <span className="text-[15px] font-bold text-text-primary">
+                            -Rp{formatAmountIDR(displayAmount)}
+                        </span>
+                        {item.split?.shares?.length ? (
+                            <div className="mt-1 shrink-0 rounded-full bg-bg-subtle px-2 py-0.5 text-[10px] font-semibold text-text-secondary">
+                                Split {item.split.shares.length}
+                            </div>
+                        ) : item.note && !isExpanded ? (
+                            <span className="mt-0.5 max-w-[100px] truncate text-[12px] font-medium text-text-tertiary">
+                                {item.note}
+                            </span>
+                        ) : null}
+                    </div>
+                </button>
+
+                {isExpanded ? (
                 <div className="animate-in slide-in-from-top-2 fade-in border-t border-border-subtle bg-bg-base/30 p-4 duration-200">
                     <div className="flex flex-col gap-4">
                         {item.split?.shares?.length ? (
@@ -864,6 +931,7 @@ function TransactionCardComponent({
                     </div>
                 </div>
             ) : null}
+            </div>
         </div>
     );
 }
