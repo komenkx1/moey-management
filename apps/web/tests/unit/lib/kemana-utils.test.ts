@@ -14,6 +14,7 @@ import {
     getSummaryStats,
     getSplitOtherPeopleInput,
     groupEntriesByDate,
+    getBestFilterForDate,
     includesDateInFilter,
     normalizeSplitPeopleWithLockedSelf,
     parseCurrencyInputToNumber,
@@ -103,6 +104,20 @@ describe("Filtering", () => {
     it("filters '7d'", () => {
         const res = getFilteredEntries(entries, "7d", now);
         expect(res.map(e => e.id)).toEqual(["1", "2"]);
+    });
+
+    it("filters '7d' as current week (Senin-hari ini), bukan rolling 7 hari", () => {
+        const weekNow = new Date("2026-02-25T10:00:00.000Z"); // Rabu
+        const weekEntries = [
+            makeEntry({ id: "mon", date: "2026-02-23" }), // Senin minggu ini
+            makeEntry({ id: "sun-prev", date: "2026-02-22" }), // Minggu lalu (3 hari lalu)
+            makeEntry({ id: "thu-prev", date: "2026-02-19" }) // Kamis lalu (6 hari lalu)
+        ];
+
+        const res = getFilteredEntries(weekEntries, "7d", weekNow);
+        expect(res.map((e) => e.id)).toEqual(["mon"]);
+        expect(includesDateInFilter("2026-02-22", "7d", weekNow)).toBe(false);
+        expect(getBestFilterForDate("2026-02-22", weekNow)).toBe("30d");
     });
 
     it("filters '30d'", () => {
@@ -221,6 +236,25 @@ describe("getSummaryStats", () => {
 
         expect(stats.totalAmount).toBe(150000);
         expect(stats.compareText).toContain("Rata-rata 3 hari");
+    });
+
+    it("summary today memakai baseline pekan berjalan untuk sevenDayAverage", () => {
+        const now = new Date("2026-02-20T10:00:00.000Z"); // Jumat
+        const allEntries = [
+            makeEntry({ id: "today", date: "2026-02-20", amount: 70000 }),
+            makeEntry({ id: "week-mid", date: "2026-02-18", amount: 35000 }), // minggu yang sama
+            makeEntry({ id: "prev-week-sun", date: "2026-02-15", amount: 140000 }) // minggu sebelumnya
+        ];
+        const filteredEntries = getFilteredEntries(allEntries, "today", now);
+
+        const stats = getSummaryStats({
+            allEntries,
+            filteredEntries,
+            preset: "today",
+            now
+        });
+
+        expect(stats.sevenDayAverage).toBe(15000); // (70k + 35k) / 7
     });
 });
 

@@ -261,6 +261,56 @@ describe("dashboard-page-utils", () => {
     expect(summary.comparisonLabel).toBe("3 hari sebelumnya");
   });
 
+  it("deriveInsightSummary preset 7d mengikuti pekan berjalan (Senin-hari ini)", () => {
+    const summary = deriveInsightSummary(
+      [
+        makeEntry({
+          id: "current-mon",
+          amount: 50000,
+          date: "2026-02-23",
+          createdAt: "2026-02-23T09:00:00.000Z"
+        }),
+        makeEntry({
+          id: "current-wed",
+          amount: 30000,
+          date: "2026-02-25",
+          createdAt: "2026-02-25T09:00:00.000Z"
+        }),
+        makeEntry({
+          id: "current-sun-prev",
+          amount: 90000,
+          date: "2026-02-22",
+          createdAt: "2026-02-22T09:00:00.000Z"
+        }),
+        makeEntry({
+          id: "previous-mon",
+          amount: 40000,
+          date: "2026-02-16",
+          createdAt: "2026-02-16T09:00:00.000Z"
+        }),
+        makeEntry({
+          id: "previous-wed",
+          amount: 10000,
+          date: "2026-02-18",
+          createdAt: "2026-02-18T09:00:00.000Z"
+        }),
+        makeEntry({
+          id: "previous-thu",
+          amount: 70000,
+          date: "2026-02-19",
+          createdAt: "2026-02-19T09:00:00.000Z"
+        })
+      ],
+      "7d",
+      new Date("2026-02-25T12:00:00.000Z")
+    );
+
+    expect(summary.total).toBe(80000);
+    expect(summary.previousTotal).toBe(50000);
+    expect(summary.delta).toBe(30000);
+    expect(summary.comparisonLabel).toBe("pekan lalu");
+  });
+
   it("deriveQuickHistorySuggestions urut berdasarkan frekuensi lalu recency", () => {
     const entries: Entry[] = [
       makeEntry({

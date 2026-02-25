@@ -91,6 +91,12 @@ export function offsetDate(base: Date, days: number): Date {
   return next;
 }
 
+function getMondayOfWeek(date: Date): Date {
+  const day = date.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  return offsetDate(date, diff);
+}
+
 export function parseDateKey(value: string): Date | null {
   const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) {
@@ -276,7 +282,12 @@ export function getFilteredEntries(
     return entries.filter((entry) => entry.date === todayKey);
   }
 
-  const days = preset === "7d" ? 7 : 30;
+  if (preset === "7d") {
+    const weekStartKey = toDateKey(getMondayOfWeek(now));
+    return entries.filter((entry) => entry.date >= weekStartKey && entry.date <= todayKey);
+  }
+
+  const days = 30;
   const startKey = toDateKey(offsetDate(now, -(days - 1)));
   return entries.filter((entry) => entry.date >= startKey && entry.date <= todayKey);
 }
@@ -299,7 +310,12 @@ export function includesDateInFilter(
     return dateISO === todayKey;
   }
 
-  const days = preset === "7d" ? 7 : 30;
+  if (preset === "7d") {
+    const weekStartKey = toDateKey(getMondayOfWeek(now));
+    return dateISO >= weekStartKey && dateISO <= todayKey;
+  }
+
+  const days = 30;
   const startKey = toDateKey(offsetDate(now, -(days - 1)));
   return dateISO >= startKey && dateISO <= todayKey;
 }
@@ -308,22 +324,17 @@ export function getBestFilterForDate(
   dateISO: string,
   now: Date = new Date()
 ): DateFilterPreset {
-  const parsed = parseDateKey(dateISO);
-  if (!parsed) {
+  if (!parseDateKey(dateISO)) {
     return "all";
   }
 
-  const diffDays = Math.floor(
-    (toDayStartTimestamp(now) - toDayStartTimestamp(parsed)) / 86_400_000
-  );
-
-  if (diffDays === 0) {
+  if (includesDateInFilter(dateISO, "today", now)) {
     return "today";
   }
-  if (diffDays >= 0 && diffDays <= 6) {
+  if (includesDateInFilter(dateISO, "7d", now)) {
     return "7d";
   }
-  if (diffDays >= 0 && diffDays <= 29) {
+  if (includesDateInFilter(dateISO, "30d", now)) {
     return "30d";
   }
   return "all";
@@ -519,15 +530,8 @@ export function getSummaryStats(params: {
     0
   );
   const trackedDays = new Set(allEntries.map((entry) => entry.date)).size;
-  const last7Keys = Array.from({ length: 7 }, (_, index) => toDateKey(offsetDate(now, -(index + 1))));
-  const dailyTotals = new Map<string, number>();
-  for (const entry of allEntries) {
-    dailyTotals.set(
-      entry.date,
-      (dailyTotals.get(entry.date) ?? 0) + getEntryReportAmount(entry)
-    );
-  }
-  const sevenDayTotal = last7Keys.reduce((sum, dateKey) => sum + (dailyTotals.get(dateKey) ?? 0), 0);
+  const sevenDayEntries = getFilteredEntries(allEntries, "7d", now);
+  const sevenDayTotal = sumAmount(sevenDayEntries);
   const sevenDayAverage = sevenDayTotal / 7;
   const topCategory = getTopCategory(filteredEntries);
   const topCategories = getTopCategoryBreakdown(filteredEntries);
