@@ -45,10 +45,12 @@ export default function DataToolsSheet({
 
             <div
                 className={cn(
-                    "absolute inset-x-0 bottom-0 flex max-h-[86dvh] flex-col rounded-t-[24px] bg-bg-base shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] sm:mx-auto sm:max-w-md",
-                    isOpen && dragY === 0 ? "translate-y-0" : "translate-y-full"
+                    "absolute inset-x-0 bottom-0 flex max-h-[86dvh] flex-col rounded-t-[24px] bg-bg-base shadow-2xl sm:mx-auto sm:max-w-md",
+                    !isOpen && "translate-y-full transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
                 )}
-                style={{ transform: dragY > 0 ? `translateY(${dragY}px)` : undefined }}
+                style={{ 
+                    transform: isOpen ? (dragY > 0 ? `translateY(${dragY}px)` : 'translateY(0)') : undefined 
+                }}
             >
                 <div
                     className="w-full shrink-0 cursor-grab touch-none pb-2 active:cursor-grabbing"
