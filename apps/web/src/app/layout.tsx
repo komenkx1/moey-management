@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import PwaInstallBanner from "@/components/PwaInstallBanner";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import SafeAreaSync from "./safe-area-sync";
 import SWRegister from "./sw-register";
 import ThemeColorSync from "./theme-color";
@@ -38,12 +39,14 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body>
-        <SafeAreaSync />
-        <PwaInstallBanner />
-        {children}
-        <Toaster position="bottom-center" richColors />
-        <ThemeColorSync />
-        <SWRegister />
+        <ErrorBoundary>
+          <SafeAreaSync />
+          <PwaInstallBanner />
+          {children}
+          <Toaster position="bottom-center" richColors />
+          <ThemeColorSync />
+          <SWRegister />
+        </ErrorBoundary>
       </body>
     </html>
   );
