@@ -21,7 +21,22 @@ import { parseQuickAdd } from "@kemana/core/parser";
 import { inferCategory, updateCategoryRule } from "@kemana/core/rules";
 import { PAYMENT_METHODS, type Category } from "@kemana/core/types";
 import type { Entry, ParseQuickAddResult } from "@kemana/core/types";
-import { useDashboardStoreBindings } from "@/store/kemana/hooks";
+import { useDashboardState } from "@/hooks/useDashboardState";
+import { useTransactionHandlers } from "@/hooks/useTransactionHandlers";
+import {
+  useEntries,
+  useRules,
+  useStorageState,
+  useDateFilter,
+  useScrollState,
+  useBackupState,
+  useQuickInput,
+  useQuickInputError,
+  useBulkInput,
+  useRecallState,
+  useRecallSession,
+  useNightCloseState
+} from "@/store/kemana/hooks-granular";
 import {
   clearStorageHealthWarnings,
   createBackupPayload,
@@ -101,72 +116,43 @@ import {
 import { getLastEntryTimestamp, getSmartRecallPrompt } from "./recall";
 import { recordQuickAddAck, scheduleBackgroundTask } from "@/lib/perf";
 import { toast } from "sonner";
+import { 
+  STORAGE_KEYS, 
+  TOAST_IDS, 
+  NOTES_VIRTUALIZE_THRESHOLD, 
+  NOTES_RENDER_CHUNK,
+  HIGHLIGHT_ENTRY_DURATION_MS,
+  NIGHT_CLOSE_CONFIRMATION_DURATION_MS,
+  SCROLL_RETRY_INTERVAL_MS,
+  SCROLL_MAX_ATTEMPTS,
+  QUICK_INPUT_DEBOUNCE_MS
+} from "@/lib/constants";
 
 interface ParsedBulkLine extends BulkPreviewLine {
   parsed?: Extract<ParseQuickAddResult, { ok: true }>;
 }
 
-interface MovedToastPayload {
-  entryId: string;
-  targetDate: string;
-  label: string;
-  movedOutOfFilter: boolean;
-}
-
-interface UndoToastPayload {
-  entry: Entry;
-  index: number;
-}
-
-const LAST_OPEN_AT_KEY = "kemana.lastOpenAt";
-const RECALL_DISMISSED_SESSION_KEY = "kemana.dismissedRecallUntil";
-const MOVED_TOAST_ID = "kemana.moved";
-const UNDO_TOAST_ID = "kemana.undo";
-const USER_NAME_KEY = "kemana.userName";
-const NOTES_VIRTUALIZE_THRESHOLD = 1000;
-const NOTES_RENDER_CHUNK = 220;
-
 export default function DashboardPage() {
-  const [activeTab, setActiveTab] = useState("home");
+  // Use granular store hooks for better performance
+  const { entries, setEntries } = useEntries();
+  const { rules, setRules } = useRules();
+  const { isStorageReady, setIsStorageReady, storageWarning, setStorageWarning } = useStorageState();
+  const { dateFilter, setDateFilter } = useDateFilter();
+  const { pendingScrollToId, setPendingScrollToId, highlightEntryId, setHighlightEntryId } = useScrollState();
+  const { backupMessage, setBackupMessage, replaceOnImport, setReplaceOnImport } = useBackupState();
+  const { quickInput, setQuickInput, debouncedQuickInput, setDebouncedQuickInput } = useQuickInput();
+  const { quickError, setQuickError, showQuickWarningDetails, setShowQuickWarningDetails } = useQuickInputError();
+  const { bulkOpen, setBulkOpen, bulkInput, setBulkInput } = useBulkInput();
+  const { recallInputPrimed, setRecallInputPrimed } = useRecallState();
   const {
-    entries,
-    setEntries,
-    rules,
-    setRules,
-    isStorageReady,
-    setIsStorageReady,
-    storageWarning,
-    setStorageWarning,
-    backupMessage,
-    setBackupMessage,
-    replaceOnImport,
-    setReplaceOnImport,
-    dateFilter,
-    setDateFilter,
-    pendingScrollToId,
-    setPendingScrollToId,
-    highlightEntryId,
-    setHighlightEntryId,
-    quickInput,
-    setQuickInput,
-    debouncedQuickInput,
-    setDebouncedQuickInput,
-    quickError,
-    setQuickError,
-    showQuickWarningDetails,
-    setShowQuickWarningDetails,
-    recallInputPrimed,
-    setRecallInputPrimed,
-    bulkOpen,
-    setBulkOpen,
-    bulkInput,
-    setBulkInput,
     lastAppOpenAt,
     setLastAppOpenAt,
     recallDismissedInSession,
     setRecallDismissedInSession,
     isRecallSessionReady,
-    setIsRecallSessionReady,
+    setIsRecallSessionReady
+  } = useRecallSession();
+  const {
     nightCloseClosedAt,
     setNightCloseClosedAt,
     isNightCloseReady,
@@ -175,32 +161,94 @@ export default function DashboardPage() {
     setNightClosePanelOpen,
     nightCloseConfirmation,
     setNightCloseConfirmation
-  } = useDashboardStoreBindings();
+  } = useNightCloseState();
 
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-  const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
-  const [sheetPrefill, setSheetPrefill] = useState<Partial<AddTransactionSubmitPayload> | null>(null);
-  const [isDataToolsSheetOpen, setIsDataToolsSheetOpen] = useState(false);
-  const [homePendingScrollId, setHomePendingScrollId] = useState<string | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [userName, setUserName] = useState("");
-  const [nameDraft, setNameDraft] = useState("");
-  const [isNamePromptOpen, setIsNamePromptOpen] = useState(false);
-  const [notesRenderCount, setNotesRenderCount] = useState(NOTES_RENDER_CHUNK);
-  const [customDateRange, setCustomDateRange] = useState<CustomDateRange>(() => getDefaultCustomDateRange());
-  const [isTrendChartOverflowing, setIsTrendChartOverflowing] = useState(false);
+  // Use custom dashboard state hook for UI state
+  const {
+    activeTab,
+    setActiveTab,
+    expandedIds,
+    setExpandedIds,
+    isAddSheetOpen,
+    setIsAddSheetOpen,
+    sheetPrefill,
+    setSheetPrefill,
+    isDataToolsSheetOpen,
+    setIsDataToolsSheetOpen,
+    homePendingScrollId,
+    setHomePendingScrollId,
+    isDarkMode,
+    setIsDarkMode,
+    userName,
+    setUserName,
+    nameDraft,
+    setNameDraft,
+    isNamePromptOpen,
+    setIsNamePromptOpen,
+    notesRenderCount,
+    setNotesRenderCount,
+    customDateRange,
+    setCustomDateRange,
+    isTrendChartOverflowing,
+    setIsTrendChartOverflowing,
+    itemRefs,
+    homeItemRefs,
+    notesLoadMoreRef,
+    insightTrendScrollRef,
+    quickInputRef,
+    undoToastPayloadRef,
+    movedToastPayloadRef,
+    cancelEntriesPersistRef,
+    isUnmountingRef
+  } = useDashboardState();
 
-  const itemRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
-  const homeItemRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
-  const notesLoadMoreRef = useRef<HTMLDivElement | null>(null);
-  const insightTrendScrollRef = useRef<HTMLDivElement | null>(null);
-  const quickInputRef = useRef<HTMLInputElement | null>(null);
-  const undoToastPayloadRef = useRef<UndoToastPayload | null>(null);
-  const movedToastPayloadRef = useRef<MovedToastPayload | null>(null);
+  // Additional refs for tracking filter state
   const dateFilterRef = useRef<DateFilterPreset>(dateFilter);
   const customDateRangeRef = useRef<CustomDateRange>(customDateRange);
-  const cancelEntriesPersistRef = useRef<(() => void) | null>(null);
-  const isUnmountingRef = useRef(false);
+
+  // Computed values needed by transaction handlers
+  const normalizedCustomRange = useMemo(
+    () => normalizeCustomDateRange(customDateRange, new Date()),
+    [customDateRange]
+  );
+
+  const dismissRecallForSession = useCallback(() => {
+    setRecallDismissedInSession(true);
+    window.sessionStorage.setItem(STORAGE_KEYS.RECALL_DISMISSED_SESSION, String(Date.now()));
+  }, [setRecallDismissedInSession]);
+
+  // Use transaction handlers hook
+  const {
+    handleSaveTransaction,
+    handleDeleteTransaction,
+    handleQuickAddSubmit: handleQuickAddSubmitFromHook,
+    handleCreateFromSheet,
+    undoToastPayloadRef: undoToastPayloadRefFromHook,
+    movedToastPayloadRef: movedToastPayloadRefFromHook
+  } = useTransactionHandlers({
+    entries,
+    setEntries,
+    rules,
+    setRules,
+    dateFilter,
+    normalizedCustomRange,
+    setHighlightEntryId,
+    setPendingScrollToId,
+    setExpandedIds,
+    setHomePendingScrollId,
+    setQuickInput,
+    setDebouncedQuickInput,
+    setQuickError,
+    setShowQuickWarningDetails,
+    setRecallInputPrimed,
+    dismissRecallForSession,
+    quickInputRef
+  });
+
+  // Override refs from useDashboardState with ones from useTransactionHandlers
+  // This ensures toast payloads are properly managed
+  undoToastPayloadRef.current = undoToastPayloadRefFromHook.current;
+  movedToastPayloadRef.current = movedToastPayloadRefFromHook.current;
 
   useEffect(() => {
     async function initStorage() {
@@ -233,7 +281,7 @@ export default function DashboardPage() {
   ]);
 
   useEffect(() => {
-    const storedName = window.localStorage.getItem(USER_NAME_KEY) ?? "";
+    const storedName = window.localStorage.getItem(STORAGE_KEYS.USER_NAME) ?? "";
     const normalizedName = storedName.replace(/\s+/g, " ").trim();
 
     if (normalizedName) {
@@ -282,12 +330,12 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const now = Date.now();
-    const rawLastOpenAt = window.localStorage.getItem(LAST_OPEN_AT_KEY);
+    const rawLastOpenAt = window.localStorage.getItem(STORAGE_KEYS.LAST_OPEN_AT);
     const parsedLastOpenAt = rawLastOpenAt ? Number.parseInt(rawLastOpenAt, 10) : Number.NaN;
     setLastAppOpenAt(Number.isFinite(parsedLastOpenAt) ? parsedLastOpenAt : null);
-    window.localStorage.setItem(LAST_OPEN_AT_KEY, String(now));
+    window.localStorage.setItem(STORAGE_KEYS.LAST_OPEN_AT, String(now));
 
-    const dismissed = window.sessionStorage.getItem(RECALL_DISMISSED_SESSION_KEY);
+    const dismissed = window.sessionStorage.getItem(STORAGE_KEYS.RECALL_DISMISSED_SESSION);
     setRecallDismissedInSession(Boolean(dismissed));
     setIsRecallSessionReady(true);
   }, [setIsRecallSessionReady, setLastAppOpenAt, setRecallDismissedInSession]);
@@ -296,8 +344,8 @@ export default function DashboardPage() {
     return () => {
       isUnmountingRef.current = true;
       cancelEntriesPersistRef.current?.();
-      toast.dismiss(UNDO_TOAST_ID);
-      toast.dismiss(MOVED_TOAST_ID);
+      toast.dismiss(TOAST_IDS.UNDO);
+      toast.dismiss(TOAST_IDS.MOVED);
     };
   }, []);
 
@@ -444,10 +492,6 @@ export default function DashboardPage() {
   }, [entries, isNightCloseReady, nightCloseClosedAt, setNightClosePanelOpen]);
 
   const allTransactions = useMemo(() => entries.map(toTransactionItem), [entries]);
-  const normalizedCustomRange = useMemo(
-    () => normalizeCustomDateRange(customDateRange, new Date()),
-    [customDateRange]
-  );
   const filteredEntries = useMemo(
     () => getFilteredEntries(entries, dateFilter, new Date(), normalizedCustomRange),
     [dateFilter, entries, normalizedCustomRange]
@@ -817,11 +861,6 @@ export default function DashboardPage() {
     });
   }, []);
 
-  const dismissRecallForSession = useCallback(() => {
-    setRecallDismissedInSession(true);
-    window.sessionStorage.setItem(RECALL_DISMISSED_SESSION_KEY, String(Date.now()));
-  }, [setRecallDismissedInSession]);
-
   const primeQuickInputForRecall = useCallback(
     (options?: { dismissSession?: boolean }) => {
       const dismissSession = options?.dismissSession ?? true;
@@ -934,7 +973,7 @@ export default function DashboardPage() {
     setUserName(nextName);
     setNameDraft(nextName);
     setIsNamePromptOpen(false);
-    window.localStorage.setItem(USER_NAME_KEY, nextName);
+    window.localStorage.setItem(STORAGE_KEYS.USER_NAME, nextName);
     toast.success(`Halo, ${nextName}`);
   }, [canSaveName, normalizedNameDraft]);
 
@@ -958,276 +997,10 @@ export default function DashboardPage() {
     [dateFilter, setDateFilter]
   );
 
-  const handleMovedToastSee = useCallback(() => {
-    const movedToast = movedToastPayloadRef.current;
-    if (!movedToast) {
-      return;
-    }
-
-    if (!includesDateInFilter(movedToast.targetDate, dateFilterRef.current, new Date(), customDateRangeRef.current)) {
-      setDateFilter(getBestFilterForDate(movedToast.targetDate));
-    }
-
-    setActiveTab("notes");
-    setPendingScrollToId(movedToast.entryId);
-    setHighlightEntryId(movedToast.entryId);
-    movedToastPayloadRef.current = null;
-    toast.dismiss(MOVED_TOAST_ID);
-  }, [setDateFilter, setHighlightEntryId, setPendingScrollToId]);
-
-  const showMovedToast = useCallback(
-    (payload: MovedToastPayload) => {
-      movedToastPayloadRef.current = payload;
-      toast(
-        payload.movedOutOfFilter
-          ? `Tanggal disimpan. Dipindah ke ${payload.label} (di luar filter aktif).`
-          : `Tanggal disimpan. Dipindah ke ${payload.label}`,
-        {
-          id: MOVED_TOAST_ID,
-          duration: 8000,
-          action: {
-            label: "Lihat",
-            onClick: handleMovedToastSee
-          },
-          onDismiss: () => {
-            movedToastPayloadRef.current = null;
-          },
-          onAutoClose: () => {
-            movedToastPayloadRef.current = null;
-          }
-        }
-      );
-    },
-    [handleMovedToastSee]
-  );
-
-  const handleSaveTransaction = useCallback(
-    (updatedItem: TransactionItem) => {
-      const originalEntry = entries.find((entry) => entry.id === updatedItem.id);
-      if (!originalEntry) {
-        return;
-      }
-
-      const dateChanged = originalEntry.date !== updatedItem.time;
-      const categoryChanged = originalEntry.category !== updatedItem.category;
-
-      const originalTitle = splitDisplayText(originalEntry.text).title.trim();
-      const nextTitle = updatedItem.title.trim() || originalTitle || updatedItem.category;
-      const note = updatedItem.note?.trim();
-      const nextText = note ? `${nextTitle} - ${note}` : nextTitle;
-      const paymentMethod =
-        updatedItem.paymentMethod &&
-          PAYMENT_METHODS.includes(updatedItem.paymentMethod as (typeof PAYMENT_METHODS)[number])
-          ? (updatedItem.paymentMethod as Entry["paymentMethod"])
-          : undefined;
-
-      const nextEntries = entries.map((entry) => {
-        if (entry.id !== updatedItem.id) {
-          return entry;
-        }
-
-        return {
-          ...entry,
-          amount: updatedItem.amount,
-          date: updatedItem.time,
-          category: updatedItem.category as Entry["category"],
-          paymentMethod,
-          text: nextText,
-          rawInput: updatedItem.rawInput,
-          parseWarnings: updatedItem.parseWarnings,
-          split: updatedItem.split,
-          updatedAt: new Date().toISOString()
-        };
-      });
-
-      setEntries(nextEntries);
-      if (categoryChanged) {
-        setRules((prev) => updateCategoryRule(prev, nextText, updatedItem.category as Category));
-      }
-
-      if (dateChanged) {
-        const movedLabel = formatDayLabel(updatedItem.time, new Date());
-        showMovedToast({
-          entryId: updatedItem.id,
-          targetDate: updatedItem.time,
-          label: movedLabel,
-          movedOutOfFilter: !includesDateInFilter(updatedItem.time, dateFilter, new Date(), normalizedCustomRange)
-        });
-        setPendingScrollToId(updatedItem.id);
-        setHighlightEntryId(updatedItem.id);
-      } else {
-        toast.success("Catatan diperbarui.");
-      }
-    },
-    [
-      dateFilter,
-      entries,
-      normalizedCustomRange,
-      setEntries,
-      setHighlightEntryId,
-      setPendingScrollToId,
-      setRules,
-      showMovedToast
-    ]
-  );
-
-  const handleDeleteTransaction = useCallback(
-    (id: string) => {
-      let undoPayload: UndoToastPayload | null = null;
-
-      setEntries((prev) => {
-        const deletedIndex = prev.findIndex((entry) => entry.id === id);
-        if (deletedIndex === -1) {
-          return prev;
-        }
-
-        undoPayload = {
-          entry: prev[deletedIndex],
-          index: deletedIndex
-        };
-
-        return prev.filter((entry) => entry.id !== id);
-      });
-
-      if (!undoPayload) {
-        return;
-      }
-
-      undoToastPayloadRef.current = undoPayload;
-      toast("Catatan dihapus.", {
-        id: UNDO_TOAST_ID,
-        duration: 6000,
-        action: {
-          label: "Urungkan",
-          onClick: () => {
-            const payload = undoToastPayloadRef.current;
-            if (!payload) {
-              return;
-            }
-
-            setEntries((prev) => {
-              const next = [...prev];
-              const insertIndex = Math.max(0, Math.min(payload.index, next.length));
-              next.splice(insertIndex, 0, payload.entry);
-              return next;
-            });
-
-            undoToastPayloadRef.current = null;
-            toast.dismiss(UNDO_TOAST_ID);
-            toast.success("Catatan dikembalikan.");
-          }
-        },
-        onDismiss: () => {
-          undoToastPayloadRef.current = null;
-        },
-        onAutoClose: () => {
-          undoToastPayloadRef.current = null;
-        }
-      });
-    },
-    [setEntries]
-  );
-
+  // Wrapper for handleQuickAddSubmit to match expected signature
   const handleQuickAddSubmit = useCallback(() => {
-    const submitStartedAt = performance.now();
-    const parsed =
-      quickPreview && debouncedQuickInput === quickInput
-        ? quickPreview
-        : parseQuickAdd(quickInput, new Date(), "quick_add");
-
-    if (!parsed.ok) {
-      setQuickError(parsed.reason || "Format catatan belum dikenali.");
-      return;
-    }
-
-    const now = new Date().toISOString();
-    const nextEntry: Entry = {
-      id: createEntryId(),
-      text: parsed.value.text,
-      amount: parsed.value.amount,
-      rawInput: parsed.value.rawInput,
-      date: parsed.value.date,
-      category: inferCategory(parsed.value.text, rules),
-      paymentMethod: "Unknown",
-      source: parsed.value.source,
-      parseWarnings: parsed.warnings,
-      split: makeInitialSplit(parsed.value.amount, parsed.value.splitCount),
-      createdAt: now,
-      updatedAt: now
-    };
-
-    setEntries((prev) => [nextEntry, ...prev]);
-    setExpandedIds(new Set([nextEntry.id]));
-    setHomePendingScrollId(nextEntry.id);
-    setHighlightEntryId(nextEntry.id);
-    setQuickInput("");
-    setDebouncedQuickInput("");
-    setQuickError(null);
-    setShowQuickWarningDetails(false);
-    setRecallInputPrimed(false);
-    dismissRecallForSession();
-
-    window.requestAnimationFrame(() => {
-      quickInputRef.current?.focus();
-      recordQuickAddAck(performance.now() - submitStartedAt);
-    });
-
-    toast.success("Catatan tersimpan.");
-  }, [
-    debouncedQuickInput,
-    dismissRecallForSession,
-    quickInput,
-    quickPreview,
-    rules,
-    setHighlightEntryId,
-    setDebouncedQuickInput,
-    setEntries,
-    setQuickError,
-    setQuickInput,
-    setRecallInputPrimed,
-    setShowQuickWarningDetails
-  ]);
-
-  const handleCreateFromSheet = useCallback(
-    (data: AddTransactionSubmitPayload) => {
-      const normalizedPayment =
-        data.payment && PAYMENT_METHODS.includes(data.payment as (typeof PAYMENT_METHODS)[number])
-          ? (data.payment as Entry["paymentMethod"])
-          : undefined;
-      const title = data.title?.trim();
-      const note = data.note.trim();
-      const textTitle = title || data.category;
-      const text = note ? `${textTitle} - ${note}` : textTitle;
-      const normalizedQty = Math.max(1, Math.round(data.quantity ?? 1));
-      const normalizedUnitAmount = Math.max(0, Math.round(data.unitAmount ?? data.amount));
-      const splitCount = data.split?.shares?.length ?? 0;
-      const splitToken = splitCount > 1 ? ` ${splitCount}p` : "";
-      const rawInputLabel = title || note || data.category;
-      const fallbackRawInput = `${rawInputLabel} ${normalizedQty > 1 ? `${normalizedQty}x ` : ""}${toParserAmountToken(normalizedUnitAmount)}${splitToken}`.trim();
-      const rawInput = data.rawInput?.trim() || fallbackRawInput;
-      const now = new Date().toISOString();
-
-      const nextEntry: Entry = {
-        id: createEntryId(),
-        text,
-        amount: data.amount,
-        rawInput,
-        date: data.date,
-        category: data.category as Entry["category"],
-        paymentMethod: normalizedPayment,
-        source: "quick_add",
-        split: data.split,
-        createdAt: now,
-        updatedAt: now
-      };
-
-      setEntries((prev) => [nextEntry, ...prev]);
-      dismissRecallForSession();
-      setRecallInputPrimed(false);
-      toast.success("Catatan tersimpan.");
-    },
-    [dismissRecallForSession, setEntries, setRecallInputPrimed]
-  );
+    handleQuickAddSubmitFromHook(quickInput, debouncedQuickInput, quickPreview);
+  }, [handleQuickAddSubmitFromHook, quickInput, debouncedQuickInput, quickPreview]);
 
   const handleSaveBulk = useCallback(() => {
     const validLines = bulkDraftLines.filter(
