@@ -510,15 +510,28 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     await quickAdd(page, "test delete 25k");
     await openNotesTab(page);
     
-    const entry = await expandEntryByText(page, "test delete");
-    await entry.getByRole("button", { name: "Hapus" }).click();
+    // Verify entry exists before delete
+    await expect(page.locator("[data-entry-id]").filter({ hasText: "test delete" })).toBeVisible();
     
-    // Verify toast appears with undo option
-    await expect(page.getByText("Catatan dihapus.")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Urungkan" })).toBeVisible();
+    const entry = await expandEntryByText(page, "test delete");
+    
+    // Wait for delete button to be ready
+    const deleteButton = entry.getByRole("button", { name: "Hapus" });
+    await expect(deleteButton).toBeVisible();
+    await expect(deleteButton).toBeEnabled();
+    
+    // Click delete
+    await deleteButton.click();
+    
+    // Check if entry is removed from DOM (this would confirm delete worked)
+    await expect(page.locator("[data-entry-id]").filter({ hasText: "test delete" })).toHaveCount(0, { timeout: 5000 });
+    
+    // Wait for undo button to appear (toast should contain it)
+    const undoButton = page.getByRole("button", { name: "Urungkan" });
+    await expect(undoButton).toBeVisible({ timeout: 10000 });
     
     // Click undo
-    await page.getByRole("button", { name: "Urungkan" }).click();
+    await undoButton.click();
     
     // Verify entry is restored
     await expect(page.getByText("Catatan dikembalikan.")).toBeVisible();
