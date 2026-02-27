@@ -100,7 +100,16 @@ export default memo(HomeRecentActivitySection, (prev, next) => {
   }
   
   for (let i = 0; i < prevTransactions.length; i++) {
-    if (prevTransactions[i].id !== nextTransactions[i].id) {
+    if (
+      prevTransactions[i].id !== nextTransactions[i].id ||
+      prevTransactions[i].title !== nextTransactions[i].title ||
+      prevTransactions[i].note !== nextTransactions[i].note ||
+      prevTransactions[i].amount !== nextTransactions[i].amount ||
+      prevTransactions[i].category !== nextTransactions[i].category ||
+      prevTransactions[i].paymentMethod !== nextTransactions[i].paymentMethod ||
+      prevTransactions[i].time !== nextTransactions[i].time ||
+      prevTransactions[i].rawInput !== nextTransactions[i].rawInput
+    ) {
       return false;
     }
   }
