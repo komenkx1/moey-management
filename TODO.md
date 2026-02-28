@@ -1,6 +1,6 @@
 # TODO Eksekusi MVP KeMana (Single-Device First)
 
-## 0. Progress Update (Per 25 Februari 2026)
+## 0. Progress Update (Per 28 Februari 2026)
 - Phase 1 core UX sudah usable untuk dogfooding single-device.
 - Parser + split + rules sudah dipisah ke `packages/core`.
 - Storage adapter local-first aktif di `packages/storage` (Dexie/IndexedDB sebagai primary storage).
@@ -16,7 +16,7 @@
 - Summary/report sudah split-aware (menghitung porsi `Kamu` saat entry punya split).
 - Daily Summary card + smart empty state sudah aktif.
 - Group by date + total per hari sudah aktif.
-- Filter rentang tanggal (`Hari ini`, `7 hari`, `30 hari`, `Semua`) sudah aktif untuk list + summary.
+- Filter rentang tanggal (`Hari ini`, `Pekan ini`, `30 hari`, `Semua`) sudah aktif untuk list + summary.
 - Payment method opsional sudah aktif (awareness-only, non-blocking).
 - Export/Import backup JSON + storage corruption guard sudah aktif.
 - Adaptive iOS PWA status bar blending aktif (best-effort).
@@ -40,6 +40,10 @@
 - Migrasi UI ke shadcn primitives selesai sepenuhnya (Tailwind v4).
 - Migrasi state page orchestration ke Zustand selesai (dibagi per domain slice sesuai `MIGRATION_SHADCN_ZUSTAND.md`).
 - Migrasi toast ke Sonner selesai dengan deduplikasi action/undo.
+- Gesture swipe-to-delete sudah aktif (WhatsApp-style: swipe left reveal delete button, bukan langsung hapus).
+- Drag-to-close bottom sheet sudah diperbaiki (smooth follow finger, tidak patah).
+- Animasi native-like sudah diperhalus (easing curves, duration optimal, GPU acceleration).
+- Empty state "Aktivitas terbaru" sudah diperbaiki (hanya muncul saat benar-benar kosong).
 - Phase 1 MVP sudah production-ready untuk dogfooding intensif single-device.
 
 ## 0.1 Audit Cakupan Test (25 Februari 2026)
@@ -184,7 +188,14 @@ Status:
 - [x] Pindahkan helper pure ke `src/lib/kemana-utils.ts`.
 - [x] Jaga className/DOM/urutan elemen tetap identik saat ekstraksi.
 
-## 2.13 UX Polish (Hari Ini)
+## 2.15 Mobile Gesture Enhancement (Hari Ini - 28 Feb 2026)
+- [x] Implement swipe-to-delete pada TransactionCard (WhatsApp-style: reveal delete button).
+- [x] Perbaiki drag-to-close bottom sheet (smooth follow finger, tidak patah saat release).
+- [x] Perhalus semua animasi untuk feel native-like (easing curves optimal, GPU acceleration).
+- [x] Fix empty state "Aktivitas terbaru" (hanya muncul saat benar-benar kosong).
+- [x] Fix pointer events conflict pada swipe gesture (desktop mode bisa expand card).
+- [x] Tambahkan utility classes untuk smooth animations di globals.css.
+- [ ] (Opsional) Implement pull-to-refresh untuk Phase 2 sync preparation.
 - [x] Kurangi visual noise composer (hint lebih ringkas, tidak numpuk).
 - [x] Perhalus transisi Night Close panel + backdrop.
 - [x] Perhalus affordance tombol close panel (`×`) agar tidak terasa keras.

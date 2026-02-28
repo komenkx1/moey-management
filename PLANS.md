@@ -1,6 +1,6 @@
 # KeMana MVP Masterplan
 
-## 0. Progress Snapshot (Per 25 Februari 2026)
+## 0. Progress Snapshot (Per 28 Februari 2026)
 ### Sudah Selesai (Phase 0/1)
 - Arsitektur repo aktif: `apps/web`, `packages/core`, `packages/storage` (core logic terpisah dari UI Next.js).
 - Quick Add parser production-ready untuk pola utama:
@@ -71,11 +71,16 @@
 - Tailwind v4 + shadcn migration phase selesai (semua control utama memakai primitive shadcn).
 - Eksekusi fase migrasi Zustand incremental selesai (orchestration state `page.tsx` dipecah menjadi store slices tanpa regresi).
 - Sonner migration selesai untuk undo/action toast beserta deduplikasi notifikasi.
+- Gesture swipe-to-delete aktif (WhatsApp-style: swipe left reveal delete button).
+- Drag-to-close bottom sheet diperbaiki (smooth follow finger, snap animation natural).
+- Animasi native-like diperhalus (easing curves optimal, duration 300ms, GPU acceleration).
+- Empty state "Aktivitas terbaru" diperbaiki (hanya muncul saat benar-benar kosong).
 
 ### Sedang Berjalan
 - Dogfooding intensif untuk validasi habit loop (Smart Recall + Night Close) pada konsistensi catat harian.
 - Monitoring performa dan stabilitas untuk identifikasi edge cases.
 - Persiapan dokumentasi user-facing untuk onboarding awal.
+- Evaluasi gesture tambahan (pull-to-refresh) untuk Phase 2 sync preparation.
 
 ### Belum Diaktifkan (Tetap Sesuai Desain)
 - Backend Supabase, RLS, auth, sync queue, conflict resolution.

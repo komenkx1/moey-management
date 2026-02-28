@@ -1,6 +1,6 @@
 # KeMana MVP Specs
 
-## 0. Status Implementasi (Per 25 Februari 2026)
+## 0. Status Implementasi (Per 28 Februari 2026)
 - [x] Quick Add parser + warning system terstruktur.
 - [x] Quick Add inline addition (`+`) dengan total otomatis.
 - [x] Quick Add qty-aware parsing (`3x 15k`, `x3 15k`, `15k x3`, `3 x 15k`).
@@ -40,6 +40,11 @@
 - [x] Split UX lebih eksplisit (status split, `Buat/Edit Split`, `Batalkan split`, `Batal` editor).
 - [x] Parser regression tests aktif (`26` test lulus).
 - [x] Dexie migration aktif (dengan one-time migration lokal dari localStorage).
+- [x] Gesture swipe-to-delete aktif (WhatsApp-style: swipe left reveal delete button dengan background merah).
+- [x] Drag-to-close bottom sheet diperbaiki (smooth follow finger, snap animation natural dengan easing optimal).
+- [x] Animasi native-like diperhalus (easing curves `cubic-bezier(0.4,0,0.2,1)`, duration 300ms, GPU acceleration).
+- [x] Empty state "Aktivitas terbaru" diperbaiki (hanya muncul saat benar-benar kosong, bukan saat ≤5 entries).
+- [x] Pointer events conflict pada swipe gesture diperbaiki (desktop mode bisa expand card).
 - [ ] Backend/auth/sync/RLS (tetap Phase 2, belum implementasi).
 
 ## 1. Acceptance Criteria per Fitur

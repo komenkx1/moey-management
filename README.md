@@ -2,7 +2,7 @@
 
 KeMana adalah aplikasi pencatatan pengeluaran single-device, local-first, dengan fokus input cepat: "Biar tau uangmu kemana".
 
-## Progress Terkini (25 Feb 2026)
+## Progress Terkini (28 Feb 2026)
 
 - Import/Export `JSON + CSV` sudah stabil (nama file jelas, parser CSV + fallback format).
 - Kompatibilitas data lama untuk metode bayar (`Lainnya`/`Belum pilih`) dinormalisasi aman ke `Unknown`.
@@ -15,7 +15,7 @@ KeMana adalah aplikasi pencatatan pengeluaran single-device, local-first, dengan
 - Night Close ritual (bar + review panel + close marker harian).
 - Night Close auto-surface saat buka app di window malam (20:00-23:59) jika hari belum ditutup.
 - Report harian split-aware (pakai porsi `Kamu`).
-- Group by date + filter rentang (`Hari ini/7 hari/30 hari/Semua`).
+- Group by date + filter rentang (`Hari ini/Pekan ini/30 hari/Semua`).
 - Refactor `page.tsx`: UI diekstrak ke `src/components/kemana/*`, page tetap sebagai orchestration state/handler.
 - Perceived performance Quick Add dituning (reuse parse preview + insert dulu + persist storage di background).
 - Performa list dituning: single-expand (1 row aktif), expanded UI lazy-mounted, dan collapsed row dimemoisasi untuk list besar.
@@ -31,6 +31,10 @@ KeMana adalah aplikasi pencatatan pengeluaran single-device, local-first, dengan
 - Migrasi state ke Zustand untuk orchestration terpusat dan perbaikan re-render.
 - Migrasi komponen UI ke shadcn/ui dan Tailwind CSS v4.
 - Toast notifikasi dimigrasikan ke ekosistem Sonner.
+- Gesture swipe-to-delete aktif (WhatsApp-style: swipe left reveal delete button dengan background merah).
+- Drag-to-close bottom sheet diperbaiki (smooth follow finger, snap animation natural).
+- Animasi native-like diperhalus (easing curves optimal, duration 300ms, GPU acceleration).
+- Empty state "Aktivitas terbaru" diperbaiki (hanya muncul saat benar-benar kosong).
 
 ## Menjalankan Lokal
 
@@ -43,7 +47,7 @@ npm run dev
 
 Buka `http://localhost:3000`.
 
-## Status Test (25 Feb 2026)
+## Status Test (28 Feb 2026)
 
 - Unit test: `107/107` lulus (`npm test`).
 - E2E test: `17/17` lulus (`npx playwright test`, Chromium).
@@ -51,7 +55,8 @@ Buka `http://localhost:3000`.
   - offline simulation end-to-end (quick add + list),
   - drag-close bottom sheet lintas halaman,
   - SW update banner waiting/dismiss session,
-  - virtualisasi list threshold `1000+` item.
+  - virtualisasi list threshold `1000+` item,
+  - swipe-to-delete gesture (manual testing).
 - Aplikasi siap untuk dogfooding intensif.
 
 ## Benchmark Ack (Perceived)
