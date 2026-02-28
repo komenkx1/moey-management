@@ -646,6 +646,83 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     await expect(page.getByRole("button", { name: "Lihat" })).toBeVisible();
   });
 
+  test("Moved toast 'Lihat' button navigates to notes tab and highlights entry", async ({ page }) => {
+    // Add entry today
+    await quickAdd(page, "test moved navigation 50k");
+    
+    // Verify we're on home tab initially
+    await expect(page.locator('button:has-text("Beranda")').locator('div.bg-brand')).toBeVisible();
+
+    // Open notes tab to edit
+    await openNotesTab(page);
+    const entry = await expandEntryByText(page, "test moved navigation");
+
+    // Change date to yesterday
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayKey = yesterday.toISOString().split('T')[0];
+
+    await entry.locator("input[type='date']").fill(yesterdayKey);
+    await entry.getByRole("button", { name: "Simpan", exact: true }).click();
+
+    // Wait for toast
+    await expect(page.getByText(/Tanggal disimpan\. Dipindah ke/)).toBeVisible();
+    
+    // Switch to home tab to test navigation
+    await page.getByRole("button", { name: "Beranda" }).click();
+    await expect(page.locator('button:has-text("Beranda")').locator('div.bg-brand')).toBeVisible();
+
+    // Click "Lihat" button in toast
+    await page.getByRole("button", { name: "Lihat" }).click();
+
+    // Verify we're on notes tab (check for active indicator)
+    await expect(page.locator('button:has-text("Catatan")').locator('div.bg-brand')).toBeVisible();
+
+    // Verify entry is highlighted (has ring-2 ring-brand class)
+    const highlightedEntry = page.locator(`[data-entry-id]`).filter({ hasText: "test moved navigation" });
+    await expect(highlightedEntry).toHaveClass(/ring-2 ring-brand/);
+
+    // Verify entry is visible (scrolled into view)
+    await expect(highlightedEntry).toBeInViewport();
+  });
+
+  test("Moved toast 'Lihat' button changes filter to 'all' when entry moved out of filter", async ({ page }) => {
+    // Add entry today
+    await quickAdd(page, "test filter change 60k");
+    
+    // Open notes tab and set filter to "today"
+    await openNotesTab(page);
+    
+    // Click "Hari ini" filter button
+    const todayFilter = page.locator('button[aria-pressed]').filter({ hasText: "Hari ini" });
+    await todayFilter.click();
+    await expect(todayFilter).toHaveAttribute("aria-pressed", "true");
+
+    // Edit entry and change date to 10 days ago (outside "today" filter)
+    const entry = await expandEntryByText(page, "test filter change");
+    const tenDaysAgo = new Date();
+    tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+    const tenDaysAgoKey = tenDaysAgo.toISOString().split('T')[0];
+
+    await entry.locator("input[type='date']").fill(tenDaysAgoKey);
+    await entry.getByRole("button", { name: "Simpan", exact: true }).click();
+
+    // Wait for toast with "di luar filter aktif" message
+    await expect(page.getByText(/di luar filter aktif/)).toBeVisible();
+    
+    // Click "Lihat" button
+    await page.getByRole("button", { name: "Lihat" }).click();
+
+    // Verify filter changed to "Semua" (all)
+    const allFilter = page.locator('button[aria-pressed]').filter({ hasText: "Semua" });
+    await expect(allFilter).toHaveAttribute("aria-pressed", "true");
+
+    // Verify entry is visible and highlighted
+    const highlightedEntry = page.locator(`[data-entry-id]`).filter({ hasText: "test filter change" });
+    await expect(highlightedEntry).toBeVisible();
+    await expect(highlightedEntry).toHaveClass(/ring-2 ring-brand/);
+  });
+
   test("Filter switching: today, 7d, 30d, all", async ({ page }) => {
     // Add entries for different dates
     await quickAdd(page, "today entry 10k");
