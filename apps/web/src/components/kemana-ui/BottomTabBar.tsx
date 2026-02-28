@@ -1,6 +1,7 @@
-import { ReactNode } from "react";
+import { ReactNode, startTransition } from "react";
 import { cn } from "@/lib/utils";
 import { Home, FileText, PieChart, MoreHorizontal } from "lucide-react";
+import { useActiveTab } from "@/store/kemana/hooks-granular";
 
 interface TabItem {
     id: string;
@@ -15,12 +16,11 @@ const TABS: TabItem[] = [
 ];
 
 interface BottomTabBarProps {
-    activeTab?: string;
-    onTabChange?: (id: string) => void;
     className?: string;
 }
 
-export default function BottomTabBar({ activeTab = "notes", onTabChange, className }: BottomTabBarProps) {
+export default function BottomTabBar({ className }: BottomTabBarProps) {
+    const { activeTab, setActiveTab } = useActiveTab();
     return (
         <nav
             className={cn(
@@ -33,7 +33,13 @@ export default function BottomTabBar({ activeTab = "notes", onTabChange, classNa
                 return (
                     <button
                         key={tab.id}
-                        onClick={() => onTabChange?.(tab.id)}
+                        onClick={() => {
+                            if (!isActive) {
+                                startTransition(() => {
+                                    setActiveTab(tab.id);
+                                });
+                            }
+                        }}
                         className="group relative flex flex-1 flex-col items-center justify-center gap-1 h-full active:scale-95 transition-transform"
                     >
                         {/* Active Indicator Top Bar */}
