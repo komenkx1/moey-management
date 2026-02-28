@@ -22,7 +22,7 @@ export default defineConfig({
         },
     ],
     webServer: {
-        command: `PORT=${PLAYWRIGHT_PORT} NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS='' npm start`,
+        command: `mkdir -p .next/static && PORT=${PLAYWRIGHT_PORT} NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS='' npm start`,
         port: PLAYWRIGHT_PORT,
         reuseExistingServer: false,
         timeout: 120000,

@@ -5,6 +5,7 @@ const pkg = require("./package.json");
 module.exports = {
   reactStrictMode: true,
   transpilePackages: ["@kemana/core", "@kemana/storage"],
+  outputFileTracingRoot: __dirname,
   env: {
     NEXT_PUBLIC_APP_VERSION: pkg.version
   },
