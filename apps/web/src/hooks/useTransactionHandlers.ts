@@ -37,6 +37,8 @@ interface UseTransactionHandlersProps {
   rules: CategoryRules;
   setRules: (rules: CategoryRules | ((prev: CategoryRules) => CategoryRules)) => void;
   dateFilter: DateFilterPreset;
+  setDateFilter: (filter: DateFilterPreset) => void;
+  setActiveTab: (tab: "home" | "notes" | "insight") => void;
   normalizedCustomRange: CustomDateRange;
   setHighlightEntryId: (id: string | null) => void;
   setPendingScrollToId: (id: string | null) => void;
@@ -59,6 +61,8 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
     rules,
     setRules,
     dateFilter,
+    setDateFilter,
+    setActiveTab,
     normalizedCustomRange,
     setHighlightEntryId,
     setPendingScrollToId,
@@ -82,17 +86,23 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
       return;
     }
 
-    const targetFilter = movedToast.movedOutOfFilter
-      ? "all"
-      : dateFilter;
+    // Switch to notes tab
+    setActiveTab("notes");
 
+    // If moved out of filter, change to "all" filter
+    if (movedToast.movedOutOfFilter) {
+      setDateFilter("all");
+    }
+
+    // Set scroll and highlight
     setPendingScrollToId(movedToast.entryId);
     setHighlightEntryId(movedToast.entryId);
-    // Only change filter if moved out
-    if (movedToast.movedOutOfFilter) {
-      // setDateFilter(targetFilter); // Would need to pass setDateFilter
-    }
-  }, [dateFilter, setHighlightEntryId, setPendingScrollToId]);
+
+    // Auto-clear highlight after 4 seconds
+    setTimeout(() => {
+      setHighlightEntryId(null);
+    }, 4000);
+  }, [setActiveTab, setDateFilter, setHighlightEntryId, setPendingScrollToId]);
 
   const showMovedToast = useCallback(
     (payload: MovedToastPayload) => {

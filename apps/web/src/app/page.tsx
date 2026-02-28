@@ -196,6 +196,8 @@ export default function DashboardPage() {
     rules,
     setRules,
     dateFilter,
+    setDateFilter,
+    setActiveTab,
     normalizedCustomRange,
     setHighlightEntryId,
     setPendingScrollToId,

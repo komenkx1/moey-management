@@ -42,7 +42,7 @@ function HomeRecentActivitySection({
               }}
               className={cn(
                 highlightEntryId === transaction.id || homePendingScrollId === transaction.id
-                  ? "animate-in fade-in zoom-in rounded-[16px] ring-2 ring-brand duration-300"
+                  ? "animate-in fade-in zoom-in rounded-[16px] ring-2 ring-brand duration-300 [animation-fill-mode:forwards] animate-out fade-out [animation-delay:3.7s] [animation-duration:300ms]"
                   : ""
               )}
             >
