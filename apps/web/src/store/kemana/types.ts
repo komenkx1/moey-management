@@ -1,7 +1,7 @@
 import type { CategoryRules, Entry } from "@kemana/core/types";
 import type { StateCreator } from "zustand";
-import type { DateFilterPreset } from "@/lib/kemana-utils";
-
+import type { DateFilterPreset, CustomDateRange } from "@/lib/kemana-utils";
+import type { AddTransactionSubmitPayload } from "@/components/kemana-ui/AddTransactionSheet";
 export type Updater<T> = T | ((prev: T) => T);
 
 export interface DataSlice {
@@ -22,12 +22,42 @@ export interface UiSlice {
   autoExpandedEntryId: string | null;
   pendingScrollToId: string | null;
   highlightEntryId: string | null;
+
+  // Dashboard UI State
+  activeTab: string;
+  expandedIds: Set<string>;
+  isAddSheetOpen: boolean;
+  sheetPrefill: Partial<AddTransactionSubmitPayload> | null;
+  isDataToolsSheetOpen: boolean;
+  homePendingScrollId: string | null;
+  isDarkMode: boolean;
+  userName: string;
+  nameDraft: string;
+  isNamePromptOpen: boolean;
+  notesRenderCount: number;
+  customDateRange: CustomDateRange;
+  isTrendChartOverflowing: boolean;
+
   setBackupMessage: (next: Updater<string | null>) => void;
   setReplaceOnImport: (next: Updater<boolean>) => void;
   setDateFilter: (next: Updater<DateFilterPreset>) => void;
   setAutoExpandedEntryId: (next: Updater<string | null>) => void;
   setPendingScrollToId: (next: Updater<string | null>) => void;
   setHighlightEntryId: (next: Updater<string | null>) => void;
+
+  setActiveTab: (next: Updater<string>) => void;
+  setExpandedIds: (next: Updater<Set<string>>) => void;
+  setIsAddSheetOpen: (next: Updater<boolean>) => void;
+  setSheetPrefill: (next: Updater<Partial<AddTransactionSubmitPayload> | null>) => void;
+  setIsDataToolsSheetOpen: (next: Updater<boolean>) => void;
+  setHomePendingScrollId: (next: Updater<string | null>) => void;
+  setIsDarkMode: (next: Updater<boolean>) => void;
+  setUserName: (next: Updater<string>) => void;
+  setNameDraft: (next: Updater<string>) => void;
+  setIsNamePromptOpen: (next: Updater<boolean>) => void;
+  setNotesRenderCount: (next: Updater<number>) => void;
+  setCustomDateRange: (next: Updater<CustomDateRange>) => void;
+  setIsTrendChartOverflowing: (next: Updater<boolean>) => void;
 }
 
 export interface ComposerSlice {

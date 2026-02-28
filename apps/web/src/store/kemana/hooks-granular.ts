@@ -115,3 +115,62 @@ export function useNightCloseState() {
     setNightCloseConfirmation: state.setNightCloseConfirmation
   })));
 }
+
+// Dashboard UI hooks
+export function useActiveTab() {
+  return useKemanaStore(useShallow((state) => ({
+    activeTab: state.activeTab,
+    setActiveTab: state.setActiveTab
+  })));
+}
+
+export function useExpandedIds() {
+  return useKemanaStore(useShallow((state) => ({
+    autoExpandedEntryId: state.autoExpandedEntryId,
+    setAutoExpandedEntryId: state.setAutoExpandedEntryId,
+    expandedIds: state.expandedIds,
+    setExpandedIds: state.setExpandedIds
+  })));
+}
+
+export function useDashboardSheetsState() {
+  return useKemanaStore(useShallow((state) => ({
+    isAddSheetOpen: state.isAddSheetOpen,
+    setIsAddSheetOpen: state.setIsAddSheetOpen,
+    sheetPrefill: state.sheetPrefill,
+    setSheetPrefill: state.setSheetPrefill,
+    isDataToolsSheetOpen: state.isDataToolsSheetOpen,
+    setIsDataToolsSheetOpen: state.setIsDataToolsSheetOpen
+  })));
+}
+
+export function useThemeState() {
+  return useKemanaStore(useShallow((state) => ({
+    isDarkMode: state.isDarkMode,
+    setIsDarkMode: state.setIsDarkMode
+  })));
+}
+
+export function useUserProfile() {
+  return useKemanaStore(useShallow((state) => ({
+    userName: state.userName,
+    setUserName: state.setUserName,
+    nameDraft: state.nameDraft,
+    setNameDraft: state.setNameDraft,
+    isNamePromptOpen: state.isNamePromptOpen,
+    setIsNamePromptOpen: state.setIsNamePromptOpen
+  })));
+}
+
+export function useDashboardViewContext() {
+  return useKemanaStore(useShallow((state) => ({
+    homePendingScrollId: state.homePendingScrollId,
+    setHomePendingScrollId: state.setHomePendingScrollId,
+    notesRenderCount: state.notesRenderCount,
+    setNotesRenderCount: state.setNotesRenderCount,
+    customDateRange: state.customDateRange,
+    setCustomDateRange: state.setCustomDateRange,
+    isTrendChartOverflowing: state.isTrendChartOverflowing,
+    setIsTrendChartOverflowing: state.setIsTrendChartOverflowing
+  })));
+}
