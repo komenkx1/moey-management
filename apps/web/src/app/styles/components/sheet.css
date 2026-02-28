@@ -1,0 +1,21 @@
+.split-box.split-box-sheet {
+  margin-top: 0;
+}
+
+.split-sheet-content {
+  gap: 0;
+  padding: 0;
+  max-height: min(84dvh, 760px);
+  overflow-y: auto;
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+}
+
+.split-sheet-header {
+  gap: 2px;
+  padding: 12px 14px 8px;
+}
+
+.split-sheet-actions {
+  justify-content: flex-end;
+}

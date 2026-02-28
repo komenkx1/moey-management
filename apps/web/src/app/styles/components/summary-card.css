@@ -1,0 +1,95 @@
+.daily-summary-card {
+    margin-top: 12px;
+    margin-bottom: 8px;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 12px;
+    background: linear-gradient(180deg, var(--color-bg-subtle) 0%, var(--color-bg-elevated) 100%);
+    padding: 12px;
+    display: grid;
+    gap: 6px;
+}
+
+.daily-summary-title {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    font-weight: 600;
+}
+
+.daily-summary-amount {
+    font-size: 26px;
+    line-height: 1.1;
+    font-weight: 700;
+    color: var(--color-text-primary);
+}
+
+.daily-summary-status {
+    width: fit-content;
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.daily-summary-status.hemat,
+.daily-summary-status.aman {
+    background: var(--color-success-soft);
+    color: var(--color-success);
+}
+
+.daily-summary-status.normal {
+    background: var(--color-bg-subtle);
+    color: var(--color-text-primary);
+}
+
+.daily-summary-status.lumayan {
+    background: var(--color-warning-soft);
+    color: var(--color-warning);
+}
+
+.daily-summary-status.boros {
+    background: var(--color-danger-soft);
+    color: var(--color-danger);
+}
+
+.daily-summary-meta {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}
+
+.daily-summary-compare {
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+}
+
+.daily-summary-breakdown {
+    font-size: 12px;
+    color: var(--color-text-primary);
+    font-weight: 600;
+}
+
+.daily-summary-top {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}
+
+.daily-summary-empty {
+    border-top: 1px dashed var(--color-border-subtle);
+    padding-top: 6px;
+    display: grid;
+    gap: 2px;
+}
+
+.daily-summary-empty-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.daily-summary-empty-title.subtle {
+    font-size: 12px;
+}
+
+.daily-summary-empty-subtitle {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}

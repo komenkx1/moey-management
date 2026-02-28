@@ -1,0 +1,118 @@
+.row {
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 12px;
+    background: var(--color-bg-elevated);
+    overflow: hidden;
+    will-change: transform, opacity;
+    transition: background-color 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+}
+
+.row.highlight {
+    border-color: var(--color-warning);
+    background: var(--color-warning-soft);
+    box-shadow: 0 0 0 2px var(--color-warning);
+    animation: row-highlight-fade 2.8s ease-out;
+}
+
+@keyframes row-highlight-fade {
+    0% {
+        box-shadow: 0 0 0 0 var(--color-warning);
+    }
+
+    100% {
+        box-shadow: 0 0 0 2px transparent;
+    }
+}
+
+.row-hit {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    padding: 12px;
+    color: inherit;
+}
+
+.row-expanded {
+    border-top: 1px solid var(--color-border-subtle);
+    padding: 12px;
+}
+
+.row-top {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: start;
+    gap: 10px;
+}
+
+.row-text {
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.row-subtext {
+    margin-top: 3px;
+    font-size: 11px;
+    line-height: 1.2;
+    color: var(--color-text-secondary);
+}
+
+.row-meta {
+    margin-top: 2px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}
+
+.row-amount {
+    font-weight: 700;
+    color: var(--color-text-primary);
+}
+
+.row-actions {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.row-actions.compact {
+    margin-top: 10px;
+}
+
+.chip-group {
+    margin-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.chip-group.compact {
+    margin-top: 8px;
+}
+
+.chip {
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 999px;
+    background: var(--color-bg-base);
+    color: var(--color-text-primary);
+    font-size: 12px;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+.chip.active {
+    border-color: var(--color-text-primary);
+    background: var(--color-text-primary);
+    color: var(--color-bg-elevated);
+}
+
+.chip.secondary {
+    background: var(--color-bg-subtle);
+}
+
+.chip.secondary.active {
+    border-color: var(--color-text-primary);
+    background: var(--color-text-primary);
+    color: var(--color-bg-elevated);
+}
