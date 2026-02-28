@@ -380,9 +380,10 @@ export default function TransactionEditForm({
                                 value={draftPaymentMethod}
                                 onChange={(e) => setDraftPaymentMethod(e.target.value)}
                                 className="flex h-9 w-full rounded-md border border-border-subtle bg-bg-base px-3 py-1 text-[13px] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
+                                style={draftPaymentMethod === "" ? { color: '#9ca3af' } : undefined}
                             >
-                                <option value="">Tidak ditentukan</option>
-                                {PAYMENT_METHODS.map((method) => (
+                                <option value="">Belum memilih</option>
+                                {PAYMENT_METHODS.filter(method => method !== "Unknown").map((method) => (
                                     <option key={method} value={method}>
                                         {method.charAt(0).toUpperCase() + method.slice(1).replace("-", " ")}
                                     </option>
