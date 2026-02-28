@@ -384,10 +384,26 @@ select {
 .date-input-native {
   -webkit-appearance: none;
   appearance: none;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.date-input-native::-webkit-datetime-edit,
+.date-input-native::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
 }
 
 .date-input-native::-webkit-date-and-time-value {
   text-align: left;
+  min-height: 1.1em;
+}
+
+.date-input-native::-webkit-clear-button,
+.date-input-native::-webkit-inner-spin-button {
+  display: none;
 }
 
 .date-input-native::-webkit-calendar-picker-indicator {

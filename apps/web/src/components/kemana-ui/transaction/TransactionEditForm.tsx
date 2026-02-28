@@ -7,6 +7,7 @@ import { CATEGORIES, PAYMENT_METHODS } from "@kemana/core/types";
 import {
     formatCurrencyInputDisplay,
     getSplitOtherPeopleInput,
+    normalizeDateInput,
     normalizeSplitPeopleWithLockedSelf,
     parseCurrencyInputToNumber,
     sanitizeCurrencyInput,
@@ -48,7 +49,7 @@ export default function TransactionEditForm({
     const [draftTitle, setDraftTitle] = useState(item.title);
     const [draftAmount, setDraftAmount] = useState(String(item.amount));
     const [draftNote, setDraftNote] = useState(item.note || "");
-    const [draftDate, setDraftDate] = useState(item.time);
+    const [draftDate, setDraftDate] = useState(() => normalizeDateInput(item.time) ?? new Date().toISOString().slice(0, 10));
     const [draftCategory, setDraftCategory] = useState(item.category);
     const [draftPaymentMethod, setDraftPaymentMethod] = useState(item.paymentMethod || "");
     const [splitEnabled, setSplitEnabled] = useState(Boolean(item.split?.shares?.length));
@@ -118,6 +119,7 @@ export default function TransactionEditForm({
 
     const rawInputDirty = normalizeInputText(draftRawInput) !== normalizeInputText(item.rawInput || "");
     const normalizedRawInput = normalizeInputText(draftRawInput);
+    const normalizedItemDate = normalizeDateInput(item.time) ?? new Date().toISOString().slice(0, 10);
 
     const parserPreview = useMemo(() => {
         if (normalizedRawInput.length === 0) return null;
@@ -138,7 +140,7 @@ export default function TransactionEditForm({
         draftTitle.trim() !== item.title.trim() ||
         parsedDraftAmount !== item.amount ||
         draftNote !== (item.note || "") ||
-        draftDate !== item.time ||
+        draftDate !== normalizedItemDate ||
         draftCategory !== item.category ||
         draftPaymentMethod !== (item.paymentMethod || "") ||
         splitDirty ||
@@ -279,7 +281,7 @@ export default function TransactionEditForm({
                         {/* Quick Format Parser */}
                         <div className="flex flex-col gap-1.5 sm:col-span-2">
                             <label className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary flex items-center justify-between">
-                                <span>Edit Cepat (Format Auto)</span>
+                                <span>Edit Format</span>
                                 {parserPreview?.ok && canApplyQuickFormat && (
                                     <span className="text-brand font-medium normal-case">Rp{formatAmountIDR(parserPreview.value.amount)}</span>
                                 )}
@@ -354,15 +356,19 @@ export default function TransactionEditForm({
                             <label className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
                                 Tanggal
                             </label>
-                            <Input
-                                type="date"
-                                value={draftDate.slice(0, 10)}
-                                onChange={(e) => {
-                                    const d = new Date(e.target.value + 'T12:00:00');
-                                    if (!isNaN(d.getTime())) setDraftDate(d.toISOString());
-                                }}
-                                className="h-9 border-border-subtle bg-bg-base text-[13px]"
-                            />
+                            <div className="relative">
+                                <Input
+                                    type="date"
+                                    value={draftDate}
+                                    onChange={(e) => {
+                                        if (e.target.value) {
+                                            setDraftDate(e.target.value);
+                                        }
+                                    }}
+                                    className="date-input-native h-9 border-border-subtle bg-bg-base pr-9 text-[13px]"
+                                />
+                                <CalendarDays className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary" />
+                            </div>
                         </div>
 
                         {/* Payment Method */}
