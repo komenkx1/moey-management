@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 import { formatDayLabel, type CustomDateRange, type DateFilterPreset, type TodaySummaryStats } from "@/lib/kemana-utils";
 import DateRangeFilter from "@/components/kemana-ui/DateRangeFilter";
 import { TransactionCard, type TransactionItem } from "@/components/kemana-ui/TransactionCard";
+import { useExpandedIds } from "@/store/kemana/hooks-granular";
+import { useCallback } from "react";
 
 interface NotesTabContentProps {
   storageWarning: string | null;
@@ -22,8 +24,6 @@ interface NotesTabContentProps {
   highlightEntryId: string | null;
   pendingScrollToId: string | null;
   itemRefs: MutableRefObject<Map<string, HTMLDivElement | null>>;
-  expandedIds: Set<string>;
-  onToggleExpand: (id: string) => void;
   inferCategoryFromText: (value: string) => Entry["category"];
   onSaveTransaction: ComponentProps<typeof TransactionCard>["onSave"];
   onDeleteTransaction: ComponentProps<typeof TransactionCard>["onDelete"];
@@ -51,8 +51,6 @@ export default function NotesTabContent({
   highlightEntryId,
   pendingScrollToId,
   itemRefs,
-  expandedIds,
-  onToggleExpand,
   inferCategoryFromText,
   onSaveTransaction,
   onDeleteTransaction,
@@ -63,6 +61,20 @@ export default function NotesTabContent({
   filteredEntriesLength,
   visibleCount
 }: NotesTabContentProps) {
+  const { expandedIds, setExpandedIds } = useExpandedIds();
+
+  const handleToggleExpand = useCallback((id: string) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, [setExpandedIds]);
+
   return (
     <div className="px-4 py-2">
       {storageWarning ? (
@@ -149,7 +161,7 @@ export default function NotesTabContent({
                     <TransactionCard
                       item={transaction}
                       isExpanded={expandedIds.has(transaction.id)}
-                      onToggleExpand={() => onToggleExpand(transaction.id)}
+                      onToggleExpand={() => handleToggleExpand(transaction.id)}
                       inferCategory={inferCategoryFromText}
                       onSave={onSaveTransaction}
                       onDelete={onDeleteTransaction}

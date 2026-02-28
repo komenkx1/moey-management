@@ -14,6 +14,8 @@ import QuickRecallChips, { type QuickRecallItem } from "@/components/kemana-ui/Q
 import ContextBanner from "@/components/kemana-ui/ContextBanner";
 import HomeRecentActivitySection from "@/components/kemana-ui/HomeRecentActivitySection";
 import type { TransactionItem } from "@/components/kemana-ui/TransactionCard";
+import { useExpandedIds } from "@/store/kemana/hooks-granular";
+import { useCallback } from "react";
 
 interface HomeTabContentProps {
   storageWarning: string | null;
@@ -70,8 +72,6 @@ interface HomeTabContentProps {
   homeItemRefs: MutableRefObject<Map<string, HTMLDivElement | null>>;
   highlightEntryId: string | null;
   homePendingScrollId: string | null;
-  expandedIds: Set<string>;
-  onToggleExpand: (id: string) => void;
   inferCategoryFromText: (text: string) => string;
   onSaveTransaction: (updatedItem: TransactionItem) => void;
   onDeleteTransaction: (id: string) => void;
@@ -122,13 +122,25 @@ export default function HomeTabContent({
   homeItemRefs,
   highlightEntryId,
   homePendingScrollId,
-  expandedIds,
-  onToggleExpand,
   inferCategoryFromText,
   onSaveTransaction,
   onDeleteTransaction,
   onOpenNotes
 }: HomeTabContentProps) {
+  const { expandedIds, setExpandedIds } = useExpandedIds();
+
+  const handleToggleExpand = useCallback((id: string) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, [setExpandedIds]);
+
   return (
     <main className="flex flex-col gap-5 px-4 py-2">
       {storageWarning ? (
@@ -401,9 +413,9 @@ export default function HomeTabContent({
           adaptiveRecallItems.length
             ? adaptiveRecallItems
             : [
-                { id: "r1", category: "Makan", title: "Nasi padang", amount: 25_000 },
-                { id: "r2", category: "Transport", title: "Gojek kantor", amount: 14_000 }
-              ]
+              { id: "r1", category: "Makan", title: "Nasi padang", amount: 25_000 },
+              { id: "r2", category: "Transport", title: "Gojek kantor", amount: 14_000 }
+            ]
         }
         onSelect={onSelectQuickRecallItem}
       />
@@ -433,7 +445,7 @@ export default function HomeTabContent({
         highlightEntryId={highlightEntryId}
         homePendingScrollId={homePendingScrollId}
         expandedIds={expandedIds}
-        onToggleExpand={onToggleExpand}
+        onToggleExpand={handleToggleExpand}
         inferCategoryFromText={inferCategoryFromText}
         onSaveTransaction={onSaveTransaction}
         onDeleteTransaction={onDeleteTransaction}
