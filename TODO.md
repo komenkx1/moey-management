@@ -213,47 +213,139 @@ Status:
 - [x] Night Close behavior lintas hari validated.
 - [x] Batched write Dexie implemented untuk performa optimal.
 
-## 3. PHASE 2 (Backend & Sync Activation) - PRESERVE DESIGN, NO IMPLEMENTATION NOW
+## 2.5 PHASE 2.5 (React Native Web Migration) - NEXT PRIORITY
 Status:
-- Semua item di bawah ini tetap dipertahankan sebagai desain target.
-- Tidak masuk eksekusi 7 hari awal.
+- Design completed (see PHASE2.5_REACT_NATIVE_MIGRATION.md)
+- Strategy: Migrate to Expo + React Native Web for universal app
+- Architecture: 95%+ code sharing across Web, iOS, Android
+- Timeline: 4 weeks (Setup → Screens → Components → Polish)
+- Reason: Avoid double work, auth will be built once for 3 platforms
 
-## 3.1 Supabase Schema + RLS (`/packages/infra/supabase`)
-- [ ] Buat migration tabel `entries`, `people`, `splits`, `rules`.
+## 3. PHASE 2 (Backend & Sync Activation) - AFTER MIGRATION
+Status:
+- Design completed (see PHASE2_AUTH_SYNC_DESIGN.md)
+- Strategy: Google OAuth only + Auto-sync background
+- Architecture: Local-first with optimistic UI + sync queue
+- Timeline: 5 weeks (Auth → Sync Queue → Initial Sync → Polish → Beta)
+- Implementation: In universal app (works on Web + iOS + Android)
+
+## 2.16 Phase 2.5: React Native Web Migration (11 weeks total) - NEXT PRIORITY
+
+### Week 1-4: Build Phase (Next.js tetap live)
+- [ ] Setup Expo project + NativeWind + SQLite adapter
+- [ ] Port core screens (Home, Notes, Insight, Account)
+- [ ] Port components + gestures (swipe-to-delete, bottom sheets)
+- [ ] Platform-specific features + polish (safe area, notifications, haptics)
+- [ ] Create new Vercel project: kemana-universal
+
+### Week 5: Beta Deployment
+- [ ] Setup beta.kemana.app subdomain
+- [ ] Deploy RN Web to beta.kemana.app
+- [ ] Internal testing
+- [ ] Fix critical bugs
+- [ ] Monitor beta metrics
+
+### Week 6: Beta Testing
+- [ ] Add beta banner on kemana.app (optional)
+- [ ] Collect user feedback
+- [ ] Fix reported issues
+- [ ] Verify success criteria
+
+### Week 7: Soft Launch Preparation
+- [ ] Create upgrade modal
+- [ ] Final testing
+- [ ] Prepare user communication
+- [ ] Build production apps (EAS)
+
+### Week 8: Full Switch
+- [ ] Reassign kemana.app to kemana-universal
+- [ ] Redirect beta → main domain
+- [ ] Keep Next.js as backup
+- [ ] Monitor closely (48 hours)
+- [ ] Submit to App Store + Play Store
+
+### Week 9-10: Stabilization
+- [ ] Monitor error rates (< 1%)
+- [ ] Fix non-critical issues
+- [ ] Optimize performance
+- [ ] Keep Next.js backup active
+
+### Week 11+: Cleanup
+- [ ] Delete kemana-web Vercel project
+- [ ] Remove beta subdomain
+- [ ] Update documentation
+
+## 3.1 Phase 2.1: Auth Foundation (Week 5-6) - IN UNIVERSAL APP
+- [ ] Setup Supabase project + Google OAuth provider.
+- [ ] Enable Email/Password provider di Supabase.
+- [ ] Configure OAuth callback URL + environment variables.
+- [ ] Implement Account tab UI (4th bottom tab).
+- [ ] Implement login flow UI (banner + button "Login dengan Google").
+- [ ] Implement auth state management (Supabase client + React context).
+- [ ] Implement local data migration (anonymous → logged in).
+- [ ] Implement change display name feature.
+- [ ] Implement add password to Google account feature.
+- [ ] Implement change password feature.
+- [ ] Implement forgot password flow.
+- [ ] Implement email/password login UI.
+- [ ] Test auth flow end-to-end (Google login, email/password login, logout, session persistence).
+- [ ] Test password management flows (add, change, reset).
+
+## 3.2 Phase 2.2: Sync Queue (Week 2)
+- [ ] Design sync queue schema in IndexedDB (SyncEvent table).
+- [ ] Implement sync queue operations (enqueue, dequeue, update status).
+- [ ] Implement sync worker (background processor with retry logic).
+- [ ] Implement optimistic UI updates (local-first, sync background).
+- [ ] Test queue processing (FIFO, batching, idempotency).
+- [ ] Test retry logic (exponential backoff, max retries).
+
+## 3.3 Phase 2.3: Initial Sync (Week 3)
+- [ ] Implement server data fetch (paginated for large datasets).
+- [ ] Implement merge logic (LWW by server updated_at).
+- [ ] Implement conflict resolution (server timestamp wins).
+- [ ] Test multi-device sync (add on device A, see on device B).
+- [ ] Test large dataset sync (1000+ entries).
+- [ ] Optimize initial sync performance (batching, progress indicator).
+
+## 3.4 Phase 2.4: Polish & Edge Cases (Week 4)
+- [ ] Implement sync status indicator UI (synced, syncing, offline, error).
+- [ ] Implement error handling (network errors, auth errors, conflict errors).
+- [ ] Implement logout flow (flush queue, clear session, keep local data).
+- [ ] Performance optimization (queue deduplication, delta sync).
+- [ ] Battery optimization (reduce frequency when low battery).
+- [ ] E2E testing (offline/online transitions, multi-device scenarios).
+
+## 3.5 Phase 2.5: Beta Testing (Week 5)
+- [ ] Internal dogfooding with 2+ devices per tester.
+- [ ] Monitor sync reliability metrics (success rate, latency, conflicts).
+- [ ] Fix critical bugs discovered during beta.
+- [ ] Tune retry parameters (backoff, max retries, delays).
+- [ ] Prepare production deployment (env vars, monitoring, rollback plan).
+- [ ] Document known limitations and future enhancements.
+
+## 3.6 Supabase Schema + RLS (Part of Phase 2.1)
+- [ ] Buat migration tabel `entries`, `rules`.
 - [ ] Definisikan index penting (`owner_id`, `date`, `updated_at`).
 - [ ] Aktifkan RLS semua tabel user data.
 - [ ] Tulis policy owner-only untuk CRUD.
 - [ ] Tambahkan test SQL untuk memastikan isolation lintas user.
+- [ ] Setup updated_at trigger untuk automatic timestamp.
 
-## 3.2 Auth Progressive
-- [ ] Integrasi anonymous auth (background, tanpa signup wall).
-- [ ] Implement upgrade/link account (email/google) dari anonymous.
-- [ ] Pastikan owner continuity setelah upgrade.
-
-## 3.3 Sync Engine (`/packages/infra/sync`)
-- [ ] Implement event log enqueue untuk create/update/delete.
-- [ ] Implement worker flush FIFO batch.
-- [ ] Implement idempotency key per event.
-- [ ] Implement retry + exponential backoff + jitter.
-- [ ] Implement merge conflict strategy LWW by server `updated_at`.
-- [ ] Tambahkan status indikator sync di UI (pending/synced/error ringan).
-
-## 3.4 Security, Privacy, dan Perf Activation
-- [ ] Konfigurasi CSP/secure headers/rate limit untuk endpoint online.
-- [ ] Verifikasi storage bucket private + signed URL TTL <= 10 menit.
+## 3.7 Security, Privacy, dan Perf Activation (Part of Phase 2.4)
+- [ ] Konfigurasi CSP/secure headers untuk production.
+- [ ] Verifikasi RLS policies dengan test queries.
 - [ ] Implement logging redaction tanpa PII mentah.
 - [ ] Jalankan security checklist penuh dari `SPECS.md`.
+- [ ] Rate limiting consideration (future, not MVP).
 
-## 3.5 OCR Opsional (Aktivasi Bertahap)
-- [ ] Tambah feature flag OCR.
-- [ ] Integrasi baseline Tesseract.js client-side.
-- [ ] Parse minimal merchant/date/total + manual review screen.
-- [ ] Tolak auto-save saat confidence rendah.
-
-## 3.6 Quality Gate Phase 2
-- [ ] Semua security acceptance di `SPECS.md` lolos.
-- [ ] Semua flow sync/auth lolos integration test.
-- [ ] Tidak ada kebocoran data lintas user.
+## 3.8 Quality Gate Phase 2 (Must Pass Before Production)
+- [ ] Sync success rate > 99.5% in beta testing.
+- [ ] Average sync latency < 2 seconds.
+- [ ] Conflict rate < 0.1%.
+- [ ] Multi-device sync works seamlessly (tested with 3+ devices).
+- [ ] All security acceptance criteria pass.
+- [ ] No data loss in offline/online transitions.
+- [ ] Auth flow works on mobile Safari + Chrome Android.
 
 ## 4. Backlog Setelah MVP (Tidak Dikerjakan Sekarang)
 - [ ] App mobile Expo menggunakan reuse `packages/core`.
