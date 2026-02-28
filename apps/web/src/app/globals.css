@@ -50,6 +50,13 @@
   --color-brand-pressed: #1D4ED8;
   --color-brand-soft: #DBEAFE;
 
+  /* Split Bill Colors */
+  --color-split: #6366F1; /* indigo-500 */
+  --color-split-soft: #818CF8; /* indigo-400 */
+  --color-split-bg: rgba(99, 102, 241, 0.1); /* indigo-500/10 */
+  --color-split-hover: rgba(99, 102, 241, 0.2); /* indigo-500/20 */
+  --color-split-text-active: #FFFFFF;
+
   /* Button Colors */
   --color-btn-bg: #1f1f1f;
   --color-btn-text: #ffffff;
@@ -106,6 +113,13 @@
     --color-brand: #3B82F6;
     --color-brand-pressed: #2563EB;
     --color-brand-soft: #1E3A8A;
+
+    /* Split Bill Colors - Dark Theme */
+    --color-split: #C7D2FE; /* indigo-200 */
+    --color-split-soft: #C7D2FE;
+    --color-split-bg: rgba(199, 210, 254, 0.2);
+    --color-split-hover: rgba(199, 210, 254, 0.3);
+    --color-split-text-active: #1e1b4b; /* indigo-950 for contrast */
 
     --color-btn-bg: #FFFFFF;
     --color-btn-text: #000000;

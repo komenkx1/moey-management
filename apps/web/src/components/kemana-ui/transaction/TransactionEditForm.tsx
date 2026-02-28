@@ -418,7 +418,7 @@ export default function TransactionEditForm({
                         <div className="flex flex-col gap-3 rounded-xl border border-border-subtle bg-bg-subtle/50 p-3 sm:col-span-2 mt-2">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500">
+                                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--color-split-bg)] text-[var(--color-split)]">
                                         <Users className="h-4 w-4" />
                                     </div>
                                     <span className="text-[13px] font-semibold text-text-primary">Split Bill</span>
@@ -426,14 +426,14 @@ export default function TransactionEditForm({
                                 {splitEnabled ? (
                                     <button
                                         onClick={() => setSplitEnabled(false)}
-                                        className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent bg-indigo-500 transition-colors duration-200 ease-in-out focus:outline-none"
+                                        className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent bg-[var(--color-split)] transition-colors duration-200 ease-in-out focus:outline-none"
                                     >
                                         <span className="pointer-events-none inline-block h-4 w-4 translate-x-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out" />
                                     </button>
                                 ) : (
                                     <button
                                         onClick={() => { setSplitEnabled(true); setSplitMode("equal"); }}
-                                        className="rounded-lg bg-indigo-500/10 px-3 py-1.5 text-[12px] font-semibold text-indigo-600 transition-colors hover:bg-indigo-500/20"
+                                        className="rounded-lg bg-[var(--color-split-bg)] px-3 py-1.5 text-[12px] font-semibold text-[var(--color-split)] transition-colors hover:bg-[var(--color-split-hover)]"
                                     >
                                         Bagi rata
                                     </button>
@@ -476,8 +476,8 @@ export default function TransactionEditForm({
                                                     className={cn(
                                                         "flex-1 rounded-md px-2 py-1.5 text-[12px] font-semibold transition-colors",
                                                         splitMode === "equal"
-                                                            ? "bg-indigo-500 text-white shadow-sm"
-                                                            : "bg-bg-subtle text-text-secondary hover:bg-indigo-500/10 hover:text-indigo-600"
+                                                            ? "bg-[var(--color-split)] text-[var(--color-split-text-active)] shadow-sm"
+                                                            : "bg-bg-subtle text-text-secondary hover:bg-[var(--color-split-bg)] hover:text-[var(--color-split)]"
                                                     )}
                                                 >
                                                     Bagi Rata
@@ -487,8 +487,8 @@ export default function TransactionEditForm({
                                                     className={cn(
                                                         "flex-1 rounded-md px-2 py-1.5 text-[12px] font-semibold transition-colors",
                                                         splitMode === "custom"
-                                                            ? "bg-indigo-500 text-white shadow-sm"
-                                                            : "bg-bg-subtle text-text-secondary hover:bg-indigo-500/10 hover:text-indigo-600"
+                                                            ? "bg-[var(--color-split)] text-[var(--color-split-text-active)] shadow-sm"
+                                                            : "bg-bg-subtle text-text-secondary hover:bg-[var(--color-split-bg)] hover:text-[var(--color-split)]"
                                                     )}
                                                 >
                                                     Atur Manual
