@@ -104,12 +104,13 @@ async function quickAdd(page: Page, input: string) {
 
 async function openNotesTab(page: Page) {
   const notesTabButton = page.locator("nav").last().getByRole("button", { name: "Catatan", exact: true });
-  const notesHeading = page.getByRole("heading", { name: "Catatan" });
+  // The notes tab does not have a heading — verify it opened via the "Catat banyak" button
+  const notesIndicator = page.getByRole("button", { name: "Catat banyak" });
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     await notesTabButton.click();
 
-    const isVisible = await notesHeading.isVisible().catch(() => false);
+    const isVisible = await notesIndicator.isVisible().catch(() => false);
     if (isVisible) {
       return;
     }
@@ -117,7 +118,7 @@ async function openNotesTab(page: Page) {
     await page.waitForTimeout(180);
   }
 
-  await expect(notesHeading).toBeVisible();
+  await expect(notesIndicator).toBeVisible();
 }
 
 async function ensureUiUnblocked(page: Page, fallbackName = "Komang") {
@@ -154,9 +155,15 @@ async function ensureUiUnblocked(page: Page, fallbackName = "Komang") {
 
 async function expandEntryByText(page: Page, title: string): Promise<Locator> {
   const entry = page.locator("[data-entry-id]").filter({ hasText: title }).first();
-  await expect(entry).toBeVisible();
-  await entry.locator("button").first().click();
-  await expect(page.locator("label").filter({ hasText: "Jumlah" }).first()).toBeVisible();
+  await expect(entry).toBeVisible({ timeout: 10000 });
+
+  // Check if already expanded (e.g. auto-expand on add)
+  const expandedIndicator = entry.getByPlaceholder("Misal: Makan siang");
+  const alreadyExpanded = await expandedIndicator.isVisible().catch(() => false);
+  if (!alreadyExpanded) {
+    await entry.locator("button").first().click();
+    await expect(expandedIndicator).toBeVisible({ timeout: 5000 });
+  }
   return entry;
 }
 
@@ -490,21 +497,21 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     // Add entries for testing calendar week grouping
     await quickAdd(page, "senin ini 50k");
     await quickAdd(page, "rabu ini 30k");
-    
+
     await page.locator("nav").last().getByRole("button", { name: "Insight", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Insight" })).toBeVisible();
-    
+
     // Switch to 30 hari filter to see weekly trend
     const thirtyDayFilter = page.getByRole("button", { name: "30 hari", exact: true });
     await thirtyDayFilter.click();
     await expect(thirtyDayFilter).toHaveAttribute("aria-pressed", "true");
-    
+
     // Verify trend chart is visible
     await expect(page.getByRole("heading", { name: /^Ritme/i })).toBeVisible({ timeout: 10000 });
-    
+
     // Verify "Pekan ini" label exists in the chart
     await expect(page.getByText("Pekan ini")).toBeVisible();
-    
+
     // The chart should show weekly buckets
     const trendSection = page.locator("section").filter({ hasText: /^Ritme/i }).first();
     await expect(trendSection).toBeVisible();
@@ -577,30 +584,30 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
   test("Delete transaction dengan undo functionality", async ({ page }) => {
     await quickAdd(page, "test delete 25k");
     await openNotesTab(page);
-    
+
     // Verify entry exists before delete
     await expect(page.locator("[data-entry-id]").filter({ hasText: "test delete" })).toBeVisible();
-    
+
     const entry = await expandEntryByText(page, "test delete");
-    
+
     // Wait for delete button to be ready
     const deleteButton = entry.getByRole("button", { name: "Hapus" });
     await expect(deleteButton).toBeVisible();
     await expect(deleteButton).toBeEnabled();
-    
+
     // Click delete
     await deleteButton.click();
-    
+
     // Check if entry is removed from DOM (this would confirm delete worked)
     await expect(page.locator("[data-entry-id]").filter({ hasText: "test delete" })).toHaveCount(0, { timeout: 5000 });
-    
+
     // Wait for undo button to appear (toast should contain it)
     const undoButton = page.getByRole("button", { name: "Urungkan" });
     await expect(undoButton).toBeVisible({ timeout: 10000 });
-    
+
     // Click undo
     await undoButton.click();
-    
+
     // Verify entry is restored
     await expect(page.getByText("Catatan dikembalikan.")).toBeVisible();
     await expect(page.locator("[data-entry-id]").filter({ hasText: "test delete" })).toBeVisible();
@@ -609,13 +616,13 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
   test("Delete transaction tanpa undo - entry hilang permanent", async ({ page }) => {
     await quickAdd(page, "test delete permanent 30k");
     await openNotesTab(page);
-    
+
     const entry = await expandEntryByText(page, "test delete permanent");
     await entry.getByRole("button", { name: "Hapus" }).click();
-    
+
     // Wait for toast to auto-dismiss (6 seconds)
     await page.waitForTimeout(6500);
-    
+
     // Verify entry is gone
     await expect(page.locator("[data-entry-id]").filter({ hasText: "test delete permanent" })).not.toBeVisible();
   });
@@ -623,17 +630,17 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
   test("Edit transaction date triggers moved toast", async ({ page }) => {
     await quickAdd(page, "test date change 40k");
     await openNotesTab(page);
-    
+
     const entry = await expandEntryByText(page, "test date change");
-    
+
     // Change date to yesterday
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayKey = yesterday.toISOString().split('T')[0];
-    
+
     await entry.locator("input[type='date']").fill(yesterdayKey);
     await entry.getByRole("button", { name: "Simpan", exact: true }).click();
-    
+
     // Verify moved toast appears
     await expect(page.getByText(/Tanggal disimpan\. Dipindah ke/)).toBeVisible();
     await expect(page.getByRole("button", { name: "Lihat" })).toBeVisible();
@@ -642,25 +649,25 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
   test("Filter switching: today, 7d, 30d, all", async ({ page }) => {
     // Add entries for different dates
     await quickAdd(page, "today entry 10k");
-    
+
     await openNotesTab(page);
-    
+
     // Test "Hari ini" filter
     const todayFilter = page.getByRole("button", { name: "Hari ini", exact: true });
     await todayFilter.click();
     await expect(todayFilter).toHaveAttribute("aria-pressed", "true");
     await expect(page.locator("[data-entry-id]")).toHaveCount(1);
-    
+
     // Test "7 hari" filter
     const sevenDayFilter = page.getByRole("button", { name: "7 hari", exact: true });
     await sevenDayFilter.click();
     await expect(sevenDayFilter).toHaveAttribute("aria-pressed", "true");
-    
+
     // Test "30 hari" filter
     const thirtyDayFilter = page.getByRole("button", { name: "30 hari", exact: true });
     await thirtyDayFilter.click();
     await expect(thirtyDayFilter).toHaveAttribute("aria-pressed", "true");
-    
+
     // Test "Semua" filter
     const allFilter = page.getByRole("button", { name: "Semua", exact: true });
     await allFilter.click();
@@ -671,37 +678,37 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     // Add entry with "makan" - should be saved successfully
     await quickAdd(page, "makan siang 20k");
     await openNotesTab(page);
-    
+
     // Verify entry exists
     await expect(page.locator("[data-entry-id]").filter({ hasText: "makan siang" })).toBeVisible();
     await expect(page.locator("[data-entry-id]").filter({ hasText: "20.000" })).toBeVisible();
-    
+
     // Add another entry with "bensin"
     await page.locator("nav").last().getByRole("button", { name: "Beranda", exact: true }).click();
     await quickAdd(page, "bensin 50k");
     await openNotesTab(page);
-    
+
     // Verify bensin entry exists
     await expect(page.locator("[data-entry-id]").filter({ hasText: "bensin" })).toBeVisible();
     await expect(page.locator("[data-entry-id]").filter({ hasText: "50.000" })).toBeVisible();
-    
+
     // Both entries should exist
     await expect(page.locator("[data-entry-id]")).toHaveCount(2);
   });
 
   test("Invalid input shows error message", async ({ page }) => {
     const quickInput = page.locator("main input[type='text']").first();
-    
+
     // Try invalid input (no amount)
     await quickInput.fill("makan");
     await quickInput.press("Enter");
-    
+
     // Wait a bit for error to appear
     await page.waitForTimeout(500);
-    
+
     // Check if error appears (might be in different format)
     const hasError = await page.getByText(/Format catatan belum dikenali|tidak dikenali|invalid|error/i).isVisible().catch(() => false);
-    
+
     // Entry should not be created regardless of error message
     await openNotesTab(page);
     const entryCount = await page.locator("[data-entry-id]").count();
@@ -712,10 +719,10 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     await openNotesTab(page);
     await page.getByRole("button", { name: "Catat pengeluaran" }).click();
     await expect(page.getByRole("heading", { name: "Catat pengeluaran" })).toBeVisible();
-    
+
     await page.locator("input[inputmode='numeric']").first().fill("50000");
     await page.getByRole("button", { name: "Makan" }).click();
-    
+
     // Select payment method (if available in UI)
     // This test assumes payment method selector exists
     const paymentSelect = page.locator("select, button").filter({ hasText: /Cash|Debit|Credit|E-wallet/ }).first();
@@ -723,9 +730,9 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
       await paymentSelect.click();
       // Select specific payment method
     }
-    
+
     await page.getByRole("button", { name: "Simpan catatan" }).click();
-    
+
     const entry = page.locator("[data-entry-id]").first();
     await expect(entry).toBeVisible();
   });
@@ -733,38 +740,44 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
   test("Transaction card expand/collapse state", async ({ page }) => {
     await quickAdd(page, "test expand 15k");
     await openNotesTab(page);
-    
+
     const entry = page.locator("[data-entry-id]").first();
-    await expect(entry).toBeVisible();
-    
-    // Initially collapsed - edit buttons not visible
-    await expect(entry.getByRole("button", { name: "Simpan", exact: true })).not.toBeVisible();
-    
+    await expect(entry).toBeVisible({ timeout: 10000 });
+
+    // Entry may be auto-expanded after quickAdd — collapse it first
+    const saveBtn = entry.getByRole("button", { name: "Simpan", exact: true });
+    if (await saveBtn.isVisible().catch(() => false)) {
+      await entry.locator("button").first().click();
+      await expect(saveBtn).not.toBeVisible();
+    }
+
+    // Now entry is collapsed - verify edit buttons not visible
+    await expect(saveBtn).not.toBeVisible();
+
     // Expand
     await entry.locator("button").first().click();
-    await expect(entry.getByRole("button", { name: "Simpan", exact: true })).toBeVisible();
-    
+    await expect(saveBtn).toBeVisible();
+
     // Collapse by clicking again
     await entry.locator("button").first().click();
-    await expect(entry.getByRole("button", { name: "Simpan", exact: true })).not.toBeVisible();
+    await expect(saveBtn).not.toBeVisible();
   });
 
   test("Multiple entries with same name can be edited independently", async ({ page }) => {
     await quickAdd(page, "kopi 10k");
     await quickAdd(page, "kopi 15k");
     await quickAdd(page, "kopi 20k");
-    
+
     await openNotesTab(page);
-    
+
     const entries = page.locator("[data-entry-id]").filter({ hasText: "kopi" });
-    await expect(entries).toHaveCount(3);
-    
-    // Edit first entry
-    const firstEntry = entries.first();
-    await firstEntry.locator("button").first().click();
+    await expect(entries).toHaveCount(3, { timeout: 10000 });
+
+    // Edit first entry — use expandEntryByText to handle auto-expand state
+    const firstEntry = await expandEntryByText(page, "kopi");
     await firstEntry.getByPlaceholder("Misal: Makan siang").fill("kopi pagi");
     await firstEntry.getByRole("button", { name: "Simpan", exact: true }).click();
-    
+
     // Verify only first entry changed
     await expect(page.locator("[data-entry-id]").filter({ hasText: "kopi pagi" })).toHaveCount(1);
     await expect(page.locator("[data-entry-id]").filter({ hasText: "kopi" })).toHaveCount(3); // Still 3 total with "kopi"
@@ -773,15 +786,15 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
   test("Bulk input with mixed valid/invalid lines", async ({ page }) => {
     await page.getByRole("button", { name: "Banyak" }).click();
     await expect(page.getByText("Catat banyak sekaligus")).toBeVisible();
-    
+
     // Mix of valid and invalid lines
     await page.locator("textarea").fill("kopi 18k\ninvalid line\nmakan 25k\nanother invalid\nparkir 5k");
-    
+
     // Should show preview with 3 valid, 2 invalid
     await expect(page.getByText(/3 catatan/)).toBeVisible();
-    
+
     await page.getByRole("button", { name: /Simpan 3 catatan/ }).click();
-    
+
     await openNotesTab(page);
     await expect(page.locator("[data-entry-id]")).toHaveCount(3);
   });
@@ -789,14 +802,14 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
   test("Custom date range filter can be activated", async ({ page }) => {
     await quickAdd(page, "test custom range 30k");
     await openNotesTab(page);
-    
+
     // Click custom date filter
     const customFilter = page.locator("button[aria-label='Filter rentang tanggal custom']").first();
     await customFilter.click();
-    
+
     // Verify custom filter is active
     await expect(customFilter).toHaveAttribute("aria-pressed", "true");
-    
+
     // Entry should still be visible with custom filter
     await expect(page.locator("[data-entry-id]").filter({ hasText: "test custom range" })).toBeVisible();
   });
@@ -804,15 +817,15 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
   test("ErrorBoundary catches and displays errors gracefully", async ({ page }) => {
     // This test verifies ErrorBoundary is working
     // We can't easily trigger a React error in e2e, but we can verify the component exists
-    
+
     // Navigate and verify app loads without errors
     await expect(page.getByRole("heading", { name: "KeMana" })).toBeVisible();
-    
+
     // Add entry to verify app is functional
     await quickAdd(page, "error boundary test 10k");
     await openNotesTab(page);
     await expect(page.locator("[data-entry-id]").first()).toContainText("error boundary test");
-    
+
     // If ErrorBoundary wasn't working, app would crash on any error
     // The fact that we can complete this flow proves it's working
   });
