@@ -1,0 +1,28 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@/*": [
+        "./*"
+      ],
+      "@kemana/core/*": [
+        "../../packages/core/*"
+      ],
+      "@kemana/storage": [
+        "../../packages/storage/index.ts"
+      ],
+      "@kemana/storage/*": [
+        "../../packages/storage/*"
+      ]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts",
+    "../../packages/**/*.ts",
+    "nativewind-env.d.ts"
+  ]
+}
