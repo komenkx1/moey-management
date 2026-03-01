@@ -572,8 +572,9 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     await page.getByRole("button", { name: "Catat pengeluaran" }).click();
     await expect(page.getByRole("heading", { name: "Catat pengeluaran" })).toBeVisible();
 
-    await page.locator("input[inputmode='numeric']").first().fill("15000");
+    await page.locator("input[placeholder='0']").fill("15000");
     await page.locator("input[aria-label='Jumlah item']").fill("3");
+    await page.locator("input[type='date']").fill(getTodayKey());
     await page.getByRole("button", { name: "Makan" }).click();
     await page.getByRole("button", { name: "Simpan catatan" }).click();
 
@@ -649,7 +650,7 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
   test("Moved toast 'Lihat' button navigates to notes tab and highlights entry", async ({ page }) => {
     // Add entry today
     await quickAdd(page, "test moved navigation 50k");
-    
+
     // Verify we're on home tab initially
     await expect(page.locator('button:has-text("Beranda")').locator('div.bg-brand')).toBeVisible();
 
@@ -667,7 +668,7 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
 
     // Wait for toast
     await expect(page.getByText(/Tanggal disimpan\. Dipindah ke/)).toBeVisible();
-    
+
     // Switch to home tab to test navigation
     await page.getByRole("button", { name: "Beranda" }).click();
     await expect(page.locator('button:has-text("Beranda")').locator('div.bg-brand')).toBeVisible();
@@ -678,9 +679,9 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     // Verify we're on notes tab (check for active indicator)
     await expect(page.locator('button:has-text("Catatan")').locator('div.bg-brand')).toBeVisible();
 
-    // Verify entry is highlighted (has ring-2 ring-brand class)
+    // Verify entry is highlighted (has before:ring-2 before:ring-brand class)
     const highlightedEntry = page.locator(`[data-entry-id]`).filter({ hasText: "test moved navigation" });
-    await expect(highlightedEntry).toHaveClass(/ring-2 ring-brand/);
+    await expect(highlightedEntry).toHaveClass(/before:ring-2.*before:ring-brand/);
 
     // Verify entry is visible (scrolled into view)
     await expect(highlightedEntry).toBeInViewport();
@@ -689,10 +690,10 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
   test("Moved toast 'Lihat' button changes filter to 'all' when entry moved out of filter", async ({ page }) => {
     // Add entry today
     await quickAdd(page, "test filter change 60k");
-    
+
     // Open notes tab and set filter to "today"
     await openNotesTab(page);
-    
+
     // Click "Hari ini" filter button
     const todayFilter = page.locator('button[aria-pressed]').filter({ hasText: "Hari ini" });
     await todayFilter.click();
@@ -709,7 +710,7 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
 
     // Wait for toast with "di luar filter aktif" message
     await expect(page.getByText(/di luar filter aktif/)).toBeVisible();
-    
+
     // Click "Lihat" button
     await page.getByRole("button", { name: "Lihat" }).click();
 
@@ -720,7 +721,7 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     // Verify entry is visible and highlighted
     const highlightedEntry = page.locator(`[data-entry-id]`).filter({ hasText: "test filter change" });
     await expect(highlightedEntry).toBeVisible();
-    await expect(highlightedEntry).toHaveClass(/ring-2 ring-brand/);
+    await expect(highlightedEntry).toHaveClass(/before:ring-2.*before:ring-brand/);
   });
 
   test("Filter switching: today, 7d, 30d, all", async ({ page }) => {
@@ -797,7 +798,8 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     await page.getByRole("button", { name: "Catat pengeluaran" }).click();
     await expect(page.getByRole("heading", { name: "Catat pengeluaran" })).toBeVisible();
 
-    await page.locator("input[inputmode='numeric']").first().fill("50000");
+    await page.locator("input[placeholder='0']").fill("50000");
+    await page.locator("input[type='date']").fill(getTodayKey());
     await page.getByRole("button", { name: "Makan" }).click();
 
     // Select payment method (if available in UI)
