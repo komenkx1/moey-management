@@ -283,8 +283,8 @@ export function getFilteredEntries(
   }
 
   if (preset === "7d") {
-    const weekStartKey = toDateKey(getMondayOfWeek(now));
-    return entries.filter((entry) => entry.date >= weekStartKey && entry.date <= todayKey);
+    const startKey = toDateKey(offsetDate(now, -6));
+    return entries.filter((entry) => entry.date >= startKey && entry.date <= todayKey);
   }
 
   const days = 30;
@@ -311,8 +311,8 @@ export function includesDateInFilter(
   }
 
   if (preset === "7d") {
-    const weekStartKey = toDateKey(getMondayOfWeek(now));
-    return dateISO >= weekStartKey && dateISO <= todayKey;
+    const startKey = toDateKey(offsetDate(now, -6));
+    return dateISO >= startKey && dateISO <= todayKey;
   }
 
   const days = 30;
@@ -328,13 +328,17 @@ export function getBestFilterForDate(
     return "all";
   }
 
-  if (includesDateInFilter(dateISO, "today", now)) {
+  const diffDays = Math.floor(
+    (toDayStartTimestamp(now) - toDayStartTimestamp(parseDateKey(dateISO) as Date)) / 86_400_000
+  );
+
+  if (diffDays === 0) {
     return "today";
   }
-  if (includesDateInFilter(dateISO, "7d", now)) {
+  if (diffDays >= 0 && diffDays <= 6) {
     return "7d";
   }
-  if (includesDateInFilter(dateISO, "30d", now)) {
+  if (diffDays >= 0 && diffDays <= 29) {
     return "30d";
   }
   return "all";

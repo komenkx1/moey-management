@@ -106,18 +106,20 @@ describe("Filtering", () => {
         expect(res.map(e => e.id)).toEqual(["1", "2"]);
     });
 
-    it("filters '7d' as current week (Senin-hari ini), bukan rolling 7 hari", () => {
+    it("filters '7d' as rolling 7 days, bukan current week", () => {
         const weekNow = new Date("2026-02-25T10:00:00.000Z"); // Rabu
         const weekEntries = [
-            makeEntry({ id: "mon", date: "2026-02-23" }), // Senin minggu ini
-            makeEntry({ id: "sun-prev", date: "2026-02-22" }), // Minggu lalu (3 hari lalu)
-            makeEntry({ id: "thu-prev", date: "2026-02-19" }) // Kamis lalu (6 hari lalu)
+            makeEntry({ id: "mon", date: "2026-02-23" }), // 2 hari lalu
+            makeEntry({ id: "sun-prev", date: "2026-02-22" }), // 3 hari lalu
+            makeEntry({ id: "thu-prev", date: "2026-02-19" }), // 6 hari lalu
+            makeEntry({ id: "wed-prev", date: "2026-02-18" }) // 7 hari lalu (outside 7d filter which is 6 days ago -> today)
         ];
 
         const res = getFilteredEntries(weekEntries, "7d", weekNow);
-        expect(res.map((e) => e.id)).toEqual(["mon"]);
-        expect(includesDateInFilter("2026-02-22", "7d", weekNow)).toBe(false);
-        expect(getBestFilterForDate("2026-02-22", weekNow)).toBe("30d");
+        expect(res.map((e) => e.id)).toEqual(["mon", "sun-prev", "thu-prev"]);
+        expect(includesDateInFilter("2026-02-22", "7d", weekNow)).toBe(true);
+        expect(getBestFilterForDate("2026-02-22", weekNow)).toBe("7d");
+        expect(includesDateInFilter("2026-02-18", "7d", weekNow)).toBe(false);
     });
 
     it("filters '30d'", () => {
@@ -238,12 +240,12 @@ describe("getSummaryStats", () => {
         expect(stats.compareText).toContain("Rata-rata 3 hari");
     });
 
-    it("summary today memakai baseline pekan berjalan untuk sevenDayAverage", () => {
+    it("summary today memakai baseline rolling 7 hari untuk sevenDayAverage", () => {
         const now = new Date("2026-02-20T10:00:00.000Z"); // Jumat
         const allEntries = [
             makeEntry({ id: "today", date: "2026-02-20", amount: 70000 }),
-            makeEntry({ id: "week-mid", date: "2026-02-18", amount: 35000 }), // minggu yang sama
-            makeEntry({ id: "prev-week-sun", date: "2026-02-15", amount: 140000 }) // minggu sebelumnya
+            makeEntry({ id: "week-mid", date: "2026-02-18", amount: 35000 }), // 2 days ago
+            makeEntry({ id: "prev-week-sun", date: "2026-02-15", amount: 140000 }) // 5 days ago (still in 7d rolling window!)
         ];
         const filteredEntries = getFilteredEntries(allEntries, "today", now);
 
@@ -254,7 +256,8 @@ describe("getSummaryStats", () => {
             now
         });
 
-        expect(stats.sevenDayAverage).toBe(15000); // (70k + 35k) / 7
+        // Included inside 7d rolling window: today (70k), 18th (35k), 15th (140k). Total = 245k. / 7 = 35000.
+        expect(stats.sevenDayAverage).toBe(35000);
     });
 });
 
