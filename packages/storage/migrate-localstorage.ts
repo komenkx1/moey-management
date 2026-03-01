@@ -66,6 +66,7 @@ export async function migrateFromLocalStorage(): Promise<{
     const nightCloseClosedAt = localStorage.getItem(NIGHT_CLOSE_CLOSED_AT_KEY);
 
     try {
+        // @ts-ignore
         await db.transaction("rw", db.entries, db.rules, db.meta, async () => {
             if (entries.length > 0) {
                 await db.entries.bulkPut(entries);

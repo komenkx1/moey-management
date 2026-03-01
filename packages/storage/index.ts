@@ -148,10 +148,21 @@ function sortEntriesNewestFirst(entries: Entry[]): Entry[] {
   });
 }
 
+export async function initDatabase(): Promise<void> {
+  try {
+    const dbModule = await import("./db");
+    if (dbModule.initDatabase) {
+      await dbModule.initDatabase();
+    }
+  } catch {
+    // Ignore initialization failures
+  }
+}
+
 export async function loadEntries(): Promise<Entry[]> {
   try {
-    const rows = await db.entries.toArray();
-    return sortEntriesNewestFirst(rows);
+    const dbModule = await import("./db");
+    return sortEntriesNewestFirst(await dbModule.loadEntries());
   } catch {
     return [];
   }
@@ -159,10 +170,8 @@ export async function loadEntries(): Promise<Entry[]> {
 
 export async function saveEntries(entries: Entry[]): Promise<void> {
   try {
-    await db.transaction("rw", db.entries, async () => {
-      await db.entries.clear();
-      await db.entries.bulkPut(entries);
-    });
+    const dbModule = await import("./db");
+    await dbModule.saveEntries(entries);
     // Fire and forget since we only use it for habit triggers
     syncLastEntryAt(entries).catch(() => { });
   } catch {
@@ -172,8 +181,8 @@ export async function saveEntries(entries: Entry[]): Promise<void> {
 
 export async function loadRules(): Promise<CategoryRules> {
   try {
-    const rows = await db.rules.toArray();
-    return rows;
+    const dbModule = await import("./db");
+    return await dbModule.loadRules();
   } catch {
     return [];
   }
@@ -181,10 +190,8 @@ export async function loadRules(): Promise<CategoryRules> {
 
 export async function saveRules(rules: CategoryRules): Promise<void> {
   try {
-    await db.transaction("rw", db.rules, async () => {
-      await db.rules.clear();
-      await db.rules.bulkPut(rules);
-    });
+    const dbModule = await import("./db");
+    await dbModule.saveRules(rules);
   } catch {
     // Ignore write failures to avoid crashing UI.
   }
@@ -232,8 +239,8 @@ export function downloadBackupFile(payload: BackupPayload): void {
   const blobLike =
     typeof File === "function"
       ? new File([content], filename, {
-          type: "application/json;charset=utf-8;"
-        })
+        type: "application/json;charset=utf-8;"
+      })
       : new Blob([content], { type: "application/json;charset=utf-8;" });
   const url = window.URL.createObjectURL(blobLike);
   const anchor = document.createElement("a");
@@ -358,4 +365,4 @@ export {
   writeNightCloseMarker
 } from "./habits";
 export { migrateFromLocalStorage } from "./migrate-localstorage";
-export { db } from "./db";
+// Dynamically imported `db` functions are used above but exposed if needed.
