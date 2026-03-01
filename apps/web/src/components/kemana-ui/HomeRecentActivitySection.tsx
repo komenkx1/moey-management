@@ -42,7 +42,7 @@ function HomeRecentActivitySection({
               }}
               className={cn(
                 highlightEntryId === transaction.id || homePendingScrollId === transaction.id
-                  ? "animate-in fade-in zoom-in rounded-[16px] ring-2 ring-brand duration-300 [animation-fill-mode:forwards] animate-out fade-out [animation-delay:3.7s] [animation-duration:300ms]"
+                  ? "relative before:pointer-events-none before:absolute before:-inset-[2px] before:rounded-[18px] before:ring-2 before:ring-brand before:animate-in before:fade-in before:zoom-in before:duration-300 before:[animation-fill-mode:forwards] before:animate-out before:fade-out before:[animation-delay:3.7s] before:[animation-duration:300ms]"
                   : ""
               )}
             >
@@ -94,11 +94,11 @@ export default memo(HomeRecentActivitySection, (prev, next) => {
   // Check if transactions array changed (first 5 items)
   const prevTransactions = prev.allTransactions.slice(0, 5);
   const nextTransactions = next.allTransactions.slice(0, 5);
-  
+
   if (prevTransactions.length !== nextTransactions.length) {
     return false;
   }
-  
+
   for (let i = 0; i < prevTransactions.length; i++) {
     if (
       prevTransactions[i].id !== nextTransactions[i].id ||
@@ -113,7 +113,7 @@ export default memo(HomeRecentActivitySection, (prev, next) => {
       return false;
     }
   }
-  
+
   // Check other props
   return (
     prev.highlightEntryId === next.highlightEntryId &&

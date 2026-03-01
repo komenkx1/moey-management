@@ -122,7 +122,7 @@ function getInsightWindowMeta(
   if (preset === "7d") {
     return {
       periodLabel: getFilterLabel(preset, customRange, now),
-      comparisonLabel: "pekan lalu",
+      comparisonLabel: "7 hari sebelumnya",
       windowDays: 7,
       resolvedCustomRange: null
     };

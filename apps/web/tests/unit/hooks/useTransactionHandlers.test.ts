@@ -18,6 +18,7 @@ describe("useTransactionHandlers - moved toast functionality", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-02-28T12:00:00Z"));
 
     mockSetActiveTab = vi.fn();
     mockSetDateFilter = vi.fn();
