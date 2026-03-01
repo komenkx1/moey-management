@@ -154,7 +154,7 @@ export default function NotesTabContent({
                     }}
                     className={cn(
                       highlighted
-                        ? "animate-in fade-in zoom-in rounded-[16px] ring-2 ring-brand duration-300 [animation-fill-mode:forwards] animate-out fade-out [animation-delay:3.7s] [animation-duration:300ms]"
+                        ? "relative before:pointer-events-none before:absolute before:-inset-[2px] before:rounded-[18px] before:ring-2 before:ring-brand before:animate-in before:fade-in before:zoom-in before:duration-300 before:[animation-fill-mode:forwards] before:animate-out before:fade-out before:[animation-delay:3.7s] before:[animation-duration:300ms]"
                         : ""
                     )}
                   >
