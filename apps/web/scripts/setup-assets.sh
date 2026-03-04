@@ -20,7 +20,7 @@ fi
 BACKGROUND_COLOR="#F7F8FA"
 DARK_BACKGROUND_COLOR="#000000"
 # Default logo scale for splash source compositing (can override via env)
-SPLASH_LOGO_SCALE="${SPLASH_LOGO_SCALE:-0.88}"
+SPLASH_LOGO_SCALE="${SPLASH_LOGO_SCALE:-0.38}"
 
 # Create assets directory if not exists
 mkdir -p assets
@@ -199,7 +199,7 @@ fi
 echo "Generating with background color: $BACKGROUND_COLOR"
 echo ""
 
-npx @capacitor/assets generate \
+./node_modules/.bin/capacitor-assets generate \
     --iconBackgroundColor "$BACKGROUND_COLOR" \
     --iconBackgroundColorDark "$DARK_BACKGROUND_COLOR" \
     --splashBackgroundColor "$BACKGROUND_COLOR" \
