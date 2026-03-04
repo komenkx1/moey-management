@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { isIOS, isStandalone } from "@/lib/pwa";
+import { isNativePlatform, isNativeIOS } from "@/lib/capacitor";
 
 const IOS_STANDALONE_ATTR = "data-ios-standalone";
 const SAFE_HEADER_OFFSET_VAR = "--safe-header-offset";
@@ -55,11 +56,17 @@ export default function SafeAreaSync() {
       : null;
 
     const applyMode = () => {
-      const iosDevice = isIOS();
-      const standalone = inStandaloneMode();
+      // Prioritaskan native platform detection
+      const isNative = isNativePlatform();
+      const iosDevice = isNative ? isNativeIOS() : isIOS();
+      const standalone = isNative || inStandaloneMode();
+      
       const envInsetTop = readEnvSafeAreaTop();
       const visualInsetTop = readVisualViewportTopInset();
       const detectedInsetTop = Math.max(envInsetTop, visualInsetTop, 0);
+      
+      // Untuk native iOS, gunakan inset yang terdeteksi atau minimal 44px
+      // Untuk web iOS standalone, gunakan logika yang sama
       const effectiveInsetTop =
         iosDevice && standalone ? Math.max(detectedInsetTop, 44) : detectedInsetTop;
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { isIOS, isStandalone } from "@/lib/pwa";
+import { isNativePlatform } from "@/lib/capacitor";
 
 const BANNER_SEEN_KEY = "pwa_install_banner_seen_v1";
 
@@ -45,6 +46,11 @@ export default function PwaInstallBanner() {
 
   useEffect(() => {
     if (typeof window === "undefined") {
+      return;
+    }
+
+    // Hide banner jika running di native app (iOS/Android)
+    if (isNativePlatform()) {
       return;
     }
 

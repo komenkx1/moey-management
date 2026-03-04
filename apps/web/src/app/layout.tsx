@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import PwaInstallBanner from "@/components/PwaInstallBanner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import SafeAreaSync from "./safe-area-sync";
+import CapacitorInit from "./capacitor-init";
 import SWRegister from "./sw-register";
 import ThemeColorSync from "./theme-color";
 import { Toaster } from "sonner";
@@ -27,7 +28,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0f2f33",
+  themeColor: "#F7F8FA",
   viewportFit: "cover"
 };
 
@@ -41,6 +42,7 @@ export default function RootLayout({
       <body>
         <ErrorBoundary>
           <SafeAreaSync />
+          <CapacitorInit />
           <PwaInstallBanner />
           {children}
           <Toaster position="bottom-center" richColors />
