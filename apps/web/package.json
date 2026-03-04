@@ -15,13 +15,16 @@
     "cap:setup": "bash scripts/capacitor-setup.sh",
     "cap:setup-assets": "bash scripts/setup-assets.sh",
     "cap:sync": "npx cap sync",
+    "cap:sync:ios:dev": "CAP_APP_ID=com.kemana.app.dev CAP_APP_NAME='KeMana Dev' npx cap sync ios",
+    "cap:sync:ios:beta": "CAP_APP_ID=com.kemana.app.beta CAP_APP_NAME='KeMana Beta' npx cap sync ios",
     "cap:sync-version": "bash scripts/sync-version.sh",
     "cap:check-java": "bash scripts/check-java.sh",
     "cap:fix-java": "bash scripts/fix-java-env.sh",
     "cap:run:android": "npx cap run android",
     "cap:run:ios": "bash scripts/prepare-ios-derived-data.sh && COPYFILE_DISABLE=1 npx cap run ios",
     "cap:open:android": "npx cap open android",
-    "cap:open:ios": "npx cap open ios"
+    "cap:open:ios": "npx cap open ios",
+    "ipa:ios": "bash scripts/build-ios-ipa.sh"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.0",

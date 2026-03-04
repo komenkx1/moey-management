@@ -1,9 +1,12 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 import { KeyboardResize, KeyboardStyle } from '@capacitor/keyboard';
 
+const appId = process.env.CAP_APP_ID ?? 'com.kemana.app.dev';
+const appName = process.env.CAP_APP_NAME ?? 'KeMana Dev';
+
 const config: CapacitorConfig = {
-  appId: 'com.kemana.app',
-  appName: 'KeMana',
+  appId,
+  appName,
   webDir: 'out',
   bundledWebRuntime: false,
   server: {
@@ -15,7 +18,6 @@ const config: CapacitorConfig = {
       launchShowDuration: 2000,
       launchAutoHide: true,
       launchFadeOutDuration: 300,
-      backgroundColor: '#F7F8FA',
       androidSplashResourceName: 'splash',
       androidScaleType: 'FIT_CENTER',
       showSpinner: false,
