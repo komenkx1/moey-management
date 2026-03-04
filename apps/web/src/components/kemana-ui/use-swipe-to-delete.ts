@@ -5,6 +5,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent
 } from "react";
+import { hapticsLight } from "@/lib/haptics";
 
 interface UseSwipeToDeleteOptions {
   onDelete: () => void;
@@ -90,17 +91,19 @@ export function useSwipeToDelete({
         setSwipeX(-deleteThreshold);
         setIsRevealed(true);
         swipeXRef.current = -deleteThreshold;
+        hapticsLight(); // Haptic feedback saat reveal
       } else {
         // Snap back to closed
         setSwipeX(0);
         setIsRevealed(false);
         swipeXRef.current = 0;
+        hapticsLight(); // Haptic feedback saat snap back
       }
 
       // Remove snapping flag after transition
       setTimeout(() => {
         setIsSnapping(false);
-      }, 300);
+      }, 250);
     },
     [deleteThreshold]
   );

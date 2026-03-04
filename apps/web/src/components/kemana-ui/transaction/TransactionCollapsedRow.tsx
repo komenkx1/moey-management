@@ -12,6 +12,7 @@ interface TransactionCollapsedRowProps {
     onDelete?: (id: string) => void;
     swipeX: number;
     isRevealed: boolean;
+    isSwiping: boolean;
     isSnapping: boolean;
     swipeHandleProps: any;
     className?: string;
@@ -33,6 +34,7 @@ export default function TransactionCollapsedRow({
     onDelete,
     swipeX,
     isRevealed,
+    isSwiping,
     isSnapping,
     swipeHandleProps,
     className
@@ -81,10 +83,11 @@ export default function TransactionCollapsedRow({
             <div
                 className={cn(
                     "relative z-10 flex flex-col bg-bg-elevated outline-none touch-pan-y",
-                    isSnapping && "transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                    isSnapping && "transition-transform duration-[250ms] ease-out"
                 )}
                 style={{
-                    transform: `translateX(${swipeX}px)`,
+                    transform: `translate3d(${swipeX}px, 0, 0)`,
+                    willChange: isSwiping ? 'transform' : 'auto',
                     pointerEvents: isRevealed ? 'none' : 'auto'
                 }}
                 {...swipeHandleProps}

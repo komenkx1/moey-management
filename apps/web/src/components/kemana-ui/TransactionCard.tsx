@@ -89,6 +89,7 @@ function TransactionCardComponent({
                 onDelete={onDelete}
                 swipeX={swipeX}
                 isRevealed={isRevealed}
+                isSwiping={isSwiping}
                 isSnapping={isSnapping}
                 swipeHandleProps={swipeHandleProps}
             />

@@ -162,15 +162,22 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const storedName = window.localStorage.getItem(STORAGE_KEYS.USER_NAME);
-    if (storedName) {
-      setUserName(storedName);
-      setNameDraft(storedName);
+    const normalizedStoredName = (storedName ?? "").replace(/\s+/g, " ").trim();
+
+    if (normalizedStoredName.length >= 2) {
+      setUserName(normalizedStoredName);
+      setNameDraft(normalizedStoredName);
+      setIsNamePromptOpen(false);
+    } else {
+      setUserName("");
+      setNameDraft(normalizedStoredName);
+      setIsNamePromptOpen(true);
     }
 
     return () => {
       isUnmountingRef.current = true;
     };
-  }, [setUserName, setNameDraft, isUnmountingRef]);
+  }, [setUserName, setNameDraft, setIsNamePromptOpen, isUnmountingRef]);
 
   const normalizedCustomRange = useMemo(
     () => normalizeCustomDateRange(customDateRange, new Date()),
@@ -706,34 +713,36 @@ export default function DashboardPage() {
     return (
       <ScreenContainer withBottomNav>
         <TopAppBar title="Insight" />
-        <main className="flex flex-col gap-3 px-4 py-2">
-          <div className="sticky top-[calc(var(--safe-header-offset,env(safe-area-inset-top))+74px)] z-20 bg-bg-base/94 pb-2 pt-1 backdrop-blur-md">
-            <DateRangeFilter
-              value={dateFilter}
-              onChange={handleDateFilterChange}
-              customRange={normalizedCustomRange}
-              onCustomRangeChange={handleCustomDateRangeChange}
-            />
-          </div>
-          <Suspense fallback={<div className="flex-1 flex items-center justify-center p-8 text-[13px] text-text-tertiary animate-pulse">Memuat insight...</div>}>
-            <InsightTabContent
-              insightSevenDay={insightSevenDay}
-              insightTrendBadge={insightTrendBadge}
-              insightAverageAmountLabel={insightAverageAmountLabel}
-              insightWhyCards={insightWhyCards}
-              trendTitle={trendTitle}
-              trendSubtitle={trendSubtitle}
-              isTrendChartOverflowing={isTrendChartOverflowing}
-              insightTrendScrollRef={insightTrendScrollRef}
-              insightTrendSeriesDisplay={insightTrendSeriesDisplay}
-              insightMaxTrendTotal={insightMaxTrendTotal}
-              trendCompactItemWidth={trendCompactItemWidth}
-              insightCoachCopy={insightCoachCopy}
-              onPrimaryAction={handleInsightPrimaryAction}
-              onOpenNotes={handleInsightOpenNotes}
-            />
-          </Suspense>
-        </main>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <main className="flex flex-col gap-3 px-4 py-2 pb-[calc(96px+env(safe-area-inset-bottom))]">
+            <div className="sticky top-0 z-20 bg-bg-base/94 pb-2 pt-1 backdrop-blur-md">
+              <DateRangeFilter
+                value={dateFilter}
+                onChange={handleDateFilterChange}
+                customRange={normalizedCustomRange}
+                onCustomRangeChange={handleCustomDateRangeChange}
+              />
+            </div>
+            <Suspense fallback={<div className="flex-1 flex items-center justify-center p-8 text-[13px] text-text-tertiary animate-pulse">Memuat insight...</div>}>
+              <InsightTabContent
+                insightSevenDay={insightSevenDay}
+                insightTrendBadge={insightTrendBadge}
+                insightAverageAmountLabel={insightAverageAmountLabel}
+                insightWhyCards={insightWhyCards}
+                trendTitle={trendTitle}
+                trendSubtitle={trendSubtitle}
+                isTrendChartOverflowing={isTrendChartOverflowing}
+                insightTrendScrollRef={insightTrendScrollRef}
+                insightTrendSeriesDisplay={insightTrendSeriesDisplay}
+                insightMaxTrendTotal={insightMaxTrendTotal}
+                trendCompactItemWidth={trendCompactItemWidth}
+                insightCoachCopy={insightCoachCopy}
+                onPrimaryAction={handleInsightPrimaryAction}
+                onOpenNotes={handleInsightOpenNotes}
+              />
+            </Suspense>
+          </main>
+        </div>
         <BottomTabBar />
         {dashboardSheets}
       </ScreenContainer>
@@ -748,32 +757,34 @@ export default function DashboardPage() {
           actionIcon={<Settings className="h-5 w-5" />}
           onActionClick={() => setIsDataToolsSheetOpen(true)}
         />
-        <NotesTabContent
-          storageWarning={storageWarning}
-          dateFilter={dateFilter}
-          onDateFilterChange={handleDateFilterChange}
-          customRange={normalizedCustomRange}
-          onCustomRangeChange={handleCustomDateRangeChange}
-          summaryStats={summaryStats}
-          onOpenBulk={() => setBulkOpen(true)}
-          onOpenDataTools={() => setIsDataToolsSheetOpen(true)}
-          orderedDates={orderedDates}
-          dailyTotal={dailyTotal}
-          groupedEntries={groupedEntries}
-          toTransactionItem={toTransactionItem}
-          highlightEntryId={highlightEntryId}
-          pendingScrollToId={pendingScrollToId}
-          itemRefs={itemRefs}
-          inferCategoryFromText={inferCategoryFromText}
-          onSaveTransaction={handleSaveTransaction}
-          onDeleteTransaction={handleDeleteTransaction}
-          filteredTransactionsLength={filteredTransactions.length}
-          notesHasMore={notesHasMore}
-          notesLoadMoreRef={notesLoadMoreRef}
-          shouldVirtualizeNotes={shouldVirtualizeNotes}
-          filteredEntriesLength={filteredEntries.length}
-          visibleCount={notesVirtualizationPlan.visibleCount}
-        />
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <NotesTabContent
+            storageWarning={storageWarning}
+            dateFilter={dateFilter}
+            onDateFilterChange={handleDateFilterChange}
+            customRange={normalizedCustomRange}
+            onCustomRangeChange={handleCustomDateRangeChange}
+            summaryStats={summaryStats}
+            onOpenBulk={() => setBulkOpen(true)}
+            onOpenDataTools={() => setIsDataToolsSheetOpen(true)}
+            orderedDates={orderedDates}
+            dailyTotal={dailyTotal}
+            groupedEntries={groupedEntries}
+            toTransactionItem={toTransactionItem}
+            highlightEntryId={highlightEntryId}
+            pendingScrollToId={pendingScrollToId}
+            itemRefs={itemRefs}
+            inferCategoryFromText={inferCategoryFromText}
+            onSaveTransaction={handleSaveTransaction}
+            onDeleteTransaction={handleDeleteTransaction}
+            filteredTransactionsLength={filteredTransactions.length}
+            notesHasMore={notesHasMore}
+            notesLoadMoreRef={notesLoadMoreRef}
+            shouldVirtualizeNotes={shouldVirtualizeNotes}
+            filteredEntriesLength={filteredEntries.length}
+            visibleCount={notesVirtualizationPlan.visibleCount}
+          />
+        </div>
         <FabAddButton
           onClick={() => openAddSheet()}
           className={cn("duration-200", shouldHideFab ? "pointer-events-none translate-y-4 opacity-0" : "opacity-100")}
@@ -792,55 +803,57 @@ export default function DashboardPage() {
         actionIcon={isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         onActionClick={toggleTheme}
       />
-      <HomeTabContent
-        storageWarning={storageWarning}
-        summaryStats={summaryStats}
-        onOpenInsight={handleOpenInsightTab}
-        quickInputRef={quickInputRef}
-        quickInput={quickInput}
-        quickInputPlaceholder={quickInputPlaceholder}
-        onQuickInputChange={handleQuickInputChange}
-        onQuickInputBlur={handleQuickInputBlur}
-        onQuickInputSubmit={handleQuickAddSubmit}
-        onOpenBulk={() => setBulkOpen(true)}
-        showQuickFormatTemplates={showQuickFormatTemplates}
-        quickFormatTemplates={quickFormatTemplates}
-        onApplyQuickFormatTemplate={handleApplyQuickFormatTemplate}
-        quickHistorySuggestions={quickHistorySuggestions}
-        onApplyQuickHistorySuggestion={handleApplyQuickHistorySuggestion}
-        smartRecallPrompt={smartRecallPrompt}
-        lastEntryAt={lastEntryAt}
-        latestEntryInsight={latestEntryInsight}
-        onRecallDismiss={handleRecallDismiss}
-        onRecallAddRecent={handleRecallAddRecent}
-        showSuggestionCard={showSuggestionCard}
-        topAdaptiveRecallItem={topAdaptiveRecallItem}
-        onUseTopSuggestion={handleUseTopSuggestion}
-        quickPreview={quickPreview ?? null}
-        quickPreviewTextParts={quickPreviewTextParts ?? null}
-        quickPreviewSubtitleBreakdown={quickPreviewSubtitleBreakdown ?? null}
-        quickPreviewSubtitleItems={quickPreviewSubtitleItems ?? null}
-        summedAmountMeta={summedAmountMeta ?? null}
-        showQuickWarningDetails={showQuickWarningDetails}
-        onToggleQuickWarningDetails={handleToggleQuickWarningDetails}
-        adaptiveHints={adaptiveHints}
-        quickError={quickError}
-        adaptiveRecallItems={adaptiveRecallItems}
-        onSelectQuickRecallItem={handleSelectQuickRecallItem}
-        showNightCloseBar={showNightCloseBar}
-        nightCloseSubtitle={nightCloseCopy.subtitle}
-        onOpenNightCloseReview={handleOpenNightCloseReview}
-        onNightCloseDismiss={handleNightCloseBarClose}
-        nightCloseConfirmation={nightCloseConfirmation}
-        allTransactions={allTransactions}
-        homeItemRefs={homeItemRefs}
-        highlightEntryId={highlightEntryId}
-        homePendingScrollId={homePendingScrollId}
-        inferCategoryFromText={inferCategoryFromText}
-        onSaveTransaction={handleSaveTransaction}
-        onDeleteTransaction={handleDeleteTransaction}
-        onOpenNotes={handleOpenNotesTab}
-      />
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <HomeTabContent
+          storageWarning={storageWarning}
+          summaryStats={summaryStats}
+          onOpenInsight={handleOpenInsightTab}
+          quickInputRef={quickInputRef}
+          quickInput={quickInput}
+          quickInputPlaceholder={quickInputPlaceholder}
+          onQuickInputChange={handleQuickInputChange}
+          onQuickInputBlur={handleQuickInputBlur}
+          onQuickInputSubmit={handleQuickAddSubmit}
+          onOpenBulk={() => setBulkOpen(true)}
+          showQuickFormatTemplates={showQuickFormatTemplates}
+          quickFormatTemplates={quickFormatTemplates}
+          onApplyQuickFormatTemplate={handleApplyQuickFormatTemplate}
+          quickHistorySuggestions={quickHistorySuggestions}
+          onApplyQuickHistorySuggestion={handleApplyQuickHistorySuggestion}
+          smartRecallPrompt={smartRecallPrompt}
+          lastEntryAt={lastEntryAt}
+          latestEntryInsight={latestEntryInsight}
+          onRecallDismiss={handleRecallDismiss}
+          onRecallAddRecent={handleRecallAddRecent}
+          showSuggestionCard={showSuggestionCard}
+          topAdaptiveRecallItem={topAdaptiveRecallItem}
+          onUseTopSuggestion={handleUseTopSuggestion}
+          quickPreview={quickPreview ?? null}
+          quickPreviewTextParts={quickPreviewTextParts ?? null}
+          quickPreviewSubtitleBreakdown={quickPreviewSubtitleBreakdown ?? null}
+          quickPreviewSubtitleItems={quickPreviewSubtitleItems ?? null}
+          summedAmountMeta={summedAmountMeta ?? null}
+          showQuickWarningDetails={showQuickWarningDetails}
+          onToggleQuickWarningDetails={handleToggleQuickWarningDetails}
+          adaptiveHints={adaptiveHints}
+          quickError={quickError}
+          adaptiveRecallItems={adaptiveRecallItems}
+          onSelectQuickRecallItem={handleSelectQuickRecallItem}
+          showNightCloseBar={showNightCloseBar}
+          nightCloseSubtitle={nightCloseCopy.subtitle}
+          onOpenNightCloseReview={handleOpenNightCloseReview}
+          onNightCloseDismiss={handleNightCloseBarClose}
+          nightCloseConfirmation={nightCloseConfirmation}
+          allTransactions={allTransactions}
+          homeItemRefs={homeItemRefs}
+          highlightEntryId={highlightEntryId}
+          homePendingScrollId={homePendingScrollId}
+          inferCategoryFromText={inferCategoryFromText}
+          onSaveTransaction={handleSaveTransaction}
+          onDeleteTransaction={handleDeleteTransaction}
+          onOpenNotes={handleOpenNotesTab}
+        />
+      </div>
       <FabAddButton
         onClick={() => openAddSheet()}
         className={cn("duration-200", shouldHideFab ? "pointer-events-none translate-y-4 opacity-0" : "opacity-100")}

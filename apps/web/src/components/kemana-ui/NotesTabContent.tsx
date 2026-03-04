@@ -133,7 +133,7 @@ export default function NotesTabContent({
       <div className="flex flex-col gap-5 pb-[calc(124px+env(safe-area-inset-bottom))]">
         {orderedDates.map((dateString) => (
           <div key={dateString} className="flex flex-col gap-2">
-            <div className="sticky top-[calc(var(--safe-header-offset,env(safe-area-inset-top))+74px)] z-30 -mx-4 flex items-center justify-between gap-2 border-b border-border-subtle/70 bg-bg-base/96 px-4 pb-2 pt-3 backdrop-blur-md supports-[backdrop-filter]:bg-bg-base/88">
+            <div className="sticky top-0 z-30 -mx-4 flex items-center justify-between gap-2 border-b border-border-subtle/70 bg-bg-base/96 px-4 pb-2 pt-3 backdrop-blur-md supports-[backdrop-filter]:bg-bg-base/88">
               <span className="text-[14px] font-bold text-text-primary">{formatDayLabel(dateString)}</span>
               <span className="text-[12px] font-medium text-text-secondary">
                 -Rp{formatAmountIDR(dailyTotal[dateString] ?? 0)}

@@ -11,18 +11,13 @@ interface ScreenContainerProps {
 export default function ScreenContainer({
     children,
     className,
-    withBottomNav = false,
-    withFab = false,
+    withBottomNav: _withBottomNav = false,
+    withFab: _withFab = false,
 }: ScreenContainerProps) {
     return (
         <div
             className={cn(
-                "relative mx-auto flex min-h-[100dvh] w-full max-w-md flex-col bg-bg-base text-text-primary",
-                withBottomNav
-                    ? withFab
-                        ? "pb-[calc(164px+env(safe-area-inset-bottom))]"
-                        : "pb-[calc(84px+env(safe-area-inset-bottom))]"
-                    : "pb-[env(safe-area-inset-bottom)]",
+                "relative mx-auto flex h-[100dvh] min-h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-bg-base text-text-primary",
                 className
             )}
         >

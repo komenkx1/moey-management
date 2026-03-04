@@ -142,7 +142,7 @@ export default function HomeTabContent({
   }, [setExpandedIds]);
 
   return (
-    <main className="flex flex-col gap-5 px-4 py-2">
+    <main className="flex flex-col gap-5 px-4 py-2 pb-[calc(164px+env(safe-area-inset-bottom))]">
       {storageWarning ? (
         <div className="rounded-xl border border-danger/20 bg-danger-soft/60 px-3 py-2 text-[12px] font-medium text-danger">
           {storageWarning}
@@ -452,7 +452,7 @@ export default function HomeTabContent({
         onOpenNotes={onOpenNotes}
       />
 
-      <div className="h-10" aria-hidden />
+      <div className="h-2" aria-hidden />
     </main>
   );
 }
