@@ -35,3 +35,16 @@ coverage/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Capacitor
+android/
+ios/
+*.apk
+*.aab
+*.ipa
+.gradle/
+build/
+xcuserdata/
+*.xcworkspace
+!*.xcworkspace/contents.xcworkspacedata
+
