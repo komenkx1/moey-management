@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { 
-  CONNECTION_BADGE_DURATION_MS, 
-  STORAGE_KEYS, 
-  UPDATE_CHECK_INTERVAL_MS 
+import {
+  CONNECTION_BADGE_DURATION_MS,
+  STORAGE_KEYS,
+  UPDATE_CHECK_INTERVAL_MS
 } from "@/lib/constants";
+import { isNativePlatform } from "@/lib/capacitor";
 
 export default function SWRegister() {
   const [connectionStatus, setConnectionStatus] = useState<"online" | "offline">("online");
@@ -41,7 +42,7 @@ export default function SWRegister() {
 
     try {
       setIsUpdateBannerDismissed(window.sessionStorage.getItem(STORAGE_KEYS.UPDATE_BANNER_DISMISSED_SESSION) === "1");
-      
+
       // Check if update was just applied - if so, clear the flag and don't show banner
       const updateApplied = window.localStorage.getItem(STORAGE_KEYS.UPDATE_APPLIED);
       if (updateApplied) {
@@ -93,6 +94,10 @@ export default function SWRegister() {
       return;
     }
 
+    if (isNativePlatform()) {
+      return;
+    }
+
     if (!("serviceWorker" in navigator)) {
       return;
     }
@@ -104,7 +109,7 @@ export default function SWRegister() {
       if (updateAppliedRef.current) {
         return;
       }
-      
+
       waitingRegistrationRef.current = registration;
       if (isMounted) {
         setUpdateReady(true);
@@ -185,14 +190,14 @@ export default function SWRegister() {
     if (!waitingWorker) {
       return;
     }
-    
+
     // Mark that update is being applied so we don't show banner after reload
     try {
       window.localStorage.setItem(STORAGE_KEYS.UPDATE_APPLIED, "1");
     } catch {
       // Ignore localStorage errors
     }
-    
+
     waitingWorker.postMessage({ type: "SKIP_WAITING" });
   };
 

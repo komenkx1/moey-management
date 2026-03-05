@@ -17,12 +17,19 @@ export function useCapacitor() {
     }
 
     const initializeCapacitor = async () => {
+      // Prioritaskan hide splash screen dulu agar user tidak stuck
+      try {
+        await SplashScreen.hide({ fadeOutDuration: 300 });
+      } catch (err) {
+        console.error("Failed to hide splash screen:", err);
+      }
+
       try {
         // Detect theme dari localStorage atau system
         const savedTheme = localStorage.getItem("theme-mode");
-        const isDark = savedTheme === "dark" || 
-                      (!savedTheme && window.matchMedia("(prefers-color-scheme: dark)").matches);
-        
+        const isDark = savedTheme === "dark" ||
+          (!savedTheme && window.matchMedia("(prefers-color-scheme: dark)").matches);
+
         // Setup Status Bar sesuai theme
         if (isDark) {
           await StatusBar.setStyle({ style: Style.Dark });
@@ -33,12 +40,9 @@ export function useCapacitor() {
         }
 
         // Setup Keyboard
-        Keyboard.setAccessoryBarVisible({ isVisible: true });
-
-        // Splash screen akan auto-hide setelah 2 detik (dari config)
-        // Tidak perlu manual hide
+        Keyboard.setAccessoryBarVisible({ isVisible: true }).catch(() => { });
       } catch (error) {
-        console.error("Error initializing Capacitor:", error);
+        console.error("Error initializing Capacitor plugins:", error);
       }
     };
 

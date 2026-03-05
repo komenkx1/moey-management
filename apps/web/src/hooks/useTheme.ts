@@ -12,12 +12,22 @@ export function useTheme() {
         root.classList.toggle("dark", initialTheme === "dark");
         setIsDarkMode(initialTheme === "dark");
         persistThemeMode(initialTheme);
-        
+
         // Set status bar sesuai theme
         if (initialTheme === "dark") {
             setStatusBarDark();
+            if (typeof window !== "undefined") {
+                import("@capacitor/keyboard").then(({ Keyboard, KeyboardStyle }) => {
+                    Keyboard.setStyle({ style: KeyboardStyle.Dark }).catch(() => { });
+                });
+            }
         } else {
             setStatusBarLight();
+            if (typeof window !== "undefined") {
+                import("@capacitor/keyboard").then(({ Keyboard, KeyboardStyle }) => {
+                    Keyboard.setStyle({ style: KeyboardStyle.Light }).catch(() => { });
+                });
+            }
         }
     }, [setIsDarkMode]);
 
@@ -27,14 +37,24 @@ export function useTheme() {
             const root = document.documentElement;
             root.classList.toggle("dark", nextIsDark);
             persistThemeMode(nextIsDark ? "dark" : "light");
-            
+
             // Update status bar saat theme berubah
             if (nextIsDark) {
                 setStatusBarDark();
+                if (typeof window !== "undefined") {
+                    import("@capacitor/keyboard").then(({ Keyboard, KeyboardStyle }) => {
+                        Keyboard.setStyle({ style: KeyboardStyle.Dark }).catch(() => { });
+                    });
+                }
             } else {
                 setStatusBarLight();
+                if (typeof window !== "undefined") {
+                    import("@capacitor/keyboard").then(({ Keyboard, KeyboardStyle }) => {
+                        Keyboard.setStyle({ style: KeyboardStyle.Light }).catch(() => { });
+                    });
+                }
             }
-            
+
             return nextIsDark;
         });
     }, [setIsDarkMode]);

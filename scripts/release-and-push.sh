@@ -68,12 +68,25 @@ echo "==> Bump apps/web/package.json ke versi $VERSION..."
 (
   cd apps/web
   npm version "$VERSION" --no-git-tag-version >/dev/null
+  echo "==> Syncing versi native iOS & Android & SW..."
+  npm run cap:sync-version >/dev/null
 )
 
 echo "==> Commit perubahan versi..."
 git add apps/web/package.json
 if [ -f "apps/web/package-lock.json" ]; then
   git add apps/web/package-lock.json
+fi
+
+# Add Android and iOS version files to the commit if they exist
+if [ -f "apps/web/android/app/build.gradle" ]; then
+  git add apps/web/android/app/build.gradle
+fi
+if [ -f "apps/web/ios/App/App/Info.plist" ]; then
+  git add apps/web/ios/App/App/Info.plist
+fi
+if [ -f "apps/web/public/sw.js" ]; then
+  git add apps/web/public/sw.js
 fi
 
 if git diff --cached --quiet; then

@@ -6,7 +6,7 @@
     "dev": "next dev --hostname 127.0.0.1 -p 3005",
     "dev:turbo": "next dev --turbopack --hostname 127.0.0.1 -p 3005",
     "build": "node scripts/inject-sw-version.mjs && next build",
-    "build:mobile": "npm run build && npx cap sync",
+    "build:mobile": "npm run build && npm run cap:sync-version && npx cap sync",
     "start": "next start",
     "test": "vitest run",
     "test:e2e": "rm -rf .next && npm run build && npx playwright test",

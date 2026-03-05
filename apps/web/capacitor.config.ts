@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import type { CapacitorConfig } from '@capacitor/cli';
 import { KeyboardResize, KeyboardStyle } from '@capacitor/keyboard';
 
@@ -16,7 +17,7 @@ const config: CapacitorConfig = {
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,
-      launchAutoHide: true,
+      launchAutoHide: false,
       launchFadeOutDuration: 300,
       androidSplashResourceName: 'splash',
       androidScaleType: 'FIT_CENTER',
@@ -33,7 +34,6 @@ const config: CapacitorConfig = {
     },
     Keyboard: {
       resize: KeyboardResize.Native,
-      style: KeyboardStyle.Dark,
       resizeOnFullScreen: true
     }
   }

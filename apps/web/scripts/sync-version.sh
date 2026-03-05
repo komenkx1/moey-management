@@ -78,6 +78,10 @@ else
 fi
 
 echo ""
+echo "🚀 Injecting SW version..."
+node scripts/inject-sw-version.mjs
+
+echo ""
 echo "✅ Version sync complete!"
 echo ""
 echo "Next steps:"

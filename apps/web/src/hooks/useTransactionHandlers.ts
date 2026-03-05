@@ -17,6 +17,7 @@ import {
 import { createEntryId, toParserAmountToken } from "@/lib/dashboard-page-helpers";
 import { recordQuickAddAck } from "@/lib/perf";
 import { TOAST_IDS } from "@/lib/constants";
+import { hapticsSuccess, hapticsMedium } from "@/lib/haptics";
 
 interface MovedToastPayload {
   entryId: string;
@@ -184,7 +185,7 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
         });
         setPendingScrollToId(updatedItem.id);
         setHighlightEntryId(updatedItem.id);
-      } else {
+        hapticsSuccess();
         toast.success("Catatan diperbarui.");
       }
     },
@@ -215,6 +216,7 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
       setEntries((prev) => prev.filter((entry) => entry.id !== id));
 
       undoToastPayloadRef.current = undoPayload;
+      hapticsMedium();
       toast("Catatan dihapus.", {
         id: TOAST_IDS.UNDO,
         duration: 6000,
@@ -238,6 +240,7 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
 
             undoToastPayloadRef.current = null;
             toast.dismiss(TOAST_IDS.UNDO);
+            hapticsSuccess();
             toast.success("Catatan dikembalikan.");
           }
         },
@@ -285,10 +288,10 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
       };
 
       setEntries((prev) => [nextEntry, ...prev]);
-      
+
       // Flush immediately for quick add to ensure UI updates
       flushEntries?.();
-      
+
       setExpandedIds(new Set([nextEntry.id]));
       setHomePendingScrollId(nextEntry.id);
       setHighlightEntryId(nextEntry.id);
@@ -304,6 +307,7 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
         recordQuickAddAck(performance.now() - submitStartedAt);
       });
 
+      hapticsSuccess();
       toast.success("Catatan tersimpan.");
     },
     [
@@ -357,12 +361,13 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
       };
 
       setEntries((prev) => [nextEntry, ...prev]);
-      
+
       // Flush immediately for sheet creation
       flushEntries?.();
-      
+
       dismissRecallForSession();
       setRecallInputPrimed(false);
+      hapticsSuccess();
       toast.success("Catatan tersimpan.");
     },
     [dismissRecallForSession, setEntries, flushEntries, setRecallInputPrimed]
