@@ -20,10 +20,11 @@ if /usr/libexec/java_home -v 17 &> /dev/null; then
     echo "✅ JAVA_HOME set to Java 17 for current session"
     echo ""
     
-    # Check which shell
-    if [ -n "$ZSH_VERSION" ]; then
+    # Check user default shell instead of script execution shell
+    USER_SHELL=$(basename "$SHELL")
+    if [ "$USER_SHELL" = "zsh" ]; then
         SHELL_RC="$HOME/.zshrc"
-    elif [ -n "$BASH_VERSION" ]; then
+    elif [ "$USER_SHELL" = "bash" ]; then
         SHELL_RC="$HOME/.bash_profile"
     else
         SHELL_RC="$HOME/.profile"
@@ -125,8 +126,18 @@ fi
 echo ""
 echo "🎉 Setup complete!"
 echo ""
-echo "Next steps:"
-echo "  1. source $SHELL_RC"
-echo "  2. npm run cap:check-java  # Verify setup"
+echo "Next steps to apply the changes:"
+
+if [ -n "$ZSH_VERSION" ] || [[ "$SHELL" == *"zsh"* ]]; then
+    echo "  1. Sourcing your ZSH profile:"
+    echo "     source ~/.zshrc"
+    echo "     (Or completely close this terminal window and open a new one)"
+else
+    echo "  1. Sourcing your Bash profile:"
+    echo "     source $SHELL_RC"
+    echo "     (Or completely close this terminal window and open a new one)"
+fi
+
+echo "  2. npm run cap:check-java   # Verify setup"
 echo "  3. npm run cap:run:android  # Try build again"
 echo ""

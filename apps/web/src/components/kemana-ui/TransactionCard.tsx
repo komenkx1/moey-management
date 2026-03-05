@@ -75,7 +75,7 @@ function TransactionCardComponent({
         <div
             className={cn(
                 "group relative flex flex-col overflow-hidden rounded-2xl bg-bg-elevated outline-none",
-                "transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] gpu-accelerated",
+                "transition-[transform,box-shadow,background-color] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform",
                 isExpanded
                     ? "my-1 scale-[1.005] ring-1 ring-border-subtle shadow-[0_8px_24px_rgba(15,23,42,0.08)]"
                     : "hover:bg-bg-subtle active:scale-[0.985]",

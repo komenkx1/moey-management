@@ -51,10 +51,14 @@
   --color-brand-soft: #DBEAFE;
 
   /* Split Bill Colors */
-  --color-split: #6366F1; /* indigo-500 */
-  --color-split-soft: #818CF8; /* indigo-400 */
-  --color-split-bg: rgba(99, 102, 241, 0.1); /* indigo-500/10 */
-  --color-split-hover: rgba(99, 102, 241, 0.2); /* indigo-500/20 */
+  --color-split: #6366F1;
+  /* indigo-500 */
+  --color-split-soft: #818CF8;
+  /* indigo-400 */
+  --color-split-bg: rgba(99, 102, 241, 0.1);
+  /* indigo-500/10 */
+  --color-split-hover: rgba(99, 102, 241, 0.2);
+  /* indigo-500/20 */
   --color-split-text-active: #FFFFFF;
 
   /* Button Colors */
@@ -115,11 +119,13 @@
     --color-brand-soft: #1E3A8A;
 
     /* Split Bill Colors - Dark Theme */
-    --color-split: #C7D2FE; /* indigo-200 */
+    --color-split: #C7D2FE;
+    /* indigo-200 */
     --color-split-soft: #C7D2FE;
     --color-split-bg: rgba(199, 210, 254, 0.2);
     --color-split-hover: rgba(199, 210, 254, 0.3);
-    --color-split-text-active: #1e1b4b; /* indigo-950 for contrast */
+    --color-split-text-active: #1e1b4b;
+    /* indigo-950 for contrast */
 
     --color-btn-bg: #FFFFFF;
     --color-btn-text: #000000;
@@ -218,6 +224,12 @@ body {
     sans-serif;
   background: var(--app-bg);
   color: var(--color-text-primary);
+
+  /* Make app feel native by disabling text selection and highlights */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 button,
@@ -225,6 +237,12 @@ input,
 textarea,
 select {
   font: inherit;
+}
+
+input,
+textarea {
+  -webkit-user-select: auto;
+  user-select: auto;
 }
 
 .safe-top {

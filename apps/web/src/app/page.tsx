@@ -18,6 +18,7 @@ import NotesTabContent from "@/components/kemana-ui/NotesTabContent";
 import HomeTabContent from "@/components/kemana-ui/HomeTabContent";
 import { parseQuickAdd } from "@kemana/core/parser";
 import { inferCategory } from "@kemana/core/rules";
+import { isNativeIOS } from "@/lib/capacitor";
 import type { Entry, ParseQuickAddResult } from "@kemana/core/types";
 import { useDashboardRefs } from "@/hooks/useDashboardState";
 import { useTransactionHandlers } from "@/hooks/useTransactionHandlers";
@@ -715,7 +716,14 @@ export default function DashboardPage() {
         <TopAppBar title="Insight" />
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <main className="flex flex-col gap-3 px-4 py-2 pb-[calc(96px+env(safe-area-inset-bottom))]">
-            <div className="sticky top-0 z-20 bg-bg-base/94 pb-2 pt-1 backdrop-blur-md">
+            <div
+              className={cn(
+                "sticky top-0 z-20 pb-2 pt-1 border-b border-border-subtle/50 mb-1",
+                isNativeIOS()
+                  ? "bg-bg-base/90 backdrop-blur-md"
+                  : "bg-bg-base"
+              )}
+            >
               <DateRangeFilter
                 value={dateFilter}
                 onChange={handleDateFilterChange}

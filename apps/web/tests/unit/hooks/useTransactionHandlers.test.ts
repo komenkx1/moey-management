@@ -5,7 +5,10 @@ import type { Entry, CategoryRules } from "@kemana/core/types";
 import { toast } from "sonner";
 
 vi.mock("sonner", () => ({
-  toast: vi.fn()
+  toast: Object.assign(vi.fn(), {
+    success: vi.fn(),
+    dismiss: vi.fn()
+  })
 }));
 
 describe("useTransactionHandlers - moved toast functionality", () => {
