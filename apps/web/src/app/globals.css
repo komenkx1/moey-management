@@ -243,6 +243,11 @@ input,
 textarea {
   -webkit-user-select: auto;
   user-select: auto;
+  /* Saat scrollIntoView dipanggil, beri margin agar input tidak terlalu
+     mepet ke edge — terutama penting di native iOS ketika keyboard muncul
+     dan ada fixed button di bawah */
+  scroll-margin-top: 100px;
+  scroll-margin-bottom: 100px;
 }
 
 .safe-top {
