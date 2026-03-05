@@ -2,9 +2,10 @@
 
 import { useEffect } from "react";
 import { SplashScreen } from "@capacitor/splash-screen";
-import { StatusBar, Style } from "@capacitor/status-bar";
 import { Keyboard } from "@capacitor/keyboard";
 import { isNativePlatform } from "@/lib/capacitor";
+import { resolveThemeModeFromStorage } from "@/lib/dashboard-page-helpers";
+import { setStatusBarDark, setStatusBarLight } from "@/lib/status-bar";
 
 /**
  * Hook untuk inisialisasi Capacitor plugins
@@ -25,18 +26,13 @@ export function useCapacitor() {
       }
 
       try {
-        // Detect theme dari localStorage atau system
-        const savedTheme = localStorage.getItem("theme-mode");
-        const isDark = savedTheme === "dark" ||
-          (!savedTheme && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        const isDark = resolveThemeModeFromStorage(document.documentElement) === "dark";
 
         // Setup Status Bar sesuai theme
         if (isDark) {
-          await StatusBar.setStyle({ style: Style.Dark });
-          await StatusBar.setBackgroundColor({ color: '#000000' });
+          await setStatusBarDark();
         } else {
-          await StatusBar.setStyle({ style: Style.Light });
-          await StatusBar.setBackgroundColor({ color: '#F7F8FA' });
+          await setStatusBarLight();
         }
 
         // Setup Keyboard

@@ -11,7 +11,7 @@ const LIGHT_THEME_BG = '#F7F8FA';
 const DARK_THEME_BG = '#000000';
 
 /**
- * Set status bar untuk dark theme (light text)
+ * Set status bar untuk dark theme (light icons/text)
  */
 export async function setStatusBarDark() {
   if (!isNativePlatform()) return;
@@ -25,7 +25,7 @@ export async function setStatusBarDark() {
 }
 
 /**
- * Set status bar untuk light theme (dark text)
+ * Set status bar untuk light theme (dark icons/text)
  */
 export async function setStatusBarLight() {
   if (!isNativePlatform()) return;
