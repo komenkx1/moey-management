@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --hostname 127.0.0.1 -p 3005",
+    "dev:mobile": "node scripts/print-lan-url.mjs && next dev --hostname 0.0.0.0 -p 3005",
     "dev:turbo": "next dev --turbopack --hostname 127.0.0.1 -p 3005",
     "build": "node scripts/inject-sw-version.mjs && next build",
     "build:mobile": "npm run build && npm run cap:sync-version && npx cap sync",
