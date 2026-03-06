@@ -131,6 +131,7 @@ export default function SafeAreaSync() {
 
     // PWA only: saat keyboard virtual terbuka, viewport mengecil → set --keyboard-height
     // agar body min-height dibatasi dan tidak ada gap yang bisa di-scroll (edge-to-edge tetap).
+    // Di iOS Safari, visualViewport resize sering telat/tidak fire → pakai focusin/focusout + delay.
     const syncPwaKeyboardHeight = () => {
       if (isNativePlatform()) return;
       if (!inStandaloneMode()) return;
@@ -140,10 +141,52 @@ export default function SafeAreaSync() {
       root.style.setProperty(KEYBOARD_HEIGHT_VAR, `${height}px`);
     };
 
+    const schedulePwaKeyboardSync = () => {
+      if (isNativePlatform() || !inStandaloneMode()) return;
+      syncPwaKeyboardHeight();
+      [100, 350, 600].forEach((ms) => setTimeout(syncPwaKeyboardHeight, ms));
+    };
+
+    const clearPwaKeyboardHeight = () => {
+      if (isNativePlatform() || !inStandaloneMode()) return;
+      root.style.setProperty(KEYBOARD_HEIGHT_VAR, "0px");
+    };
+
+    const handlePwaFocusIn = (e: FocusEvent) => {
+      const t = e.target;
+      if (
+        t instanceof HTMLInputElement ||
+        t instanceof HTMLTextAreaElement ||
+        (t instanceof HTMLElement && t.getAttribute("contenteditable"))
+      ) {
+        schedulePwaKeyboardSync();
+      }
+    };
+
+    const handlePwaFocusOut = (e: FocusEvent) => {
+      const t = e.target;
+      if (
+        t instanceof HTMLInputElement ||
+        t instanceof HTMLTextAreaElement ||
+        (t instanceof HTMLElement && t.getAttribute("contenteditable"))
+      ) {
+        setTimeout(() => {
+          const active = document.activeElement;
+          const stillEditing =
+            active instanceof HTMLInputElement ||
+            active instanceof HTMLTextAreaElement ||
+            (active instanceof HTMLElement && active.getAttribute("contenteditable"));
+          if (!stillEditing) clearPwaKeyboardHeight();
+        }, 150);
+      }
+    };
+
     if (!isNativePlatform() && inStandaloneMode()) {
       syncPwaKeyboardHeight();
       window.visualViewport?.addEventListener("resize", syncPwaKeyboardHeight);
       window.visualViewport?.addEventListener("scroll", syncPwaKeyboardHeight);
+      document.addEventListener("focusin", handlePwaFocusIn);
+      document.addEventListener("focusout", handlePwaFocusOut);
     }
 
     document.addEventListener("focusout", handleKeyboardDismiss);
@@ -157,6 +200,8 @@ export default function SafeAreaSync() {
       if (!isNativePlatform() && inStandaloneMode()) {
         window.visualViewport?.removeEventListener("resize", syncPwaKeyboardHeight);
         window.visualViewport?.removeEventListener("scroll", syncPwaKeyboardHeight);
+        document.removeEventListener("focusin", handlePwaFocusIn);
+        document.removeEventListener("focusout", handlePwaFocusOut);
         root.style.setProperty(KEYBOARD_HEIGHT_VAR, "0px");
       }
       document.removeEventListener("focusout", handleKeyboardDismiss);

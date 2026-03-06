@@ -1,9 +1,27 @@
 import { createServer } from "node:http";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import os from "node:os";
 
 const rootDir = path.resolve(process.cwd(), "out");
 const port = Number.parseInt(process.env.PORT ?? "3100", 10);
+const serveLan = process.env.SERVE_LAN === "1" || process.env.SERVE_LAN === "true";
+const host = serveLan ? "0.0.0.0" : "127.0.0.1";
+
+function getLanUrl() {
+  if (!serveLan) return null;
+  const ifaces = os.networkInterfaces();
+  const isPrivateLAN = (addr) =>
+    addr.startsWith("192.168.") || addr.startsWith("10.") || /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(addr);
+  const all = [];
+  for (const name of Object.keys(ifaces)) {
+    for (const iface of ifaces[name]) {
+      if (iface.family === "IPv4" && !iface.internal) all.push(iface.address);
+    }
+  }
+  const ip = all.find(isPrivateLAN) ?? all[0];
+  return ip ? `http://${ip}:${port}` : null;
+}
 
 const mimeTypes = {
   ".css": "text/css; charset=utf-8",
@@ -84,7 +102,10 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(port, "127.0.0.1", () => {
-  // Keep output short for Playwright webServer logs.
-  console.log(`Static export server running at http://127.0.0.1:${port}`);
+server.listen(port, host, () => {
+  console.log(`Static export: http://${host === "0.0.0.0" ? "localhost" : host}:${port}`);
+  const lanUrl = getLanUrl();
+  if (lanUrl) {
+    console.log(`  Buka di HP (satu WiFi): ${lanUrl}\n`);
+  }
 });
