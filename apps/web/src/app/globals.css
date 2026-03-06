@@ -214,13 +214,9 @@ body[data-ios-standalone="true"] {
 }
 
 /* html bg terpisah: saat body di-translateY ke atas,
-   area di bawah body tetap berwarna app-bg, bukan hitam.
-   Hard-clamp document scroll to prevent iOS PWA rubber-band grey gap. */
+   area di bawah body tetap berwarna app-bg, bukan hitam */
 html {
   background: var(--app-bg);
-  height: 100%;
-  overflow: hidden;
-  overscroll-behavior-y: none;
 }
 
 /* Dark mode: override --app-bg di luar @layer agar tidak kalah prioritas
@@ -232,17 +228,7 @@ html.dark {
 body {
   margin: 0;
   padding: 0;
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  /* Extend into bottom safe area so iOS PWA has no grey gap below tab bar */
-  bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
-  overscroll-behavior-y: none;
-
+  min-height: 100dvh;
   font-family:
     ui-sans-serif,
     -apple-system,
