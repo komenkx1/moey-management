@@ -9,7 +9,13 @@ import { setStatusBarDark, setStatusBarLight } from "@/lib/status-bar";
 
 /**
  * Hook untuk inisialisasi Capacitor plugins
- * Menangani splash screen, status bar, dan keyboard auto-scroll
+ * Menangani splash screen, status bar, keyboard translateY, dan auto-scroll
+ *
+ * Keyboard strategy (KeyboardResize.None + translateY):
+ * - Webview TIDAK di-resize saat keyboard muncul
+ * - Seluruh body di-translate ke atas sebesar tinggi keyboard
+ * - html background-color = app-bg agar tidak ada gap hitam
+ * - Semua elements (termasuk bottom nav) ikut naik
  */
 export function useCapacitor() {
   useEffect(() => {
@@ -18,6 +24,8 @@ export function useCapacitor() {
     }
 
     let focusScrollTimer: ReturnType<typeof setTimeout> | null = null;
+    let keyboardShowListener: { remove: () => void } | null = null;
+    let keyboardHideListener: { remove: () => void } | null = null;
 
     const initializeCapacitor = async () => {
       // Prioritaskan hide splash screen dulu agar user tidak stuck
@@ -39,6 +47,17 @@ export function useCapacitor() {
 
         // Setup Keyboard
         Keyboard.setAccessoryBarVisible({ isVisible: false }).catch(() => { });
+
+        // Keyboard events: set --keyboard-height untuk translateY body
+        keyboardShowListener = await Keyboard.addListener('keyboardWillShow', (info) => {
+          document.documentElement.style.setProperty(
+            '--keyboard-height', `${info.keyboardHeight}px`
+          );
+        });
+
+        keyboardHideListener = await Keyboard.addListener('keyboardWillHide', () => {
+          document.documentElement.style.setProperty('--keyboard-height', '0px');
+        });
       } catch (error) {
         console.error("Error initializing Capacitor plugins:", error);
       }
@@ -58,7 +77,7 @@ export function useCapacitor() {
       ) {
         if (focusScrollTimer) clearTimeout(focusScrollTimer);
 
-        // Delay 400ms agar keyboard muncul dan viewport resize stabil
+        // Delay 400ms agar keyboard muncul dan translateY stabil
         focusScrollTimer = setTimeout(() => {
           if (document.activeElement === target) {
             target.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -79,6 +98,9 @@ export function useCapacitor() {
     return () => {
       document.removeEventListener('focusin', handleFocusIn);
       if (focusScrollTimer) clearTimeout(focusScrollTimer);
+      keyboardShowListener?.remove();
+      keyboardHideListener?.remove();
+      document.documentElement.style.setProperty('--keyboard-height', '0px');
     };
   }, []);
 }

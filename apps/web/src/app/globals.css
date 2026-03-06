@@ -167,6 +167,7 @@
   --app-bg: #F7F8FA;
   /* mapped to bg-base */
   --safe-header-offset: env(safe-area-inset-top);
+  --keyboard-height: 0px;
   --radius: 12px;
   /* Small radius for base shadcn elements initially */
 
@@ -212,10 +213,22 @@ body[data-ios-standalone="true"] {
   box-sizing: border-box;
 }
 
-html,
+/* html bg terpisah: saat body di-translateY ke atas,
+   area di bawah body tetap berwarna app-bg, bukan hitam */
+html {
+  background: var(--app-bg);
+}
+
+/* Dark mode: override --app-bg di luar @layer agar tidak kalah prioritas
+   dari :root yang unlayered */
+html.dark {
+  --app-bg: #000000;
+}
+
 body {
   margin: 0;
   padding: 0;
+  min-height: 100dvh;
   font-family:
     ui-sans-serif,
     -apple-system,
@@ -224,6 +237,10 @@ body {
     sans-serif;
   background: var(--app-bg);
   color: var(--color-text-primary);
+
+  /* Keyboard: seluruh body naik saat keyboard muncul */
+  transform: translateY(calc(var(--keyboard-height) * -1));
+  transition: transform 0.25s ease-out;
 
   /* Make app feel native by disabling text selection and highlights */
   -webkit-user-select: none;
