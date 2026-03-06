@@ -214,9 +214,13 @@ body[data-ios-standalone="true"] {
 }
 
 /* html bg terpisah: saat body di-translateY ke atas,
-   area di bawah body tetap berwarna app-bg, bukan hitam */
+   area di bawah body tetap berwarna app-bg, bukan hitam.
+   Hard-clamp document scroll to prevent iOS PWA rubber-band grey gap. */
 html {
   background: var(--app-bg);
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior-y: none;
 }
 
 /* Dark mode: override --app-bg di luar @layer agar tidak kalah prioritas
@@ -228,7 +232,13 @@ html.dark {
 body {
   margin: 0;
   padding: 0;
-  min-height: 100dvh;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  position: fixed;
+  inset: 0;
+  overscroll-behavior-y: none;
+
   font-family:
     ui-sans-serif,
     -apple-system,

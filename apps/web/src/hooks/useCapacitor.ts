@@ -48,11 +48,12 @@ export function useCapacitor() {
         // Setup Keyboard
         Keyboard.setAccessoryBarVisible({ isVisible: false }).catch(() => { });
 
-        // Keyboard events: set --keyboard-height untuk translateY body
+        // Keyboard events: set --keyboard-height untuk translateY body.
+        // Kurangi sedikit agar bottom bar tidak terlalu jauh dari keyboard (gap abu-abu).
+        const KEYBOARD_GAP_OFFSET_PX = 24;
         keyboardShowListener = await Keyboard.addListener('keyboardWillShow', (info) => {
-          document.documentElement.style.setProperty(
-            '--keyboard-height', `${info.keyboardHeight}px`
-          );
+          const height = Math.max(0, info.keyboardHeight - KEYBOARD_GAP_OFFSET_PX);
+          document.documentElement.style.setProperty('--keyboard-height', `${height}px`);
         });
 
         keyboardHideListener = await Keyboard.addListener('keyboardWillHide', () => {
