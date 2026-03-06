@@ -103,6 +103,33 @@ export default function SafeAreaSync() {
         mediaMinimalUi.addListener(applyMode);
       }
     }
+    // iOS PWA keyboard dismiss fix:
+    // After virtual keyboard hides, iOS may leave visual viewport with a
+    // residual scroll offset, causing `position:fixed; bottom:0` elements
+    // (e.g. BottomTabBar) to float above the actual bottom edge.
+    // Force a scroll reset on focusout to snap everything back.
+    const handleKeyboardDismiss = (e: FocusEvent) => {
+      if (!body.hasAttribute(IOS_STANDALONE_ATTR)) return;
+      const target = e.target;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        (target instanceof HTMLElement && target.getAttribute("contenteditable"))
+      ) {
+        setTimeout(() => {
+          const active = document.activeElement;
+          const stillEditing =
+            active instanceof HTMLInputElement ||
+            active instanceof HTMLTextAreaElement ||
+            (active instanceof HTMLElement && active.getAttribute("contenteditable"));
+          if (!stillEditing) {
+            window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
+          }
+        }, 120);
+      }
+    };
+
+    document.addEventListener("focusout", handleKeyboardDismiss);
     window.addEventListener("pageshow", applyMode);
     window.addEventListener("resize", applyMode);
     window.addEventListener("orientationchange", applyMode);
@@ -110,6 +137,7 @@ export default function SafeAreaSync() {
     window.visualViewport?.addEventListener("scroll", applyMode);
 
     return () => {
+      document.removeEventListener("focusout", handleKeyboardDismiss);
       if (media) {
         if (typeof media.removeEventListener === "function") {
           media.removeEventListener("change", applyMode);
