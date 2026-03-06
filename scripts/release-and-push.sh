@@ -80,10 +80,10 @@ fi
 
 # Add Android and iOS version files to the commit if they exist
 if [ -f "apps/web/android/app/build.gradle" ]; then
-  git add apps/web/android/app/build.gradle
+  git add -f apps/web/android/app/build.gradle
 fi
 if [ -f "apps/web/ios/App/App/Info.plist" ]; then
-  git add apps/web/ios/App/App/Info.plist
+  git add -f apps/web/ios/App/App/Info.plist
 fi
 if [ -f "apps/web/public/sw.js" ]; then
   git add apps/web/public/sw.js
