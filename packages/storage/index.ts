@@ -232,8 +232,8 @@ export function downloadBackupFile(payload: BackupPayload): void {
   const blobLike =
     typeof File === "function"
       ? new File([content], filename, {
-          type: "application/json;charset=utf-8;"
-        })
+        type: "application/json;charset=utf-8;"
+      })
       : new Blob([content], { type: "application/json;charset=utf-8;" });
   const url = window.URL.createObjectURL(blobLike);
   const anchor = document.createElement("a");

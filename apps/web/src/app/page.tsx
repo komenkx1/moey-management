@@ -561,8 +561,24 @@ export default function DashboardPage() {
     toast.success(`${newEntries.length} catatan berhasil ditambahkan.`);
   }, [bulkDraftLines, dismissRecallForSession, rules, debouncedSetEntries, setBulkInput, setBulkOpen, setRecallInputPrimed]);
 
-  const handleExportJson = useCallback(() => {
+  const handleExportJson = useCallback(async () => {
     const payload = createBackupPayload(entries, rules, "kemana-web");
+    const content = JSON.stringify(payload, null, 2);
+    const date = payload.meta.exportedAt.slice(0, 10);
+    const filename = `kemana-backup-${date}.json`;
+
+    try {
+      const { nativeShareFile } = await import("@/lib/native-download");
+      const handled = await nativeShareFile({ content, filename });
+      if (handled) {
+        setBackupMessage("Backup JSON berhasil di-share.");
+        toast.success("Backup JSON berhasil.");
+        return;
+      }
+    } catch {
+      // Fallback ke web
+    }
+
     downloadBackupFile(payload);
     setBackupMessage("Backup JSON berhasil diunduh.");
     toast.success("Backup JSON diunduh.");

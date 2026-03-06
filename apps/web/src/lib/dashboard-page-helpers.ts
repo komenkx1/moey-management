@@ -52,16 +52,27 @@ export function escapeCsvCell(value: string): string {
   return `"${value.replace(/"/g, '""')}"`;
 }
 
-export function triggerDownloadFromText(params: {
+export async function triggerDownloadFromText(params: {
   content: string;
   mimeType: string;
   filename: string;
-}): void {
+}): Promise<void> {
   if (typeof window === "undefined") {
     return;
   }
 
   const { content, mimeType, filename } = params;
+
+  // Di native (iOS/Android), gunakan Filesystem + Share
+  try {
+    const { nativeShareFile } = await import("@/lib/native-download");
+    const handled = await nativeShareFile({ content, filename });
+    if (handled) return;
+  } catch {
+    // Fallback ke web download
+  }
+
+  // Web fallback: blob URL + anchor click
   const blobLike =
     typeof File === "function"
       ? new File([content], filename, { type: mimeType })
