@@ -38,7 +38,7 @@ export function useCapacitor() {
         }
 
         // Setup Keyboard
-        Keyboard.setAccessoryBarVisible({ isVisible: true }).catch(() => { });
+        Keyboard.setAccessoryBarVisible({ isVisible: false }).catch(() => { });
       } catch (error) {
         console.error("Error initializing Capacitor plugins:", error);
       }
