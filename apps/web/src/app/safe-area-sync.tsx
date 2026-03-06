@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { isIOS, isStandalone } from "@/lib/pwa";
-import { isNativePlatform, isNativeIOS } from "@/lib/capacitor";
+import { isNativePlatform, isNativeIOS, isNativeAndroid } from "@/lib/capacitor";
 
 const IOS_STANDALONE_ATTR = "data-ios-standalone";
 const PWA_STANDALONE_ATTR = "data-pwa-standalone";
@@ -103,13 +103,12 @@ export default function SafeAreaSync() {
         mediaMinimalUi.addListener(applyMode);
       }
     }
-    // iOS PWA keyboard dismiss fix:
-    // After virtual keyboard hides, iOS may leave visual viewport with a
-    // residual scroll offset, causing `position:fixed; bottom:0` elements
-    // (e.g. BottomTabBar) to float above the actual bottom edge.
-    // Force a scroll reset on focusout to snap everything back.
+    // iOS/Android: setelah keyboard hilang, viewport kadang tidak restore (offset sisa / area hitam).
+    // Paksa scroll reset on focusout agar fixed bottom elements dan layout snap kembali.
     const handleKeyboardDismiss = (e: FocusEvent) => {
-      if (!body.hasAttribute(IOS_STANDALONE_ATTR)) return;
+      const isIosStandalone = body.hasAttribute(IOS_STANDALONE_ATTR);
+      const isAndroidNative = isNativeAndroid();
+      if (!isIosStandalone && !isAndroidNative) return;
       const target = e.target;
       if (
         target instanceof HTMLInputElement ||

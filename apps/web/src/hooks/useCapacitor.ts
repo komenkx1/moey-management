@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { Keyboard } from "@capacitor/keyboard";
-import { isNativePlatform } from "@/lib/capacitor";
+import { getPlatform, isNativePlatform } from "@/lib/capacitor";
 import { resolveThemeModeFromStorage } from "@/lib/dashboard-page-helpers";
 import { setStatusBarDark, setStatusBarLight } from "@/lib/status-bar";
 
@@ -11,11 +11,12 @@ import { setStatusBarDark, setStatusBarLight } from "@/lib/status-bar";
  * Hook untuk inisialisasi Capacitor plugins
  * Menangani splash screen, status bar, keyboard translateY, dan auto-scroll
  *
- * Keyboard strategy (KeyboardResize.None + translateY):
- * - Webview TIDAK di-resize saat keyboard muncul
- * - Seluruh body di-translate ke atas sebesar tinggi keyboard
- * - html background-color = app-bg agar tidak ada gap hitam
- * - Semua elements (termasuk bottom nav) ikut naik
+ * Keyboard strategy:
+ * - iOS: KeyboardResize.None + translateY body (--keyboard-height) agar konten naik tanpa gap hitam.
+ * - Android: Jangan set --keyboard-height (tetap 0). Di Android, KeyboardResize.None tidak
+ *   dihormati dan WebView tetap di-resize; bila kita tetap translateY akan terjadi efek ganda
+ *   dan muncul area hitam. Dengan tidak translate, layout mengandalkan resize/pan sistem.
+ * - PWA: hook tidak jalan (bukan native), tidak terpengaruh.
  */
 export function useCapacitor() {
   useEffect(() => {
@@ -23,9 +24,13 @@ export function useCapacitor() {
       return;
     }
 
+    const platform = getPlatform();
+    document.body.setAttribute('data-platform', platform);
+
     let focusScrollTimer: ReturnType<typeof setTimeout> | null = null;
     let keyboardShowListener: { remove: () => void } | null = null;
     let keyboardHideListener: { remove: () => void } | null = null;
+    let androidKeyboardDidHideListener: { remove: () => void } | null = null;
 
     const initializeCapacitor = async () => {
       // Prioritaskan hide splash screen dulu agar user tidak stuck
@@ -48,9 +53,9 @@ export function useCapacitor() {
         // Setup Keyboard
         Keyboard.setAccessoryBarVisible({ isVisible: false }).catch(() => { });
 
-        // Keyboard events: set --keyboard-height untuk translateY body.
-        // Kurangi sedikit agar bottom bar tidak terlalu jauh dari keyboard (gap abu-abu).
+        // Keyboard: set --keyboard-height untuk iOS (translateY) dan Android (min-height agar gap tidak scroll).
         const KEYBOARD_GAP_OFFSET_PX = 24;
+
         keyboardShowListener = await Keyboard.addListener('keyboardWillShow', (info) => {
           const height = Math.max(0, info.keyboardHeight - KEYBOARD_GAP_OFFSET_PX);
           document.documentElement.style.setProperty('--keyboard-height', `${height}px`);
@@ -59,6 +64,17 @@ export function useCapacitor() {
         keyboardHideListener = await Keyboard.addListener('keyboardWillHide', () => {
           document.documentElement.style.setProperty('--keyboard-height', '0px');
         });
+
+        // Android: viewport sering tidak restore ke tinggi penuh setelah keyboard tutup (area hitam).
+        // Paksa scroll + dispatch resize agar layout kolaps kembali.
+        if (platform === 'android') {
+          androidKeyboardDidHideListener = await Keyboard.addListener('keyboardDidHide', () => {
+            setTimeout(() => {
+              window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+              window.dispatchEvent(new Event('resize'));
+            }, 150);
+          });
+        }
       } catch (error) {
         console.error("Error initializing Capacitor plugins:", error);
       }
@@ -101,6 +117,7 @@ export function useCapacitor() {
       if (focusScrollTimer) clearTimeout(focusScrollTimer);
       keyboardShowListener?.remove();
       keyboardHideListener?.remove();
+      androidKeyboardDidHideListener?.remove();
       document.documentElement.style.setProperty('--keyboard-height', '0px');
     };
   }, []);
