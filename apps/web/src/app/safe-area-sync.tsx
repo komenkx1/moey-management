@@ -7,6 +7,7 @@ import { isNativePlatform, isNativeIOS, isNativeAndroid } from "@/lib/capacitor"
 const IOS_STANDALONE_ATTR = "data-ios-standalone";
 const PWA_STANDALONE_ATTR = "data-pwa-standalone";
 const SAFE_HEADER_OFFSET_VAR = "--safe-header-offset";
+const KEYBOARD_HEIGHT_VAR = "--keyboard-height";
 
 function readEnvSafeAreaTop(): number {
   const probe = document.createElement("div");
@@ -128,6 +129,23 @@ export default function SafeAreaSync() {
       }
     };
 
+    // PWA only: saat keyboard virtual terbuka, viewport mengecil → set --keyboard-height
+    // agar body min-height dibatasi dan tidak ada gap yang bisa di-scroll (edge-to-edge tetap).
+    const syncPwaKeyboardHeight = () => {
+      if (isNativePlatform()) return;
+      if (!inStandaloneMode()) return;
+      const vv = window.visualViewport;
+      if (!vv) return;
+      const height = Math.max(0, Math.round(window.innerHeight - vv.height));
+      root.style.setProperty(KEYBOARD_HEIGHT_VAR, `${height}px`);
+    };
+
+    if (!isNativePlatform() && inStandaloneMode()) {
+      syncPwaKeyboardHeight();
+      window.visualViewport?.addEventListener("resize", syncPwaKeyboardHeight);
+      window.visualViewport?.addEventListener("scroll", syncPwaKeyboardHeight);
+    }
+
     document.addEventListener("focusout", handleKeyboardDismiss);
     window.addEventListener("pageshow", applyMode);
     window.addEventListener("resize", applyMode);
@@ -136,6 +154,11 @@ export default function SafeAreaSync() {
     window.visualViewport?.addEventListener("scroll", applyMode);
 
     return () => {
+      if (!isNativePlatform() && inStandaloneMode()) {
+        window.visualViewport?.removeEventListener("resize", syncPwaKeyboardHeight);
+        window.visualViewport?.removeEventListener("scroll", syncPwaKeyboardHeight);
+        root.style.setProperty(KEYBOARD_HEIGHT_VAR, "0px");
+      }
       document.removeEventListener("focusout", handleKeyboardDismiss);
       if (media) {
         if (typeof media.removeEventListener === "function") {

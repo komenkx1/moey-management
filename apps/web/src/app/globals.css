@@ -257,6 +257,12 @@ body[data-platform="android"] {
   transition: min-height 0.25s ease-out;
 }
 
+/* PWA (bukan native): keyboard virtual → batasi tinggi body agar tetap edge-to-edge, tidak ada gap scroll */
+body[data-pwa-standalone="true"]:not([data-platform]) {
+  min-height: calc(100dvh - var(--keyboard-height));
+  transition: min-height 0.25s ease-out;
+}
+
 button,
 input,
 textarea,
