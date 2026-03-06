@@ -236,7 +236,11 @@ body {
   width: 100%;
   overflow: hidden;
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  /* Extend into bottom safe area so iOS PWA has no grey gap below tab bar */
+  bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
   overscroll-behavior-y: none;
 
   font-family:
