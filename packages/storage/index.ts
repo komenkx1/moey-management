@@ -170,6 +170,23 @@ export async function saveEntries(entries: Entry[]): Promise<void> {
   }
 }
 
+/**
+ * Wipes out local database explicitly during hard logouts to prevent data leaks.
+ */
+export async function clearLocalDatabase(): Promise<void> {
+  try {
+    await db.transaction("rw", db.entries, db.rules, db.syncQueue, async () => {
+      await db.entries.clear();
+      await db.rules.clear();
+      await db.syncQueue.clear();
+    });
+    console.log("🧹 Local database wiped clean for privacy.");
+  } catch (err) {
+    console.error("Failed to clear local database:", err);
+    throw err;
+  }
+}
+
 export async function loadRules(): Promise<CategoryRules> {
   try {
     const rows = await db.rules.toArray();

@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
+import { useAuthStore } from "@/store/use-auth-store";
 import { useUserProfile } from "@/store/kemana/hooks-granular";
 import { Button } from "@/components/ui/button";
 import { UserCircle, Shield, Cloud, LogOut, KeyRound } from "lucide-react";
@@ -7,9 +8,14 @@ import { toast } from "sonner";
 import { useState } from "react";
 
 export default function AccountTabContent() {
-    const { user, isInitialized, signInWithGoogle, signOut } = useAuth();
+    // Subscribe directly to auth store for reactive updates (not via useAuth hook)
+    const user = useAuthStore((state) => state.user);
+    const isInitialized = useAuthStore((state) => state.isInitialized);
+    // Use useAuth only for action methods
+    const { signInWithGoogle, flushSyncQueue, forceSignOut } = useAuth();
     const { userName, setIsNamePromptOpen } = useUserProfile();
     const [isLoggingIn, setIsLoggingIn] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
 
     const handleLogin = async () => {
         setIsLoggingIn(true);
@@ -22,11 +28,35 @@ export default function AccountTabContent() {
     };
 
     const handleLogout = async () => {
+        setIsLoggingOut(true);
         try {
-            await signOut();
+            // Step 1: Try to flush pending sync queue
+            await flushSyncQueue();
+            // If flush succeeded (online + queue empty or synced), proceed to force sign out
+            await forceSignOut();
             toast.success("Berhasil keluar.");
         } catch (e: any) {
-            toast.error(e.message || "Gagal keluar.");
+            if (e.message === "PENDING_OFFLINE_DATA") {
+                // Step 2: User is offline with pending data — warn them
+                const confirmed = window.confirm(
+                    "⚠️ Peringatan\n\n" +
+                    "Kamu sedang offline dan masih ada data transaksi yang belum tersimpan ke cloud.\n\n" +
+                    "Jika kamu keluar sekarang, data tersebut akan HILANG PERMANEN dan tidak bisa dikembalikan.\n\n" +
+                    "Yakin ingin keluar?"
+                );
+                if (confirmed) {
+                    try {
+                        await forceSignOut();
+                        toast.success("Berhasil keluar.");
+                    } catch (signOutError: any) {
+                        toast.error(signOutError.message || "Gagal keluar.");
+                    }
+                }
+            } else {
+                toast.error(e.message || "Gagal keluar.");
+            }
+        } finally {
+            setIsLoggingOut(false);
         }
     };
 
@@ -125,10 +155,11 @@ export default function AccountTabContent() {
                     <div className="h-px w-full bg-border-subtle/30" />
                     <button
                         onClick={handleLogout}
-                        className="px-4 py-4 flex items-center gap-3 text-red-500 hover:bg-red-500/5 active:bg-red-500/10 transition-colors w-full text-left rounded-b-[20px]"
+                        disabled={isLoggingOut}
+                        className="px-4 py-4 flex items-center gap-3 text-red-500 hover:bg-red-500/5 active:bg-red-500/10 transition-colors w-full text-left rounded-b-[20px] disabled:opacity-50"
                     >
                         <LogOut className="h-4 w-4" />
-                        <span className="text-[14px] font-medium">Keluar Akun</span>
+                        <span className="text-[14px] font-medium">{isLoggingOut ? "Mengeluarkan..." : "Keluar Akun"}</span>
                     </button>
                 </section>
             )}

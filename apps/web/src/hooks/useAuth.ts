@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/use-auth-store";
-import { migrateLocalDataToAccount, initialSyncOnLogin, SyncWorker } from "@kemana/storage";
+import { useKemanaStore } from "@/store/use-kemana-store";
+import { migrateLocalDataToAccount, initialSyncOnLogin, SyncWorker, loadEntries, loadRules, clearLocalDatabase } from "@kemana/storage";
 
 // Global sync worker instance
 let syncWorkerInstance: SyncWorker | null = null;
@@ -18,26 +19,28 @@ export function useAuth() {
 
     const migrationAttemptedRef = useRef(false);
 
+    const hasInitializedRef = useRef(false);
+
     useEffect(() => {
-        // Only initialize once
-        if (isInitialized) return;
+        // Get initial session only once across strict mode re-renders
+        if (!hasInitializedRef.current) {
+            hasInitializedRef.current = true;
+            supabase.auth.getSession().then(({ data: { session }, error }) => {
+                if (error) {
+                    console.error("Error getting session:", error);
+                }
+                setSession(session);
+                setInitialized(true);
 
-        // Get initial session
-        supabase.auth.getSession().then(({ data: { session }, error }) => {
-            if (error) {
-                console.error("Error getting session:", error);
-            }
-            setSession(session);
-            setInitialized(true);
+                // If already logged in, start sync worker
+                if (session?.user) {
+                    console.log('🔄 Starting sync worker for existing session');
+                    startSyncWorker(session.user.id);
+                }
+            });
+        }
 
-            // If already logged in, start sync worker
-            if (session?.user) {
-                console.log('🔄 Starting sync worker for existing session');
-                startSyncWorker(session.user.id);
-            }
-        });
-
-        // Listen to auth changes
+        // Listen to auth changes permanently
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -74,6 +77,19 @@ export function useAuth() {
 
                     if (syncResult.success) {
                         console.log("✓ Data tersinkronisasi");
+                        // Reload merged data from IndexedDB into UI state
+                        try {
+                            const [freshEntries, freshRules] = await Promise.all([
+                                loadEntries(),
+                                loadRules()
+                            ]);
+                            const store = useKemanaStore.getState();
+                            store.setEntries(freshEntries);
+                            store.setRules(freshRules);
+                            console.log(`✓ UI diperbarui: ${freshEntries.length} transaksi, ${freshRules.length} aturan`);
+                        } catch (reloadError) {
+                            console.error("Failed to reload data into UI:", reloadError);
+                        }
                     } else {
                         console.error("Initial sync failed:", syncResult.error);
                     }
@@ -97,11 +113,29 @@ export function useAuth() {
             if (event === "SIGNED_OUT") {
                 migrationAttemptedRef.current = false;
                 stopSyncWorker();
+                
+                // Reload from IndexedDB to ensure UI reflects the true DB state
+                // This prevents race conditions where scheduled background saves
+                // from previous state overwrite newly added entries
+                try {
+                    const [freshEntries, freshRules] = await Promise.all([
+                        loadEntries(),
+                        loadRules()
+                    ]);
+                    const store = useKemanaStore.getState();
+                    store.setEntries(freshEntries);
+                    store.setRules(freshRules);
+                    console.log('🔄 UI reloaded after sign out:', freshEntries.length, 'entries');
+                } catch (reloadError) {
+                    console.error('Failed to reload after sign out:', reloadError);
+                }
             }
         });
 
-        return () => subscription.unsubscribe();
-    }, [isInitialized, setSession, setInitialized]);
+        return () => {
+            subscription.unsubscribe();
+        };
+    }, []); // Empty dependency array so it only mounts/unmounts once 
 
     const signInWithGoogle = async () => {
         const { error } = await supabase.auth.signInWithOAuth({
@@ -113,7 +147,33 @@ export function useAuth() {
         if (error) throw error;
     };
 
-    const signOut = async () => {
+    /**
+     * Attempts to flush the sync queue before sign out.
+     * If this throws "PENDING_OFFLINE_DATA", the UI must warn the user before proceeding.
+     */
+    const flushSyncQueue = async () => {
+        if (syncWorkerInstance) {
+            await syncWorkerInstance.flushAll();
+            console.log('✓ Sync queue flushed before logout');
+        }
+    };
+
+    /**
+     * Forcibly logs out, clears local UI memory, drops the Local Database to prevent leaks,
+     * and signs out of the Supabase Authenticator.
+     */
+    const forceSignOut = async () => {
+        try {
+            await clearLocalDatabase();
+            
+            const store = useKemanaStore.getState();
+            store.setEntries([]);
+            store.setRules([]);
+            console.log("🧹 UI Memory Cleared");
+        } catch (dbError) {
+            console.error("Failed to clear local database upon signout:", dbError);
+        }
+
         const { error } = await supabase.auth.signOut();
         if (error) throw error;
     };
@@ -124,7 +184,8 @@ export function useAuth() {
         isLoading,
         isInitialized,
         signInWithGoogle,
-        signOut,
+        flushSyncQueue,
+        forceSignOut,
     };
 }
 
