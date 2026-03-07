@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
     clearStorageHealthWarnings,
     getStorageHealth,
@@ -48,6 +48,9 @@ export function useStorageInit({
     isUnmountingRef,
     flushPendingUpdates
 }: UseStorageInitProps) {
+    const isFirstEntriesSyncRef = useRef(true);
+    const isFirstRulesSyncRef = useRef(true);
+
     useEffect(() => {
         async function initStorage() {
             await migrateFromLocalStorage();
@@ -85,6 +88,12 @@ export function useStorageInit({
             return;
         }
 
+        // Prevent accidental IndexedDB wipe from stale closure of `[]` before Zustand hydration propagates
+        if (isFirstEntriesSyncRef.current) {
+            isFirstEntriesSyncRef.current = false;
+            return;
+        }
+
         cancelEntriesPersistRef.current?.();
         const cancelPersist = scheduleBackgroundTask(() => {
             saveEntries(entries);
@@ -109,6 +118,13 @@ export function useStorageInit({
         if (!isStorageReady) {
             return;
         }
+
+        // Prevent accidental IndexedDB wipe from stale closure
+        if (isFirstRulesSyncRef.current) {
+            isFirstRulesSyncRef.current = false;
+            return;
+        }
+
         saveRules(rules);
     }, [rules, isStorageReady]);
 
