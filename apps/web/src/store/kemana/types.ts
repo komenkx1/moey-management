@@ -4,15 +4,27 @@ import type { DateFilterPreset, CustomDateRange } from "@/lib/kemana-utils";
 import type { AddTransactionSubmitPayload } from "@/components/kemana-ui/AddTransactionSheet";
 export type Updater<T> = T | ((prev: T) => T);
 
+export type SyncStatus = 'offline' | 'syncing' | 'synced' | 'failed' | 'idle';
+
 export interface DataSlice {
   isStorageReady: boolean;
   entries: Entry[];
   rules: CategoryRules;
   storageWarning: string | null;
+  
+  // Sync Status
+  syncStatus: SyncStatus;
+  pendingSyncCount: number;
+  lastSyncTime: number | null;
+
   setIsStorageReady: (next: Updater<boolean>) => void;
   setEntries: (next: Updater<Entry[]>) => void;
   setRules: (next: Updater<CategoryRules>) => void;
   setStorageWarning: (next: Updater<string | null>) => void;
+  
+  setSyncStatus: (next: Updater<SyncStatus>) => void;
+  setPendingSyncCount: (next: Updater<number>) => void;
+  setLastSyncTime: (next: Updater<number | null>) => void;
 }
 
 export interface UiSlice {

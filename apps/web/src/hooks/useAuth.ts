@@ -212,6 +212,11 @@ export function useAuth() {
 
         if (isNativePlatform()) {
             try {
+                // Prevent Swift fatal crash by ensuring Native SDK is initialized
+                GoogleAuth.initialize({
+                    scopes: ['profile', 'email'],
+                    grantOfflineAccess: true,
+                });
                 await GoogleAuth.signOut();
             } catch (googleError) {
                 console.warn("⚠️ Non-fatal: Failed to sign out of native Google SDK:", googleError);
@@ -239,6 +244,17 @@ export function useAuth() {
 function startSyncWorker(userId: string) {
     if (!syncWorkerInstance) {
         syncWorkerInstance = new SyncWorker(supabase);
+        
+        // Link internal sync events to the React global store
+        syncWorkerInstance.onStatusChange = (status) => {
+            useKemanaStore.getState().setSyncStatus(status);
+        };
+        syncWorkerInstance.onPendingCountChange = (count) => {
+            useKemanaStore.getState().setPendingSyncCount(count);
+        };
+        syncWorkerInstance.onLastSyncTimeChange = (time) => {
+            useKemanaStore.getState().setLastSyncTime(time);
+        };
 
         // Use a cached online status to prevent polling the native bridge every second
         let isCurrentlyOnline = true;

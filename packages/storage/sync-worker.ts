@@ -1,6 +1,8 @@
 import { db, type SyncQueueItem } from "./db";
 import type { Entry, CategoryRules } from "../core/types";
 
+export type SyncWorkerStatus = 'idle' | 'syncing' | 'synced' | 'failed' | 'offline';
+
 export class SyncWorker {
   private isRunning = false;
   private supabaseClient: any;
@@ -11,8 +13,30 @@ export class SyncWorker {
   private wakeupResolver: (() => void) | null = null;
   public isOnlineFn: () => Promise<boolean> = async () => navigator.onLine;
 
+  public onStatusChange?: (status: SyncWorkerStatus) => void;
+  public onPendingCountChange?: (count: number) => void;
+  public onLastSyncTimeChange?: (time: number | null) => void;
+  private currentStatus: SyncWorkerStatus = 'idle';
+
   constructor(supabaseClient: any) {
     this.supabaseClient = supabaseClient;
+  }
+
+  private setStatus(status: SyncWorkerStatus) {
+    if (this.currentStatus !== status) {
+      this.currentStatus = status;
+      this.onStatusChange?.(status);
+    }
+  }
+
+  private async notifyPendingCount(count?: number) {
+    if (!this.onPendingCountChange) return;
+    if (count !== undefined) {
+      this.onPendingCountChange(count);
+    } else {
+      const stats = await this.getStatus();
+      this.onPendingCountChange(stats.pending + stats.failed);
+    }
   }
 
   /**
@@ -51,6 +75,8 @@ export class SyncWorker {
         // Check if online using injected function
         const isOnline = await this.isOnlineFn();
         if (!isOnline) {
+          this.setStatus('offline');
+          await this.notifyPendingCount();
           await this.sleep(5000); // Check every 5s when offline
           continue;
         }
@@ -62,10 +88,14 @@ export class SyncWorker {
           .sortBy('createdAt');
 
         if (pendingItems.length === 0) {
+          this.setStatus('synced');
+          await this.notifyPendingCount(0);
           await this.sleep(this.checkInterval);
           continue;
         }
 
+        this.setStatus('syncing');
+        await this.notifyPendingCount(pendingItems.length);
         console.log(`📤 Processing ${pendingItems.length} sync items...`);
 
         // Process in batches of 10
@@ -73,6 +103,7 @@ export class SyncWorker {
         await this.processBatch(batch);
 
       } catch (error) {
+        this.setStatus('failed');
         console.error('❌ Sync worker error:', error);
         await this.sleep(5000); // Wait 5s on error
       }
@@ -96,8 +127,11 @@ export class SyncWorker {
         // Mark as synced
         await db.syncQueue.update(item.id, { status: 'synced' });
         console.log(`✓ Synced ${item.entity} ${item.operation}:`, item.entityId);
+        this.onLastSyncTimeChange?.(Date.now());
+        await this.notifyPendingCount();
 
       } catch (error) {
+        this.setStatus('failed');
         console.error(`❌ Failed to sync ${item.entity}:`, error);
 
         const nextRetry = item.retryCount + 1;
