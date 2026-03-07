@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { isIOS, isStandalone } from "@/lib/pwa";
 import { isNativePlatform, isNativeIOS, isNativeAndroid } from "@/lib/capacitor";
 
@@ -8,6 +8,13 @@ const IOS_STANDALONE_ATTR = "data-ios-standalone";
 const PWA_STANDALONE_ATTR = "data-pwa-standalone";
 const SAFE_HEADER_OFFSET_VAR = "--safe-header-offset";
 const KEYBOARD_HEIGHT_VAR = "--keyboard-height";
+
+const isDev = typeof process !== "undefined" && process.env.NODE_ENV === "development";
+
+function isPwaKeyboardDebug(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.location.search.includes("pwa_keyboard_debug=1");
+}
 
 function readEnvSafeAreaTop(): number {
   const probe = document.createElement("div");
@@ -80,6 +87,10 @@ export default function SafeAreaSync() {
       } else {
         body.removeAttribute(PWA_STANDALONE_ATTR);
       }
+      // Debug: force PWA standalone + keyboard behavior hanya di PWA (bukan native)
+      if (!isNativePlatform() && isPwaKeyboardDebug()) {
+        body.setAttribute(PWA_STANDALONE_ATTR, "true");
+      }
     };
 
     applyMode();
@@ -129,27 +140,66 @@ export default function SafeAreaSync() {
       }
     };
 
-    // PWA only: saat keyboard virtual terbuka, viewport mengecil → set --keyboard-height
-    // agar body min-height dibatasi dan tidak ada gap yang bisa di-scroll (edge-to-edge tetap).
-    // Di iOS Safari, visualViewport resize sering telat/tidak fire → pakai focusin/focusout + delay.
+    // ----- PWA only (bukan iOS/Android native): keyboard virtual -----
+    // Semua block di bawah hanya jalan jika !isNativePlatform(). Native pakai useCapacitor + CSS data-platform.
     const syncPwaKeyboardHeight = () => {
       if (isNativePlatform()) return;
-      if (!inStandaloneMode()) return;
+      const forcePwa = isPwaKeyboardDebug();
+      if (!inStandaloneMode() && !forcePwa) return;
       const vv = window.visualViewport;
       if (!vv) return;
-      const height = Math.max(0, Math.round(window.innerHeight - vv.height));
+      const fromInner = Math.round(window.innerHeight - vv.height);
+      const fromOuter =
+        typeof window.outerHeight === "number"
+          ? Math.round(window.outerHeight - vv.offsetTop - vv.height)
+          : 0;
+      let height = Math.max(0, fromInner, fromOuter);
+      let usedFallback = false;
+      // Fallback iOS: kadang kedua nilai 0 saat keyboard baru buka
+      if (height === 0 && isIOS() && document.activeElement) {
+        const active = document.activeElement;
+        const isInput =
+          active instanceof HTMLInputElement ||
+          active instanceof HTMLTextAreaElement ||
+          (active instanceof HTMLElement && active.getAttribute("contenteditable"));
+        if (isInput) {
+          height = Math.min(320, Math.round((window.outerHeight || window.innerHeight) * 0.45));
+          usedFallback = true;
+        }
+      }
       root.style.setProperty(KEYBOARD_HEIGHT_VAR, `${height}px`);
+
+      if (isDev || forcePwa) {
+        console.log("[PWA keyboard] sync", {
+          innerHeight: window.innerHeight,
+          outerHeight: typeof window.outerHeight === "number" ? window.outerHeight : "-",
+          vvHeight: vv.height,
+          vvOffsetTop: vv.offsetTop,
+          fromInner,
+          fromOuter,
+          computedHeight: height,
+          usedFallback,
+        });
+      }
     };
 
     const schedulePwaKeyboardSync = () => {
-      if (isNativePlatform() || !inStandaloneMode()) return;
+      if (isNativePlatform()) return;
+      if (!inStandaloneMode() && !isPwaKeyboardDebug()) return;
+      if (isDev || isPwaKeyboardDebug()) {
+        console.log("[PWA keyboard] focusin → schedule sync");
+      }
       syncPwaKeyboardHeight();
-      [100, 350, 600].forEach((ms) => setTimeout(syncPwaKeyboardHeight, ms));
+      [100, 350, 600, 1000].forEach((ms) => setTimeout(syncPwaKeyboardHeight, ms));
     };
 
     const clearPwaKeyboardHeight = () => {
-      if (isNativePlatform() || !inStandaloneMode()) return;
+      if (isNativePlatform()) return;
+      if (!inStandaloneMode() && !isPwaKeyboardDebug()) return;
       root.style.setProperty(KEYBOARD_HEIGHT_VAR, "0px");
+      if (isDev || isPwaKeyboardDebug()) {
+        console.log("[PWA keyboard] focusout → clear --keyboard-height");
+      }
     };
 
     const handlePwaFocusIn = (e: FocusEvent) => {
@@ -181,12 +231,24 @@ export default function SafeAreaSync() {
       }
     };
 
-    if (!isNativePlatform() && inStandaloneMode()) {
+    if (!isNativePlatform() && (inStandaloneMode() || isPwaKeyboardDebug())) {
+      if (isDev || isPwaKeyboardDebug()) {
+        console.log("[PWA keyboard] init", {
+          standalone: inStandaloneMode(),
+          forceDebug: isPwaKeyboardDebug(),
+          displayMode: typeof window.matchMedia !== "undefined" && window.matchMedia("(display-mode: standalone)").matches ? "standalone" : "browser",
+        });
+      }
       syncPwaKeyboardHeight();
       window.visualViewport?.addEventListener("resize", syncPwaKeyboardHeight);
       window.visualViewport?.addEventListener("scroll", syncPwaKeyboardHeight);
       document.addEventListener("focusin", handlePwaFocusIn);
       document.addEventListener("focusout", handlePwaFocusOut);
+    } else if (isDev && !isNativePlatform()) {
+      console.log("[PWA keyboard] tidak aktif (hanya jalan di standalone atau ?pwa_keyboard_debug=1)", {
+        standalone: inStandaloneMode(),
+        urlHint: "Tambahkan ?pwa_keyboard_debug=1 di URL untuk tes di browser",
+      });
     }
 
     document.addEventListener("focusout", handleKeyboardDismiss);
@@ -197,7 +259,7 @@ export default function SafeAreaSync() {
     window.visualViewport?.addEventListener("scroll", applyMode);
 
     return () => {
-      if (!isNativePlatform() && inStandaloneMode()) {
+      if (!isNativePlatform() && (inStandaloneMode() || isPwaKeyboardDebug())) {
         window.visualViewport?.removeEventListener("resize", syncPwaKeyboardHeight);
         window.visualViewport?.removeEventListener("scroll", syncPwaKeyboardHeight);
         document.removeEventListener("focusin", handlePwaFocusIn);
@@ -234,5 +296,59 @@ export default function SafeAreaSync() {
     };
   }, []);
 
-  return null;
+  const [debugInfo, setDebugInfo] = useState<{
+    keyboardHeight: string;
+    innerHeight: number;
+    outerHeight: number;
+    vvHeight: number;
+    vvOffsetTop: number;
+    fromInner: number;
+    fromOuter: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (isNativePlatform() || !isPwaKeyboardDebug() || typeof window === "undefined") return;
+    const update = () => {
+      const vv = window.visualViewport;
+      const inner = window.innerHeight;
+      const outer = typeof window.outerHeight === "number" ? window.outerHeight : 0;
+      const vh = vv?.height ?? 0;
+      const vtop = vv?.offsetTop ?? 0;
+      setDebugInfo({
+        keyboardHeight: document.documentElement.style.getPropertyValue("--keyboard-height") || "0px",
+        innerHeight: inner,
+        outerHeight: outer,
+        vvHeight: vh,
+        vvOffsetTop: vtop,
+        fromInner: Math.round(inner - vh),
+        fromOuter: outer ? Math.round(outer - vtop - vh) : 0,
+      });
+    };
+    update();
+    const t = setInterval(update, 400);
+    return () => clearInterval(t);
+  }, []);
+
+  return !isNativePlatform() && isPwaKeyboardDebug() && debugInfo ? (
+    <div
+      style={{
+        position: "fixed",
+        bottom: 8,
+        left: 8,
+        right: 8,
+        zIndex: 99999,
+        padding: "8px 10px",
+        background: "rgba(0,0,0,0.85)",
+        color: "#fff",
+        fontSize: 11,
+        fontFamily: "monospace",
+        borderRadius: 6,
+        pointerEvents: "none",
+      }}
+      aria-live="polite"
+    >
+      <strong>[PWA keyboard debug]</strong> key: {debugInfo.keyboardHeight} | inner: {debugInfo.innerHeight} outer: {debugInfo.outerHeight} |
+      vv.h: {debugInfo.vvHeight} vv.top: {debugInfo.vvOffsetTop} | fromInner: {debugInfo.fromInner} fromOuter: {debugInfo.fromOuter}
+    </div>
+  ) : null;
 }
