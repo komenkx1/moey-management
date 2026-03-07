@@ -145,10 +145,10 @@ export class SyncWorker {
           date: entry.date,
           category: entry.category,
           source: entry.source || 'quick_add',
-          raw_input: entry.rawInput,
-          payment_method: entry.paymentMethod,
-          parse_warnings: entry.parseWarnings,
-          split: entry.split,
+          raw_input: entry.rawInput || null,
+          payment_method: entry.paymentMethod || null,
+          parse_warnings: entry.parseWarnings || null,
+          split: entry.split || null,
           created_at: entry.createdAt,
           updated_at: entry.updatedAt
         };
@@ -230,6 +230,27 @@ export class SyncWorker {
       synced,
       total: pending + syncing + failed + synced
     };
+  }
+
+  /**
+   * Flush all pending items immediately (use before logout)
+   */
+  async flushAll() {
+    const pendingItems = await db.syncQueue
+      .where('status')
+      .anyOf(['pending', 'failed'])
+      .sortBy('createdAt');
+
+    if (pendingItems.length === 0) return;
+
+    // Critical check: Do not flush if offline and there's data to send
+    if (!navigator.onLine && pendingItems.length > 0) {
+      console.warn("⚠️ Cannot flush pending items while offline.");
+      throw new Error("PENDING_OFFLINE_DATA");
+    }
+
+    console.log(`📤 Flushing ${pendingItems.length} pending sync items...`);
+    await this.processBatch(pendingItems);
   }
 
   /**
