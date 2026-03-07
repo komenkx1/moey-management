@@ -1,0 +1,13 @@
+{
+  "name": "kemana-monorepo",
+  "private": true,
+  "scripts": {
+    "db:push": "npx supabase db push",
+    "db:pull": "npx supabase db pull",
+    "db:new": "npx supabase migration new",
+    "db:status": "npx supabase db diff --schema public"
+  },
+  "devDependencies": {
+    "supabase": "^2.77.0"
+  }
+}

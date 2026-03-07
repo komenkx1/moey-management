@@ -14,6 +14,7 @@ import type { AddTransactionSubmitPayload } from "@/components/kemana-ui/AddTran
 import type { BulkPreviewLine } from "@/components/kemana-ui/BulkInputSheet";
 import DashboardSheets from "@/components/kemana-ui/DashboardSheets";
 const InsightTabContent = lazy(() => import("@/components/kemana-ui/InsightTabContent"));
+const AccountTabContent = lazy(() => import("@/components/kemana-ui/AccountTabContent"));
 import NotesTabContent from "@/components/kemana-ui/NotesTabContent";
 import HomeTabContent from "@/components/kemana-ui/HomeTabContent";
 import { parseQuickAdd } from "@kemana/core/parser";
@@ -764,6 +765,23 @@ export default function DashboardPage() {
                 onPrimaryAction={handleInsightPrimaryAction}
                 onOpenNotes={handleInsightOpenNotes}
               />
+            </Suspense>
+          </main>
+        </div>
+        <BottomTabBar />
+        {dashboardSheets}
+      </ScreenContainer>
+    );
+  }
+
+  if (activeTab === "account") {
+    return (
+      <ScreenContainer withBottomNav>
+        <TopAppBar title="Akun" />
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <main className="flex flex-col gap-3 px-4 py-2 pb-[calc(96px+env(safe-area-inset-bottom))]">
+            <Suspense fallback={<div className="flex-1 flex items-center justify-center p-8 text-[13px] text-text-tertiary animate-pulse">Memuat akun...</div>}>
+              <AccountTabContent />
             </Suspense>
           </main>
         </div>

@@ -5,6 +5,7 @@ import SafeAreaSync from "./safe-area-sync";
 import CapacitorInit from "./capacitor-init";
 import SWRegister from "./sw-register";
 import ThemeColorSync from "./theme-color";
+import AuthInit from "./auth-init";
 import { Toaster } from "sonner";
 import "./globals.css";
 
@@ -42,6 +43,7 @@ export default function RootLayout({
         <ErrorBoundary>
           <SafeAreaSync />
           <CapacitorInit />
+          <AuthInit />
           <PwaInstallBanner />
           {children}
           <Toaster position="bottom-center" richColors />

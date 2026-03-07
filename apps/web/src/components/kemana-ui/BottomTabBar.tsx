@@ -1,6 +1,6 @@
 import { ReactNode, startTransition } from "react";
 import { cn } from "@/lib/utils";
-import { Home, FileText, PieChart, MoreHorizontal } from "lucide-react";
+import { Home, FileText, PieChart, User } from "lucide-react";
 import { useActiveTab } from "@/store/kemana/hooks-granular";
 
 interface TabItem {
@@ -13,6 +13,7 @@ const TABS: TabItem[] = [
     { id: "home", label: "Beranda", icon: <Home className="h-6 w-6" /> },
     { id: "notes", label: "Catatan", icon: <FileText className="h-6 w-6" /> },
     { id: "insight", label: "Insight", icon: <PieChart className="h-6 w-6" /> },
+    { id: "account", label: "Akun", icon: <User className="h-6 w-6" /> },
 ];
 
 interface BottomTabBarProps {

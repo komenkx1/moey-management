@@ -40,6 +40,7 @@ export interface EntrySplit {
 
 export interface Entry {
   id: string;
+  owner_id?: string;
   text: string;
   amount: number;
   rawInput?: string;
@@ -82,6 +83,7 @@ export interface ParseError {
 export type ParseQuickAddResult = ParseResult | ParseError;
 
 export interface CategoryRule {
+  owner_id?: string;
   pattern: string;
   match: RuleMatch;
   category: Category;
