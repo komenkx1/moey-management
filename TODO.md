@@ -1,6 +1,6 @@
 # TODO Eksekusi MVP KeMana (Single-Device First)
 
-## 0. Progress Update (Per 28 Februari 2026)
+## 0. Progress Update (Per 7 Maret 2026)
 - **Phase 1 MVP PRODUCTION-READY** untuk dogfooding intensif single-device.
 - Phase 1 core UX sudah usable untuk dogfooding single-device.
 - Parser + split + rules sudah dipisah ke `packages/core`.
@@ -20,7 +20,7 @@
 - Filter rentang tanggal (`Hari ini`, `Pekan ini`, `30 hari`, `Semua`) sudah aktif untuk list + summary.
 - Payment method opsional sudah aktif (awareness-only, non-blocking).
 - Export/Import backup JSON + storage corruption guard sudah aktif.
-- Adaptive iOS PWA status bar blending aktif (best-effort).
+- PWA & Native App UI blending: iOS & Android PWA status bar sync via direct CSS var check dan native Capacitor diproteksi lewat `isNativePlatform()`. seamless transition dark/light.
 - Smart Recall prompt + session awareness sudah aktif (memory trigger non-blocking).
 - Recovery CTA global `Tambah yang barusan` sudah aktif (dekat composer, non-blocking).
 - Recovery metrics lokal (`recovery_count`, `last_recovery_at`) sudah aktif.
