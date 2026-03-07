@@ -10,10 +10,8 @@ function getAppBackgroundColor(): string {
     return FALLBACK_THEME_COLOR;
   }
 
-  const value = getComputedStyle(document.documentElement)
-    .getPropertyValue("--app-bg")
-    .trim();
-  return value || FALLBACK_THEME_COLOR;
+  const isDark = document.documentElement.classList.contains("dark");
+  return isDark ? "#000000" : "#F7F8FA";
 }
 
 function syncMetaThemeColor() {
