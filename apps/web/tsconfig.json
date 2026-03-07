@@ -58,6 +58,7 @@
     "node_modules",
     "ios",
     "android",
-    "out"
+    "out",
+    "../../packages/**/*.test.ts"
   ]
 }

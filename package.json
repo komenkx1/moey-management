@@ -8,6 +8,7 @@
     "db:status": "npx supabase db diff --schema public"
   },
   "devDependencies": {
-    "supabase": "^2.77.0"
+    "supabase": "^2.77.0",
+    "vitest": "^4.0.18"
   }
 }

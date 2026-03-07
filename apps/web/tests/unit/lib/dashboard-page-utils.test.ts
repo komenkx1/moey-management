@@ -398,8 +398,6 @@ describe("dashboard-page-utils", () => {
     expect(latest?.amount).toBe(42000);
 
     const hint = deriveAdaptiveHint({
-      id: "recall-1",
-      category: "Makan",
       title: "Makan malam",
       amount: 42000
     });
