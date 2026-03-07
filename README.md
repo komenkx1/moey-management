@@ -2,7 +2,7 @@
 
 KeMana adalah aplikasi pencatatan pengeluaran single-device, local-first, dengan fokus input cepat: "Biar tau uangmu kemana".
 
-## Progress Terkini (28 Feb 2026)
+## Progress Terkini (7 Maret 2026)
 
 - Import/Export `JSON + CSV` sudah stabil (nama file jelas, parser CSV + fallback format).
 - Kompatibilitas data lama untuk metode bayar (`Lainnya`/`Belum pilih`) dinormalisasi aman ke `Unknown`.
@@ -27,7 +27,12 @@ KeMana adalah aplikasi pencatatan pengeluaran single-device, local-first, dengan
   - otomatis hidden saat app dibuka dalam mode standalone/homescreen
   - Android/Chromium pakai `beforeinstallprompt`
   - iOS menampilkan instruksi `Share -> Add to Home Screen`
-- Safe-area iOS standalone disesuaikan agar judul tidak bentrok area jam/status bar.
+- Instalasi Target Native Mobile (Capacitor Phase 1):
+  - Capacitor setup iOS & Android (dengan Custom Splash Screen + Icons)
+  - Edge-to-Edge display UI cross-platform PWA vs Native App
+  - Capacitor Keyboard API override untuk kelancaran typing composer mobile
+  - Capacitor Status Bar sync (adaptif per theme dark/light, seamless logic fallback Safari PWA)
+  - Haptic Feedback utilities native terintegrasi (heavy tap, success save)
 - Migrasi state ke Zustand untuk orchestration terpusat dan perbaikan re-render.
 - Migrasi komponen UI ke shadcn/ui dan Tailwind CSS v4.
 - Toast notifikasi dimigrasikan ke ekosistem Sonner.

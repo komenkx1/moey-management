@@ -1,80 +1,28 @@
 # KeMana MVP Masterplan
 
-## 0. Progress Snapshot (Per 28 Februari 2026)
+## 0. Progress Snapshot (Per 7 Maret 2026)
 ### Sudah Selesai (Phase 0/1)
 - Arsitektur repo aktif: `apps/web`, `packages/core`, `packages/storage` (core logic terpisah dari UI Next.js).
-- Quick Add parser production-ready untuk pola utama:
-  - `kopi 18`, `parkir 2k`, `dinner 120 3p`
-  - nominal dengan cleaning (`Rp18k,`, `(18k)`)
-  - inline summation (`25 + 10 + 5`, termasuk tanpa spasi tertentu) + warning terstruktur.
-  - qty-aware parsing (`3x 15k`, `x3 15k`, `15k x3`, `3 x 15k`) termasuk kombinasi `+`.
-  - token qty dipertahankan di text tersimpan agar konteks input tetap terbaca.
+- Quick Add parser production-ready untuk pola utama.
 - Dense list + expand row inline, edit inline, category chips, split equal/custom, bulk paste.
-- `page.tsx` sudah direfactor menjadi orchestration layer; UI besar diekstrak ke `src/components/kemana/*` tanpa ubah behavior.
-- Split UX dipertegas:
-  - CTA split lebih eksplisit (`Buat/Edit Split` + status split).
-  - aksi `Batalkan split` tersedia (hapus split tersimpan).
-  - aksi `Batal` untuk tutup editor split tanpa apply.
-- Warning UI non-blocking, delete dengan undo toast, composer autofocus + Enter submit.
-- Perceived performance jalur submit Quick Add sudah dituning:
-  - reuse hasil parse preview saat submit untuk menghindari parse ganda.
-  - insert entry ke state dulu (ack UI instan), persist localStorage dijadwalkan background task.
-  - instrumentation ack time debug-only (`DEBUG_PERF=true`, key `kemana.perf.quickAddAck.v1`).
-- Benchmark otomatis perceived ack sudah tersedia via `apps/web/scripts/ack-perceived-benchmark.mjs`.
-- Hasil benchmark terbaru (headless, devtools off): list `300` dan `1000` transaksi lulus target `p95 < 100ms` untuk metrik next-paint ack.
-- Performa list besar ditingkatkan melalui single-expand, lazy-mount expanded content, dan memoisasi row collapsed.
-- Teaching UX adaptif:
-  - error merah parser hanya setelah submit gagal (bukan saat mengetik)
-  - hint edukasi kontekstual muncul saat user mengetik (format cepat/merchant/sum/qty) tanpa modal.
-- Entry expanded menampilkan breakdown display per item (display-only, tanpa ubah schema/parser/storage).
-- Date edit UX sudah lebih jelas:
-  - setelah ubah tanggal, muncul feedback `Dipindah ke ...` + tombol `Lihat`
-  - auto scroll + highlight row untuk mengurangi kesan data hilang.
-- Date edit UX terbaru:
-  - perubahan tanggal memakai konfirmasi eksplisit tombol `Simpan` (mengurangi kejutan saat batch edit).
-  - helper text ditampilkan di bawah input date.
-  - toast menandai jika entry dipindah ke tanggal yang berada di luar filter aktif, tanpa auto-switch filter.
-- Local-first persistence aktif via localStorage + guard hydration (mencegah data ketimpa kosong di dev refresh).
-- Smart Recall aktif (memory trigger non-blocking):
-  - tracking `last entry` + `last app open`.
-  - prompt kontekstual gap 3 jam / first-time-today / comeback.
-  - dismiss per session agar anti-nagging.
-  - CTA recovery global `Tambah yang barusan` dekat composer (bukan hanya dari bar Smart Recall).
-  - telemetry lokal recovery (`recovery_count`, `last_recovery_at`) tersimpan di localStorage.
-  - indikator `Terakhir catat: ...` non-nagging aktif, update interval 1 menit, terisolasi di komponen kecil.
+- `page.tsx` sudah direfactor menjadi orchestration layer.
+- Perceived performance jalur submit Quick Add dituning (latency rendering dicepatkan, background debounce parse).
+- Data safety dasar aktif (Export/Import backup JSON + corrupt guard).
 - PWA minimal aktif:
   - manifest + service worker template (`sw.template.js`)
-  - offline access dasar setelah first online load
-  - offline badge + safe update banner (`Update tersedia -> Muat ulang`)
-  - cache versioning mengikuti versi app + lifecycle SW lebih stabil (activate atomic, update tidak loop).
-  - install banner ringan dengan deteksi standalone/homescreen + flow Android/iOS terpisah.
-  - safe-area top iOS standalone dituning agar header app tidak overlap area jam/status bar.
-- iOS PWA status bar adaptive aktif (best-effort): `black-translucent` + `viewport-fit=cover` + sync `theme-color` dari `--app-bg`.
-- Summary/report sudah split-aware (menggunakan porsi `Kamu` jika entry punya split).
-- Daily awareness sudah aktif:
-  - Daily Summary card + smart empty state.
-  - Grouped history per tanggal + total harian.
-  - Filter rentang (`Hari ini`, `7 hari`, `30 hari`, `Semua`) untuk list + summary.
-  - Edit tanggal inline memindahkan entry antar grup + feedback `Dipindah ke ...`.
-- Data safety dasar aktif:
-  - Export/Import backup JSON (merge/replace) tanpa backend.
-  - Guard storage corruption + storage version ringan.
-- Habit ritual Night Close aktif:
-  - bar `Tutup hari` muncul di window malam (20:00-23:59) sesuai kondisi.
-  - panel review non-blocking (bottom sheet style) + mark close harian lokal.
-  - auto-surface saat app dibuka malam hari tetap konsisten meski user langsung fokus ke composer.
-  - setelah submit entry di window malam, bar tetap muncul sampai hari ditutup.
-  - animasi open/close panel sudah dihaluskan.
-- Util harian konsisten sudah dipusatkan via `getLocalDayKey(date)` untuk marker Night Close dan metrik habit lokal.
-- Test parser: `26` test lulus (`vitest`).
-- Dexie/IndexedDB diaktifkan sebagai storage utama (menggantikan localStorage + script migrasi v1 selesai).
+  - safe update banner (`Update tersedia -> Muat ulang`)
+  - iOS & Android PWA status bar adaptive active (sync `theme-color` realtime dengan class `dark`).
+- Instalasi Capacitor Native Web Migration (Tahap Dasar - Phase 1):
+  - Setup Xcode & Android Studio Config (Bundle ID `com.kemana.app`).
+  - Haptics Feedback Integration (Tap ringan, sukses log transaksi, delete list).
+  - Native Keyboard Height calculation override agar input form/composer tidak tertutup.
+  - Native Splash Screen & Icons auto-generation.
+  - Edge-to-Edge display compatibility cross-platform (PWA vs Native).
+- Habit ritual Night Close aktif.
 - Tailwind v4 + shadcn migration phase selesai (semua control utama memakai primitive shadcn).
 - Eksekusi fase migrasi Zustand incremental selesai (orchestration state `page.tsx` dipecah menjadi store slices tanpa regresi).
 - Sonner migration selesai untuk undo/action toast beserta deduplikasi notifikasi.
 - Gesture swipe-to-delete aktif (WhatsApp-style: swipe left reveal delete button).
-- Drag-to-close bottom sheet diperbaiki (smooth follow finger, snap animation natural).
-- Animasi native-like diperhalus (easing curves optimal, duration 300ms, GPU acceleration).
-- Empty state "Aktivitas terbaru" diperbaiki (hanya muncul saat benar-benar kosong).
 
 ### Sedang Berjalan
 - Dogfooding intensif untuk validasi habit loop (Smart Recall + Night Close) pada konsistensi catat harian.
