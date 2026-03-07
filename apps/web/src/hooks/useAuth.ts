@@ -3,6 +3,11 @@ import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/use-auth-store";
 import { useKemanaStore } from "@/store/use-kemana-store";
 import { migrateLocalDataToAccount, initialSyncOnLogin, SyncWorker, loadEntries, loadRules, clearLocalDatabase } from "@kemana/storage";
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
+import { isNativePlatform } from '@/lib/capacitor';
+import { Network } from '@capacitor/network';
+
+import CryptoJS from 'crypto-js';
 
 // Global sync worker instance
 let syncWorkerInstance: SyncWorker | null = null;
@@ -138,13 +143,44 @@ export function useAuth() {
     }, []); // Empty dependency array so it only mounts/unmounts once 
 
     const signInWithGoogle = async () => {
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: "google",
-            options: {
-                redirectTo: `${window.location.origin}/auth/callback`,
-            },
-        });
-        if (error) throw error;
+        if (isNativePlatform()) {
+            console.log("📱 Using Native Google Auth");
+            
+            // Generate a secure random nonce
+            const rawNonce = CryptoJS.lib.WordArray.random(32).toString();
+            // Hash the nonce with SHA-256 (Google requires the hashed version, Supabase requires the raw version)
+            const hashedNonce = CryptoJS.SHA256(rawNonce).toString(CryptoJS.enc.Hex);
+            
+            // Initialize the Google Auth plugin with the hashed nonce
+            GoogleAuth.initialize({
+                scopes: ['profile', 'email'],
+                grantOfflineAccess: true,
+            });
+            
+            const googleUser = await GoogleAuth.signIn();
+            
+            if (!googleUser.authentication.idToken) {
+                throw new Error("Google Login failed: No ID Token returned.");
+            }
+            
+            // Provide the RAW nonce to Supabase so it can hash it and compare against the token's internal hash
+            const { error } = await supabase.auth.signInWithIdToken({
+                provider: "google",
+                token: googleUser.authentication.idToken,
+                nonce: rawNonce, // <--- Crucial step for high security
+            });
+            if (error) throw error;
+            
+        } else {
+            console.log("🌐 Using Web Google OAuth");
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: "google",
+                options: {
+                    redirectTo: `${window.location.origin}/auth/callback`,
+                },
+            });
+            if (error) throw error;
+        }
     };
 
     /**
@@ -174,6 +210,14 @@ export function useAuth() {
             console.error("Failed to clear local database upon signout:", dbError);
         }
 
+        if (isNativePlatform()) {
+            try {
+                await GoogleAuth.signOut();
+            } catch (googleError) {
+                console.warn("⚠️ Non-fatal: Failed to sign out of native Google SDK:", googleError);
+            }
+        }
+
         const { error } = await supabase.auth.signOut();
         if (error) throw error;
     };
@@ -195,6 +239,29 @@ export function useAuth() {
 function startSyncWorker(userId: string) {
     if (!syncWorkerInstance) {
         syncWorkerInstance = new SyncWorker(supabase);
+
+        // Use a cached online status to prevent polling the native bridge every second
+        let isCurrentlyOnline = true;
+
+        if (isNativePlatform()) {
+            // Initial check
+            Network.getStatus().then(status => {
+                isCurrentlyOnline = status.connected;
+            });
+            
+            // Listen for changes
+            Network.addListener('networkStatusChange', (status) => {
+                isCurrentlyOnline = status.connected;
+                if (status.connected && syncWorkerInstance) {
+                    console.log('📶 Network restored, waking up sync worker...');
+                    syncWorkerInstance.wakeup();
+                }
+            });
+            
+            syncWorkerInstance.isOnlineFn = async () => isCurrentlyOnline;
+        } else {
+            syncWorkerInstance.isOnlineFn = async () => navigator.onLine;
+        }
     }
     syncWorkerInstance.start(userId);
 }

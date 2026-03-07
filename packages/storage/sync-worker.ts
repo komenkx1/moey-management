@@ -8,6 +8,8 @@ export class SyncWorker {
   private checkInterval = 2000; // Check every 2 seconds
   private maxRetries = 10;
   private baseDelay = 1000; // 1 second
+  private wakeupResolver: (() => void) | null = null;
+  public isOnlineFn: () => Promise<boolean> = async () => navigator.onLine;
 
   constructor(supabaseClient: any) {
     this.supabaseClient = supabaseClient;
@@ -35,6 +37,8 @@ export class SyncWorker {
   stop() {
     this.isRunning = false;
     this.userId = null;
+    
+    this.wakeup(); // Wake up so the loop can exit if it's sleeping
     console.log('⏹️ Sync worker stopped');
   }
 
@@ -44,8 +48,9 @@ export class SyncWorker {
   private async processQueue() {
     while (this.isRunning) {
       try {
-        // Check if online
-        if (!navigator.onLine) {
+        // Check if online using injected function
+        const isOnline = await this.isOnlineFn();
+        if (!isOnline) {
           await this.sleep(5000); // Check every 5s when offline
           continue;
         }
@@ -208,10 +213,30 @@ export class SyncWorker {
   }
 
   /**
-   * Helper to sleep
+   * Helper to sleep (interruptible)
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => {
+      let timeoutId: any;
+      
+      const doResolve = () => {
+        if (timeoutId) clearTimeout(timeoutId);
+        this.wakeupResolver = null;
+        resolve();
+      };
+      
+      timeoutId = setTimeout(doResolve, ms);
+      this.wakeupResolver = doResolve;
+    });
+  }
+
+  /**
+   * Wake up the worker if it's sleeping (e.g., network restored)
+   */
+  public wakeup() {
+    if (this.wakeupResolver) {
+      this.wakeupResolver();
+    }
   }
 
   /**
@@ -244,7 +269,8 @@ export class SyncWorker {
     if (pendingItems.length === 0) return;
 
     // Critical check: Do not flush if offline and there's data to send
-    if (!navigator.onLine && pendingItems.length > 0) {
+    const isOnline = await this.isOnlineFn();
+    if (!isOnline && pendingItems.length > 0) {
       console.warn("⚠️ Cannot flush pending items while offline.");
       throw new Error("PENDING_OFFLINE_DATA");
     }
@@ -290,6 +316,25 @@ export async function enqueueSyncOperation(
     status: 'pending'
   };
 
-  await db.syncQueue.add(item);
-  console.log(`📝 Enqueued ${entity} ${operation}:`, entityId);
+  await db.transaction("rw", db.syncQueue, db.entries, db.rules, async () => {
+    // 1. Enqueue to sync worker
+    await db.syncQueue.add(item);
+    
+    // 2. Optimistic local update so UI reflects immediately while offline
+    if (operation === 'create' || operation === 'update') {
+      if (entity === 'entry' && payload) {
+        await db.entries.put(payload as Entry);
+      } else if (entity === 'rule' && payload) {
+        await db.rules.put(payload as CategoryRules[number]);
+      }
+    } else if (operation === 'delete') {
+      if (entity === 'entry') {
+        await db.entries.delete(entityId);
+      } else if (entity === 'rule') {
+        await db.rules.delete(entityId);
+      }
+    }
+  });
+
+  console.log(`📝 Enqueued & Applied ${entity} ${operation}:`, entityId);
 }

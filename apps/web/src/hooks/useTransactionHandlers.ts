@@ -19,6 +19,8 @@ import { recordQuickAddAck } from "@/lib/perf";
 import { TOAST_IDS } from "@/lib/constants";
 import { hapticsSuccess, hapticsMedium } from "@/lib/haptics";
 import { enqueueSyncOperation } from "@kemana/storage";
+import { useKemanaStore } from "@/store/use-kemana-store";
+
 import { useAuth } from "./useAuth";
 
 interface MovedToastPayload {
@@ -168,14 +170,13 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
         updatedAt: new Date().toISOString()
       };
 
-      const nextEntries = entries.map((entry) => {
+      // Directly update the store synchronously with a functional updater
+      useKemanaStore.getState().setEntries((prev: Entry[]) => prev.map((entry: Entry) => {
         if (entry.id !== updatedItem.id) {
           return entry;
         }
         return updatedEntry;
-      });
-
-      setEntries(nextEntries);
+      }));
       
       // Enqueue sync if logged in
       if (session?.user) {
@@ -226,7 +227,8 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
         index: deletedIndex
       };
 
-      setEntries((prev) => prev.filter((entry) => entry.id !== id));
+      // Directly update the store synchronously to avoid debounce race conditions
+      useKemanaStore.getState().setEntries((prev: Entry[]) => prev.filter((entry: Entry) => entry.id !== id));
 
       // Enqueue sync if logged in
       if (session?.user) {
@@ -246,7 +248,7 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
               return;
             }
 
-            setEntries((prev) => {
+            useKemanaStore.getState().setEntries((prev: Entry[]) => {
               const next = [...prev];
               const insertIndex = Math.max(0, Math.min(payload.index, next.length));
               next.splice(insertIndex, 0, payload.entry);
@@ -310,7 +312,8 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
         updatedAt: now
       };
 
-      setEntries((prev) => [nextEntry, ...prev]);
+      // Directly update the store synchronously to avoid debounce race conditions
+      useKemanaStore.getState().setEntries((prev: Entry[]) => [nextEntry, ...prev]);
 
       // Enqueue sync if logged in
       if (session?.user) {
@@ -388,7 +391,8 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
         updatedAt: now
       };
 
-      setEntries((prev) => [nextEntry, ...prev]);
+      // Directly update the store synchronously to avoid debounce race conditions
+      useKemanaStore.getState().setEntries((prev: Entry[]) => [nextEntry, ...prev]);
 
       // Enqueue sync if logged in
       if (session?.user) {

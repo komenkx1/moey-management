@@ -160,7 +160,19 @@ export async function loadEntries(): Promise<Entry[]> {
 export async function saveEntries(entries: Entry[]): Promise<void> {
   try {
     await db.transaction("rw", db.entries, async () => {
-      await db.entries.clear();
+      // Get all current IDs in DB
+      const currentIds = new Set(await db.entries.toCollection().primaryKeys());
+      const incomingIds = new Set(entries.map(e => e.id));
+      
+      // Find IDs that are in DB but not in the incoming entries (these were deleted)
+      const idsToDelete = Array.from(currentIds).filter(id => !incomingIds.has(id));
+      
+      // Delete removed entries
+      if (idsToDelete.length > 0) {
+        await db.entries.bulkDelete(idsToDelete);
+      }
+      
+      // Add/Update existing entries
       await db.entries.bulkPut(entries);
     });
     // Fire and forget since we only use it for habit triggers

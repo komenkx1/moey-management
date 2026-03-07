@@ -174,16 +174,36 @@ export async function initialSyncOnLogin(
     const localEntries = await loadEntries();
     const localRules = await loadRules();
 
-    // 3. Merge: server wins for conflicts (Last-Write-Wins by updated_at)
-    const mergedEntries = mergeWithServerPriority(
-      localEntries,
-      (serverEntries || []).map(normalizeServerEntry)
+    // 2.1 Identify pending deletions in the local sync queue to prevent server resurrection
+    const pendingDeletes = await db.syncQueue
+      .where('status')
+      .anyOf(['pending', 'failed'])
+      .toArray();
+    
+    const pendingDeletedEntryIds = new Set(
+      pendingDeletes.filter(q => q.entity === 'entry' && q.operation === 'delete').map(q => q.entityId)
+    );
+    const pendingDeletedRuleKeys = new Set(
+      pendingDeletes.filter(q => q.entity === 'rule' && q.operation === 'delete' && q.payload)
+        .map(q => {
+          const rule = q.payload as CategoryRules[number];
+          return `${rule.pattern}:${rule.match}`;
+        })
     );
 
-    const mergedRules = mergeRules(
-      localRules,
-      (serverRules || []).map(normalizeServerRule)
-    );
+    // Filter server data to remove items that are locally pending deletion
+    const validServerEntries = (serverEntries || [])
+      .map(normalizeServerEntry)
+      .filter((entry: Entry) => !pendingDeletedEntryIds.has(entry.id));
+
+    const validServerRules = (serverRules || [])
+      .map(normalizeServerRule)
+      .filter((rule: CategoryRules[number]) => !pendingDeletedRuleKeys.has(`${rule.pattern}:${rule.match}`));
+
+    // 3. Merge: server wins for conflicts (Last-Write-Wins by updated_at)
+    const mergedEntries = mergeWithServerPriority(localEntries, validServerEntries);
+
+    const mergedRules = mergeRules(localRules, validServerRules);
 
     // 4. Save merged data to local IndexedDB
     await db.transaction("rw", db.entries, db.rules, async () => {
