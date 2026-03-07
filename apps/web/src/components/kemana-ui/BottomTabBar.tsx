@@ -25,6 +25,7 @@ export default function BottomTabBar({ className }: BottomTabBarProps) {
         <nav
             className={cn(
                 "fixed bottom-0 left-1/2 z-30 flex h-[calc(64px+env(safe-area-inset-bottom))] w-full max-w-md -translate-x-1/2 items-center justify-around border-t border-border-subtle bg-bg-elevated pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_24px_rgba(0,0,0,0.04)]",
+                "transition-colors duration-300",
                 className
             )}
         >

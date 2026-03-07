@@ -2,6 +2,7 @@ import { useEffect, useCallback } from "react";
 import { persistThemeMode, resolveThemeModeFromStorage } from "@/lib/dashboard-page-helpers";
 import { useThemeState } from "@/store/kemana/hooks-granular";
 import { setStatusBarDark, setStatusBarLight } from "@/lib/status-bar";
+import { isNativePlatform } from "@/lib/capacitor";
 
 export function useTheme() {
     const { isDarkMode, setIsDarkMode } = useThemeState();
@@ -53,6 +54,14 @@ export function useTheme() {
                         Keyboard.setStyle({ style: KeyboardStyle.Light }).catch(() => { });
                     });
                 }
+            }
+
+            // Force update body background for iOS Safari PWA status bar sync
+            if (!isNativePlatform() && document.body.hasAttribute("data-ios-standalone")) {
+                setTimeout(() => {
+                    const appBg = window.getComputedStyle(document.documentElement).getPropertyValue("--app-bg").trim();
+                    if (appBg) document.body.style.backgroundColor = appBg;
+                }, 10);
             }
 
             return nextIsDark;

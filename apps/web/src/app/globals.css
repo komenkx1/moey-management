@@ -25,6 +25,7 @@
   --color-bg-subtle: #F3F4F6;
   --color-bg-night: #f7fafb;
   --color-backdrop: rgba(0, 0, 0, 0.22);
+  --app-bg: #F7F8FA;
 
   /* Common UI Elements */
   --color-border-default: #d9d9d6;
@@ -206,7 +207,7 @@
 }
 
 body[data-ios-standalone="true"] {
-  --safe-header-offset: max(env(safe-area-inset-top), 44px);
+  --safe-header-offset: env(safe-area-inset-top);
 }
 
 * {
@@ -237,6 +238,8 @@ body {
     sans-serif;
   background: var(--app-bg);
   color: var(--color-text-primary);
+  transition-property: background-color, color, border-color;
+  transition-duration: 300ms;
 
   /* Make app feel native by disabling text selection and highlights */
   -webkit-user-select: none;

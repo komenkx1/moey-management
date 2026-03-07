@@ -73,14 +73,23 @@ export default function SafeAreaSync() {
       const envInsetTop = readEnvSafeAreaTop();
       const visualInsetTop = readVisualViewportTopInset();
       const detectedInsetTop = Math.max(envInsetTop, visualInsetTop, 0);
-      const effectiveInsetTop =
-        iosDevice && standalone ? Math.max(detectedInsetTop, 44) : detectedInsetTop;
+      const effectiveInsetTop = detectedInsetTop;
       root.style.setProperty(SAFE_HEADER_OFFSET_VAR, `${effectiveInsetTop}px`);
 
       if (iosDevice && standalone) {
         body.setAttribute(IOS_STANDALONE_ATTR, "true");
+        // Force iOS Safari to read the exact hex/rgb value for the status bar
+        if (!isNative) {
+          const appBg = window.getComputedStyle(document.documentElement).getPropertyValue("--app-bg").trim();
+          if (appBg) {
+            body.style.backgroundColor = appBg;
+          }
+        }
       } else {
         body.removeAttribute(IOS_STANDALONE_ATTR);
+        if (!isNative) {
+          body.style.backgroundColor = "";
+        }
       }
       if (standalone) {
         body.setAttribute(PWA_STANDALONE_ATTR, "true");
