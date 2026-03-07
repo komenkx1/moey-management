@@ -195,6 +195,50 @@ export function useAuth() {
     };
 
     /**
+     * Performs a full 2-way sync: flushes local queue up to the cloud, 
+     * then pulls latest cloud state down to IndexedDB and refreshes UI.
+     */
+    const forceGlobalSync = async () => {
+        if (!user) throw new Error("Pengguna belum login.");
+
+        // 1. Flush local queue up to cloud
+        if (syncWorkerInstance) {
+            await syncWorkerInstance.flushAll();
+        }
+
+        useKemanaStore.getState().setSyncStatus('syncing');
+
+        try {
+            // 2. Fetch all fresh data down from cloud and merge into IndexedDB
+            const syncResult = await initialSyncOnLogin(user.id, supabase);
+            if (!syncResult.success) {
+                throw new Error(syncResult.error);
+            }
+
+            // 3. Rebuild UI memory seamlessly
+            const [freshEntries, freshRules] = await Promise.all([
+                loadEntries(),
+                loadRules()
+            ]);
+            
+            const store = useKemanaStore.getState();
+            store.setEntries(freshEntries);
+            store.setRules(freshRules);
+            
+            // Artificial delay to show the nice animation and prevent flashing
+            await new Promise(resolve => setTimeout(resolve, 800));
+            
+            useKemanaStore.getState().setSyncStatus('synced');
+            useKemanaStore.getState().setLastSyncTime(Date.now());
+            console.log(`✓ Global Sync Complete: UI updated (${freshEntries.length} entries)`);
+            
+        } catch (error: any) {
+            useKemanaStore.getState().setSyncStatus('failed');
+            throw error;
+        }
+    };
+
+    /**
      * Forcibly logs out, clears local UI memory, drops the Local Database to prevent leaks,
      * and signs out of the Supabase Authenticator.
      */
@@ -234,6 +278,7 @@ export function useAuth() {
         isInitialized,
         signInWithGoogle,
         flushSyncQueue,
+        forceGlobalSync,
         forceSignOut,
     };
 }

@@ -21,7 +21,7 @@ export default function AccountTabContent() {
     const syncStatus = useKemanaStore((state) => state.syncStatus);
 
     // Use useAuth only for action methods
-    const { signInWithGoogle, flushSyncQueue, forceSignOut } = useAuth();
+    const { signInWithGoogle, flushSyncQueue, forceGlobalSync, forceSignOut } = useAuth();
     const { userName, setIsNamePromptOpen } = useUserProfile();
     const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -62,12 +62,8 @@ export default function AccountTabContent() {
     const handleForceSync = async () => {
         setIsForceSyncing(true);
         try {
-            await flushSyncQueue();
-            if (pendingSyncCount === 0) {
-                toast.success("Semua data telah disinkronkan.");
-            } else {
-                toast.success("Antrean sinkronisasi diproses.");
-            }
+            await forceGlobalSync();
+            toast.success("Data berhasil disinkronkan.");
         } catch (e: any) {
             toast.error(e.message === "PENDING_OFFLINE_DATA" ? "Tidak ada koneksi internet." : (e.message || "Gagal menyinkronkan data."));
         } finally {
