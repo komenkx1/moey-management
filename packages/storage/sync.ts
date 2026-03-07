@@ -175,16 +175,29 @@ export async function initialSyncOnLogin(
     const localRules = await loadRules();
 
     // 2.1 Identify pending deletions in the local sync queue to prevent server resurrection
-    const pendingDeletes = await db.syncQueue
+    const pendingItems = await db.syncQueue
       .where('status')
       .anyOf(['pending', 'failed'])
       .toArray();
     
+    // Deletions that haven't reached the server yet
     const pendingDeletedEntryIds = new Set(
-      pendingDeletes.filter(q => q.entity === 'entry' && q.operation === 'delete').map(q => q.entityId)
+      pendingItems.filter(q => q.entity === 'entry' && q.operation === 'delete').map(q => q.entityId)
     );
     const pendingDeletedRuleKeys = new Set(
-      pendingDeletes.filter(q => q.entity === 'rule' && q.operation === 'delete' && q.payload)
+      pendingItems.filter(q => q.entity === 'rule' && q.operation === 'delete' && q.payload)
+        .map(q => {
+          const rule = q.payload as CategoryRules[number];
+          return `${rule.pattern}:${rule.match}`;
+        })
+    );
+
+    // Creations/Updates that haven't reached the server yet
+    const pendingUpsertEntryIds = new Set(
+      pendingItems.filter(q => q.entity === 'entry' && (q.operation === 'create' || q.operation === 'update')).map(q => q.entityId)
+    );
+    const pendingUpsertRuleKeys = new Set(
+      pendingItems.filter(q => q.entity === 'rule' && (q.operation === 'create' || q.operation === 'update') && q.payload)
         .map(q => {
           const rule = q.payload as CategoryRules[number];
           return `${rule.pattern}:${rule.match}`;
@@ -200,10 +213,9 @@ export async function initialSyncOnLogin(
       .map(normalizeServerRule)
       .filter((rule: CategoryRules[number]) => !pendingDeletedRuleKeys.has(`${rule.pattern}:${rule.match}`));
 
-    // 3. Merge: server wins for conflicts (Last-Write-Wins by updated_at)
-    const mergedEntries = mergeWithServerPriority(localEntries, validServerEntries);
-
-    const mergedRules = mergeRules(localRules, validServerRules);
+    // 3. Merge: Server is the Absolute Truth, EXCEPT for items pending inside our local sync queue
+    const mergedEntries = mergeWithServerPriority(localEntries, validServerEntries, pendingUpsertEntryIds, pendingDeletedEntryIds);
+    const mergedRules = mergeRules(localRules, validServerRules, pendingUpsertRuleKeys, pendingDeletedRuleKeys);
 
     // 4. Save merged data to local IndexedDB
     await db.transaction("rw", db.entries, db.rules, async () => {
@@ -224,49 +236,106 @@ export async function initialSyncOnLogin(
 }
 
 /**
- * Merge local and server entries with server priority (LWW)
+ * Merge local and server entries. Server is the absolute truth UNLESS the local item is stuck in the sync queue.
  */
-function mergeWithServerPriority(local: Entry[], server: Entry[]): Entry[] {
+function mergeWithServerPriority(
+  local: Entry[], 
+  server: Entry[], 
+  pendingUpsertIds: Set<string>,
+  pendingDeleteIds: Set<string>
+): Entry[] {
   const map = new Map<string, Entry>();
 
-  // Add local entries first
-  for (const entry of local) {
-    map.set(entry.id, entry);
+  // 1. Add all server entries (unless they are pending deletion locally)
+  for (const entry of server) {
+    if (!pendingDeleteIds.has(entry.id)) {
+      map.set(entry.id, entry);
+    }
   }
 
-  // Server entries override if newer (LWW by updated_at)
-  for (const entry of server) {
-    const existing = map.get(entry.id);
-    if (!existing) {
-      map.set(entry.id, entry);
-    } else {
-      const existingTime = new Date(existing.updatedAt).getTime();
-      const serverTime = new Date(entry.updatedAt).getTime();
-      if (serverTime >= existingTime) {
+  const serverIds = new Set(server.map(e => e.id));
+
+  // 2. Process local entries
+  for (const entry of local) {
+    if (pendingDeleteIds.has(entry.id)) {
+      // It was deleted locally but hasn't synced up yet. Skip it.
+      continue;
+    }
+
+    if (!serverIds.has(entry.id)) {
+      // It's local but missing from the server.
+      if (pendingUpsertIds.has(entry.id)) {
+        // It's a new offline creation/update that hasn't synced up yet. Keep it.
         map.set(entry.id, entry);
+      } else {
+        // It's missing from sync queue AND server.
+        // That means it was deleted on another device, OR it's a ghost from a React race condition.
+        // We do NOT add it to the map.
+      }
+    } else {
+      // It's on both local and server.
+      // Server already added it in Step 1. Should local override?
+      if (pendingUpsertIds.has(entry.id)) {
+        // Local has pending offline changes!
+        const existing = map.get(entry.id);
+        if (existing) {
+          const localTime = new Date(entry.updatedAt).getTime();
+          const serverTime = new Date(existing.updatedAt).getTime();
+          if (localTime >= serverTime) {
+            map.set(entry.id, entry);
+          }
+        }
       }
     }
   }
 
-  return Array.from(map.values());
+  return Array.from(map.values()).sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
 }
 
 /**
- * Merge rules: server wins for same pattern+match
+ * Merge rules using the mathematically correct two-way reconciliation
  */
-function mergeRules(local: CategoryRules, server: CategoryRules): CategoryRules {
+function mergeRules(
+  local: CategoryRules, 
+  server: CategoryRules, 
+  pendingUpsertKeys: Set<string>,
+  pendingDeleteKeys: Set<string>
+): CategoryRules {
   const map = new Map<string, CategoryRules[number]>();
 
-  // Add local rules first
-  for (const rule of local) {
-    const key = `${rule.pattern}:${rule.match}`;
-    map.set(key, rule);
-  }
-
-  // Server rules override
+  // 1. Add all server rules
   for (const rule of server) {
     const key = `${rule.pattern}:${rule.match}`;
-    map.set(key, rule);
+    if (!pendingDeleteKeys.has(key)) {
+      map.set(key, rule);
+    }
+  }
+
+  const serverKeys = new Set(server.map(r => `${r.pattern}:${r.match}`));
+
+  // 2. Process local rules
+  for (const rule of local) {
+    const key = `${rule.pattern}:${rule.match}`;
+    
+    if (pendingDeleteKeys.has(key)) {
+      continue;
+    }
+
+    if (!serverKeys.has(key)) {
+      // Local but missing from server
+      if (pendingUpsertKeys.has(key)) {
+        // New offline rule
+        map.set(key, rule);
+      }
+    } else {
+      // On both
+      if (pendingUpsertKeys.has(key)) {
+        // Local has pending changes. Since rules lack timestamps, local blindly wins here.
+        map.set(key, rule);
+      }
+    }
   }
 
   return Array.from(map.values());
