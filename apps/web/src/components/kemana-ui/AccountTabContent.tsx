@@ -6,6 +6,7 @@ import { UserCircle, Shield, Cloud, LogOut, KeyRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function AccountTabContent() {
     // Subscribe directly to auth store for reactive updates (not via useAuth hook)
@@ -16,6 +17,7 @@ export default function AccountTabContent() {
     const { userName, setIsNamePromptOpen } = useUserProfile();
     const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [showOfflineWarning, setShowOfflineWarning] = useState(false);
 
     const handleLogin = async () => {
         setIsLoggingIn(true);
@@ -27,7 +29,7 @@ export default function AccountTabContent() {
         }
     };
 
-    const handleLogout = async () => {
+    const handleLogoutClick = async () => {
         setIsLoggingOut(true);
         try {
             // Step 1: Try to flush pending sync queue
@@ -35,26 +37,27 @@ export default function AccountTabContent() {
             // If flush succeeded (online + queue empty or synced), proceed to force sign out
             await forceSignOut();
             toast.success("Berhasil keluar.");
+            setIsLoggingOut(false);
         } catch (e: any) {
             if (e.message === "PENDING_OFFLINE_DATA") {
-                // Step 2: User is offline with pending data — warn them
-                const confirmed = window.confirm(
-                    "⚠️ Peringatan\n\n" +
-                    "Kamu sedang offline dan masih ada data transaksi yang belum tersimpan ke cloud.\n\n" +
-                    "Jika kamu keluar sekarang, data tersebut akan HILANG PERMANEN dan tidak bisa dikembalikan.\n\n" +
-                    "Yakin ingin keluar?"
-                );
-                if (confirmed) {
-                    try {
-                        await forceSignOut();
-                        toast.success("Berhasil keluar.");
-                    } catch (signOutError: any) {
-                        toast.error(signOutError.message || "Gagal keluar.");
-                    }
-                }
+                // Step 2: User is offline with pending data — show custom modal
+                setShowOfflineWarning(true);
+                setIsLoggingOut(false);
             } else {
                 toast.error(e.message || "Gagal keluar.");
+                setIsLoggingOut(false);
             }
+        } 
+    };
+
+    const confirmForceLogout = async () => {
+        setShowOfflineWarning(false);
+        setIsLoggingOut(true);
+        try {
+            await forceSignOut();
+            toast.success("Berhasil keluar.");
+        } catch (signOutError: any) {
+            toast.error(signOutError.message || "Gagal keluar.");
         } finally {
             setIsLoggingOut(false);
         }
@@ -154,7 +157,7 @@ export default function AccountTabContent() {
                     </div>
                     <div className="h-px w-full bg-border-subtle/30" />
                     <button
-                        onClick={handleLogout}
+                        onClick={handleLogoutClick}
                         disabled={isLoggingOut}
                         className="px-4 py-4 flex items-center gap-3 text-red-500 hover:bg-red-500/5 active:bg-red-500/10 transition-colors w-full text-left rounded-b-[20px] disabled:opacity-50"
                     >
@@ -163,6 +166,55 @@ export default function AccountTabContent() {
                     </button>
                 </section>
             )}
+
+            {/* Offline Data Loss Warning Modal */}
+            <AnimatePresence>
+                {showOfflineWarning && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                            onClick={() => setShowOfflineWarning(false)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            className="relative w-full max-w-[320px] bg-background-elevated rounded-[24px] overflow-hidden shadow-2xl border border-border-subtle"
+                        >
+                            <div className="p-6">
+                                <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4 mx-auto">
+                                    <LogOut className="h-6 w-6 text-red-500" />
+                                </div>
+                                <h3 className="text-lg font-semibold text-text-primary text-center mb-2">
+                                    Peringatan Data Belum Tersimpan
+                                </h3>
+                                <p className="text-[14px] text-text-tertiary text-center leading-relaxed">
+                                    Kamu sedang offline. Masih ada transaksi yang belum tersimpan ke Cloud. Jika kamu keluar sekarang, data tersebut akan <strong className="text-red-400 font-medium">hilang permanen</strong>.
+                                </p>
+                            </div>
+                            
+                            <div className="flex border-t border-border-subtle">
+                                <button
+                                    onClick={() => setShowOfflineWarning(false)}
+                                    className="flex-1 py-4 text-[14px] font-medium text-text-secondary hover:bg-white/5 transition-colors border-r border-border-subtle"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    onClick={confirmForceLogout}
+                                    disabled={isLoggingOut}
+                                    className="flex-1 py-4 text-[14px] font-medium text-red-500 hover:bg-red-500/5 transition-colors"
+                                >
+                                    {isLoggingOut ? "Memproses..." : "Tetap Keluar"}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
