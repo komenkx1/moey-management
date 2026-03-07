@@ -1,6 +1,6 @@
 {
   "name": "kemana-web",
-  "version": "2.0.83",
+  "version": "2.0.85",
   "private": true,
   "scripts": {
     "dev": "next dev --hostname 127.0.0.1 -p 3005",
