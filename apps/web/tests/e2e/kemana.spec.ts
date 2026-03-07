@@ -325,6 +325,25 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     await expect(entry).toContainText("siang kantor");
   });
 
+  test("Inline edit nominal auto-update format cepat", async ({ page }) => {
+    await quickAdd(page, "jfdds 10k");
+    await openNotesTab(page);
+    const entry = await expandEntryByText(page, "jfdds");
+
+    // Verifikasi format cepat awalnya "jfdds 10k"
+    await expect(entry.getByTestId("inline-quick-format-input")).toHaveValue("jfdds 10k");
+
+    // Ubah nominal dari 10k jadi 30k
+    await entry.locator("label:has-text('Jumlah') + input").first().fill("30000");
+    await page.waitForTimeout(500); // Wait for React useEffect to fire
+
+    // Format cepat harus otomatis ter-update jadi "jfdds 30k"
+    await expect(entry.getByTestId("inline-quick-format-input")).toHaveValue("jfdds 30k");
+
+    await entry.getByRole("button", { name: "Simpan", exact: true }).click();
+    await expect(entry).toContainText("30.000");
+  });
+
   test("Inline edit format cepat: parser bisa diterapkan ulang untuk qty/split", async ({ page }) => {
     await quickAdd(page, "mcd 2x 10k");
     await openNotesTab(page);
@@ -351,6 +370,39 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     await entry.getByPlaceholder("Contoh: Budi, Cici").fill("Budi, Cici");
     await entry.getByRole("button", { name: "Simpan", exact: true }).click();
 
+    await expect(entry).toContainText("Split 3");
+  });
+
+  test("Validasi custom split mencegah simpan jika nominal tidak sama", async ({ page }) => {
+    await quickAdd(page, "dinner 90k");
+    await openNotesTab(page);
+    const entry = await expandEntryByText(page, "dinner");
+
+    await entry.getByRole("button", { name: "Bagi rata" }).first().click();
+    await entry.getByPlaceholder("Contoh: Budi, Cici").fill("Budi, Cici");
+    await entry.getByRole("button", { name: "Atur Manual" }).click();
+
+    // Ketika baru beralih ke Atur Manual dari transaksi baru, nilainya mulai dari 0.
+    const splitInputs = entry.locator("input.h-8.border-border-subtle");
+    await expect(splitInputs).toHaveCount(3);
+    
+    // Set manual allocation
+    await splitInputs.nth(0).fill("40000"); // Kamu
+    await splitInputs.nth(1).fill("50000"); // Budi
+    await splitInputs.nth(2).fill("20000"); // Cici
+
+    // Validasi muncul karena total 40 + 50 + 20 = 110k (kelebihan 20k dari 90k)
+    await expect(entry.getByText("Total kelebihan Rp20.000")).toBeVisible();
+    await expect(entry.getByRole("button", { name: "Simpan", exact: true })).toBeDisabled();
+
+    // Sesuaikan Cici jadi 0k (40 + 50 + 0 = 90k)
+    await splitInputs.nth(2).fill("0");
+
+    // Sekarang validasi hilang dan bisa disave
+    await expect(entry.getByText("Total kelebihan Rp20.000")).toBeHidden();
+    await expect(entry.getByRole("button", { name: "Simpan", exact: true })).toBeEnabled();
+    
+    await entry.getByRole("button", { name: "Simpan", exact: true }).click();
     await expect(entry).toContainText("Split 3");
   });
 
@@ -907,5 +959,31 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
 
     // If ErrorBoundary wasn't working, app would crash on any error
     // The fact that we can complete this flow proves it's working
+  });
+
+  test("Account tab shows Offline Mode by default and has Google login button", async ({ page }) => {
+    // Navigate to Account tab
+    await page.locator("nav").last().getByRole("button", { name: "Akun", exact: true }).click();
+    
+    // Verify Header
+    await expect(page.getByRole("heading", { name: "Akun", exact: true })).toBeVisible();
+
+    // Verify Offline Mode text
+    await expect(page.getByText("Offline Mode")).toBeVisible();
+    await expect(page.getByText("Data kamu saat ini hanya tersimpan di perangkat ini")).toBeVisible();
+
+    // Verify Login Button exists
+    const loginButton = page.getByRole("button", { name: "Lanjutkan dengan Google" });
+    await expect(loginButton).toBeVisible();
+    await expect(loginButton).toBeEnabled();
+  });
+
+  test("Auth Callback page loads safely without crashing", async ({ page }) => {
+    // Navigate directly to the callback page to ensure it doesn't throw a 500
+    // In E2E there is no valid OAuth hash, so we just verify the route works.
+    const response = await page.goto("/auth/callback");
+    
+    expect(response?.status()).toBe(200);
+    await expect(page.locator("body")).toBeVisible();
   });
 });

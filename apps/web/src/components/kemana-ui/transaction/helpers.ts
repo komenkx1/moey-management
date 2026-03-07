@@ -94,3 +94,39 @@ export function buildSplitPeopleText(count: number): string {
 export function warningFingerprint(warnings?: ParseWarning[]): string {
     return (warnings ?? []).map((warning) => `${warning.code}:${warning.message}`).join("|");
 }
+
+/**
+ * Replace the amount token in a rawInput string with the new amount.
+ * e.g. "jfdds 10k" + newAmount=30000 → "jfdds 30k"
+ *      "makan 15000" + newAmount=25000 → "makan 25k"
+ */
+export function replaceAmountInRawInput(rawInput: string, oldAmount: number, newAmount: number): string {
+    if (oldAmount === newAmount || !rawInput.trim()) return rawInput;
+
+    const oldToken = toParserAmountToken(oldAmount);
+    // Try to find and replace the old amount token in the rawInput
+    // Match patterns: "10k", "10000", "10.000", "10rb", etc.
+    const escapedToken = oldToken.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const tokenRegex = new RegExp(`\\b${escapedToken}\\b`, "i");
+
+    if (tokenRegex.test(rawInput)) {
+        return rawInput.replace(tokenRegex, toParserAmountToken(newAmount));
+    }
+
+    // Also try matching the raw number form (e.g. "10000" or "10.000")
+    const oldStr = String(oldAmount);
+    const oldFormatted = oldAmount >= 1000
+        ? oldStr.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
+        : oldStr;
+
+    if (rawInput.includes(oldStr)) {
+        return rawInput.replace(oldStr, toParserAmountToken(newAmount));
+    }
+    if (rawInput.includes(oldFormatted)) {
+        return rawInput.replace(oldFormatted, toParserAmountToken(newAmount));
+    }
+
+    // Fallback: rebuild rawInput from title + new amount
+    const titlePart = rawInput.replace(/\s*\d+(?:[.,]\d+)?(?:k|rb|jt)?\s*(?:\d+p)?$/i, "").trim();
+    return `${titlePart || rawInput.trim()} ${toParserAmountToken(newAmount)}`;
+}

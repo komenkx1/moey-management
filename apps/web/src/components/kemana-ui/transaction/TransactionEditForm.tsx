@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { formatAmountIDR } from "@kemana/core/format";
 import { buildCustomSplit, buildEqualSplit } from "@kemana/core/split";
@@ -26,7 +26,9 @@ import {
     normalizeInputText,
     toParserAmountToken,
     warningFingerprint,
-    buildSplitPeopleText
+    buildSplitPeopleText,
+    splitFingerprint,
+    replaceAmountInRawInput
 } from "./helpers";
 
 interface TransactionEditFormProps {
@@ -64,6 +66,16 @@ export default function TransactionEditForm({
     const [formatFeedback, setFormatFeedback] = useState<string | null>(null);
 
     const parsedDraftAmount = useMemo(() => parseCurrencyInputToNumber(draftAmount), [draftAmount]);
+    const prevAmountRef = useRef(item.amount);
+
+    // Auto-sync rawInput when amount changes from the "Jumlah (Rp)" field
+    useEffect(() => {
+        const prevAmount = prevAmountRef.current;
+        if (parsedDraftAmount !== prevAmount && parsedDraftAmount > 0) {
+            setDraftRawInput((prev) => replaceAmountInRawInput(prev, prevAmount, parsedDraftAmount));
+            prevAmountRef.current = parsedDraftAmount;
+        }
+    }, [parsedDraftAmount]);
 
     const splitPeople = useMemo(() => {
         return normalizeSplitPeopleWithLockedSelf(splitPeopleInput);
@@ -90,13 +102,11 @@ export default function TransactionEditForm({
             person,
             amount: parseCurrencyInputToNumber(splitCustomDraft[person] || "0")
         }));
-        const validated = buildCustomSplit(parsedDraftAmount, customShares);
-        if (!validated) return undefined;
 
         return {
             mode: "custom" as const,
             payer: item.split?.payer ?? "Kamu",
-            shares: validated
+            shares: customShares
         };
     }, [parsedDraftAmount, splitCustomDraft, splitEnabled, splitMode, splitPeople]);
 
@@ -109,13 +119,10 @@ export default function TransactionEditForm({
     }, [draftSplit, parsedDraftAmount, splitEnabled, splitMode]);
 
     const splitDirty = useMemo(() => {
-        // ... (we'll simplify this)
-        const currentMode = item.split?.mode ?? "equal";
-        if (splitEnabled !== Boolean(item.split?.shares?.length)) return true;
-        if (splitEnabled && splitMode !== currentMode) return true;
-        // ...
-        return false;
-    }, [item.split, splitEnabled, splitMode]);
+        const currentSplitFingerprint = splitFingerprint(item.split);
+        const draftSplitFingerprint = draftSplit ? splitFingerprint(draftSplit) : "none";
+        return currentSplitFingerprint !== draftSplitFingerprint;
+    }, [item.split, draftSplit]);
 
     const rawInputDirty = normalizeInputText(draftRawInput) !== normalizeInputText(item.rawInput || "");
     const normalizedRawInput = normalizeInputText(draftRawInput);
@@ -202,11 +209,11 @@ export default function TransactionEditForm({
             return;
         }
 
-        let nextRawInput = item.rawInput;
+        // Always use the current draftRawInput (which auto-syncs with amount changes)
+        let nextRawInput: string | undefined = draftRawInput.trim() || undefined;
         let nextWarnings = item.parseWarnings;
-        if (rawInputDirty) {
-            if (normalizedRawInput.length === 0) {
-                nextRawInput = undefined;
+        if (rawInputDirty || parsedDraftAmount !== item.amount) {
+            if (!nextRawInput) {
                 nextWarnings = undefined;
             } else if (parserPreview && parserPreview.ok) {
                 nextRawInput = parserPreview.value.rawInput;
