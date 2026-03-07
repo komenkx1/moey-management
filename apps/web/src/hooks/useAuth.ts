@@ -37,10 +37,32 @@ export function useAuth() {
                 setSession(session);
                 setInitialized(true);
 
-                // If already logged in, start sync worker
+                // If already logged in, start sync worker and pull fresh remote data
                 if (session?.user) {
-                    console.log('🔄 Starting sync worker for existing session');
+                    console.log('🔄 Starting sync worker & fetching latest cloud data for existing session');
                     startSyncWorker(session.user.id);
+                    
+                    // Fire-and-forget background synchronization to keep multi-device data completely fresh
+                    useKemanaStore.getState().setSyncStatus('syncing');
+                    initialSyncOnLogin(session.user.id, supabase)
+                        .then(async (result) => {
+                            if (result.success) {
+                                const [freshEntries, freshRules] = await Promise.all([
+                                    loadEntries(),
+                                    loadRules()
+                                ]);
+                                const store = useKemanaStore.getState();
+                                store.setEntries(freshEntries);
+                                store.setRules(freshRules);
+                                store.setSyncStatus('synced');
+                                store.setLastSyncTime(Date.now());
+                            } else {
+                                useKemanaStore.getState().setSyncStatus('failed');
+                            }
+                        })
+                        .catch(() => {
+                            useKemanaStore.getState().setSyncStatus('failed');
+                        });
                 }
             });
         }
