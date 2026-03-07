@@ -8,6 +8,7 @@ interface TopAppBarProps {
     onActionClick?: () => void;
     className?: string;
     showVersion?: boolean;
+    indicator?: ReactNode;
 }
 
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "dev";
@@ -18,7 +19,8 @@ export default function TopAppBar({
     actionIcon,
     onActionClick,
     className,
-    showVersion = true
+    showVersion = true,
+    indicator
 }: TopAppBarProps) {
     return (
         <header
@@ -40,6 +42,11 @@ export default function TopAppBar({
                             v{APP_VERSION}
                         </span>
                     ) : null}
+                    {indicator && (
+                        <div className="ml-1 pl-2 border-l border-border-subtle/50">
+                            {indicator}
+                        </div>
+                    )}
                 </div>
                 {subtitle && <p className="text-[14px] font-medium text-text-secondary">{subtitle}</p>}
             </div>

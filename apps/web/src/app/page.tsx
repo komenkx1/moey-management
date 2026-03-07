@@ -5,6 +5,7 @@ import { Settings, Sun, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ScreenContainer from "@/components/kemana-ui/ScreenContainer";
 import TopAppBar from "@/components/kemana-ui/TopAppBar";
+import SyncIndicator from "@/components/kemana-ui/SyncIndicator";
 import BottomTabBar from "@/components/kemana-ui/BottomTabBar";
 import FabAddButton from "@/components/kemana-ui/FabAddButton";
 import DateRangeFilter from "@/components/kemana-ui/DateRangeFilter";
@@ -85,12 +86,14 @@ import { useQuickAdd } from "@/hooks/useQuickAdd";
 import { useInsightData } from "@/hooks/useInsightData";
 import { useScrollToEntry } from "@/hooks/useScrollToEntry";
 import { useNotesVirtualization } from "@/hooks/useNotesVirtualization";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ParsedBulkLine extends BulkPreviewLine {
   parsed?: Extract<ParseQuickAddResult, { ok: true }>;
 }
 
 export default function DashboardPage() {
+  const { session } = useAuth();
   const { entries, setEntries } = useEntries();
   const { debouncedSetEntries, flushPendingUpdates } = useDebouncedEntries(setEntries, 300);
   const { rules, setRules } = useRules();
@@ -730,7 +733,7 @@ export default function DashboardPage() {
   if (activeTab === "insight") {
     return (
       <ScreenContainer withBottomNav>
-        <TopAppBar title="Insight" />
+        <TopAppBar title="Insight" indicator={session ? <SyncIndicator /> : null} />
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <main className="flex flex-col gap-3 px-4 py-2 pb-[calc(96px+env(safe-area-inset-bottom))]">
             <div
@@ -777,7 +780,7 @@ export default function DashboardPage() {
   if (activeTab === "account") {
     return (
       <ScreenContainer withBottomNav>
-        <TopAppBar title="Akun" />
+        <TopAppBar title="Akun" indicator={session ? <SyncIndicator /> : null} />
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <main className="flex flex-col gap-3 px-4 py-2 pb-[calc(96px+env(safe-area-inset-bottom))]">
             <Suspense fallback={<div className="flex-1 flex items-center justify-center p-8 text-[13px] text-text-tertiary animate-pulse">Memuat akun...</div>}>
@@ -796,6 +799,7 @@ export default function DashboardPage() {
       <ScreenContainer withBottomNav withFab>
         <TopAppBar
           title="Catatan"
+          indicator={session ? <SyncIndicator /> : null}
           actionIcon={<Settings className="h-5 w-5" />}
           onActionClick={() => setIsDataToolsSheetOpen(true)}
         />
@@ -842,6 +846,7 @@ export default function DashboardPage() {
       <TopAppBar
         title="KeMana"
         subtitle={homeGreetingSubtitle}
+        indicator={session ? <SyncIndicator /> : null}
         actionIcon={isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         onActionClick={toggleTheme}
       />

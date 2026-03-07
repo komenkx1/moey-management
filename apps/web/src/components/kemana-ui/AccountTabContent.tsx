@@ -1,8 +1,9 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useAuthStore } from "@/store/use-auth-store";
+import { useKemanaStore } from "@/store/use-kemana-store";
 import { useUserProfile } from "@/store/kemana/hooks-granular";
 import { Button } from "@/components/ui/button";
-import { UserCircle, Shield, Cloud, LogOut, KeyRound } from "lucide-react";
+import { UserCircle, Shield, Cloud, LogOut, Database, Clock, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useState } from "react";
@@ -12,11 +13,19 @@ export default function AccountTabContent() {
     // Subscribe directly to auth store for reactive updates (not via useAuth hook)
     const user = useAuthStore((state) => state.user);
     const isInitialized = useAuthStore((state) => state.isInitialized);
+
+    const entriesCount = useKemanaStore((state) => state.entries.length);
+    const rulesCount = useKemanaStore((state) => state.rules.length);
+    const pendingSyncCount = useKemanaStore((state) => state.pendingSyncCount);
+    const lastSyncTime = useKemanaStore((state) => state.lastSyncTime);
+    const syncStatus = useKemanaStore((state) => state.syncStatus);
+
     // Use useAuth only for action methods
     const { signInWithGoogle, flushSyncQueue, forceSignOut } = useAuth();
     const { userName, setIsNamePromptOpen } = useUserProfile();
     const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [isForceSyncing, setIsForceSyncing] = useState(false);
     const [showOfflineWarning, setShowOfflineWarning] = useState(false);
 
     const handleLogin = async () => {
@@ -48,6 +57,22 @@ export default function AccountTabContent() {
                 setIsLoggingOut(false);
             }
         } 
+    };
+
+    const handleForceSync = async () => {
+        setIsForceSyncing(true);
+        try {
+            await flushSyncQueue();
+            if (pendingSyncCount === 0) {
+                toast.success("Semua data telah disinkronkan.");
+            } else {
+                toast.success("Antrean sinkronisasi diproses.");
+            }
+        } catch (e: any) {
+            toast.error(e.message === "PENDING_OFFLINE_DATA" ? "Tidak ada koneksi internet." : (e.message || "Gagal menyinkronkan data."));
+        } finally {
+            setIsForceSyncing(false);
+        }
     };
 
     const confirmForceLogout = async () => {
@@ -129,14 +154,39 @@ export default function AccountTabContent() {
                     </div>
                 ) : (
                     <div className="flex flex-col gap-4">
-                        <div className="flex items-center justify-between p-3 rounded-2xl bg-brand/5 border border-brand/10">
-                            <div className="flex flex-col">
-                                <span className="text-[13px] font-medium text-text-primary">Sync otomatis aktif</span>
-                                <span className="text-[11px] text-text-tertiary">Terhubung ke cloud</span>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="flex flex-col p-3 rounded-2xl bg-bg-base border border-border-subtle/50">
+                                <div className="flex items-center gap-1.5 text-text-tertiary mb-1">
+                                    <Database className="w-4 h-4" />
+                                    <span className="text-[11px] font-medium uppercase tracking-wider">Total Data</span>
+                                </div>
+                                <span className="text-[20px] font-bold text-text-primary">{entriesCount + rulesCount}</span>
+                                <span className="text-[11px] text-text-secondary mt-0.5">{entriesCount} catatan, {rulesCount} aturan</span>
                             </div>
-                            <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+
+                            <div className="flex flex-col p-3 rounded-2xl bg-bg-base border border-border-subtle/50">
+                                <div className="flex items-center gap-1.5 text-text-tertiary mb-1">
+                                    <Clock className="w-4 h-4" />
+                                    <span className="text-[11px] font-medium uppercase tracking-wider">Terakhir Sync</span>
+                                </div>
+                                <span className="text-[14px] font-bold text-text-primary leading-tight mt-1">
+                                    {lastSyncTime ? new Date(lastSyncTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Belum pernah"}
+                                </span>
+                                <span className="text-[11px] text-text-secondary mt-1">
+                                    {pendingSyncCount > 0 ? <span className="text-amber-500 font-medium">{pendingSyncCount} offline</span> : "Semua tersimpan"}
+                                </span>
+                            </div>
                         </div>
-                        {/* TODO: Add Password linking for Google accounts later in Edge Cases */}
+
+                        <Button
+                            variant="secondary"
+                            onClick={handleForceSync}
+                            disabled={isForceSyncing || syncStatus === 'syncing'}
+                            className="w-full flex items-center justify-center gap-2 rounded-2xl h-11 bg-brand/10 text-brand hover:bg-brand/15 border border-brand/20 transition-all font-semibold"
+                        >
+                            <RefreshCw className={cn("w-4 h-4", (isForceSyncing || syncStatus === 'syncing') && "animate-spin")} />
+                            {isForceSyncing || syncStatus === 'syncing' ? "Menyinkronkan..." : "Paksa Sinkronisasi"}
+                        </Button>
                     </div>
                 )}
             </section>
