@@ -359,3 +359,7 @@ export {
 } from "./habits";
 export { migrateFromLocalStorage } from "./migrate-localstorage";
 export { db } from "./db";
+export { migrateLocalDataToAccount, initialSyncOnLogin } from "./sync";
+export type { MigrationResult } from "./sync";
+export { SyncWorker, enqueueSyncOperation, generateSyncId } from "./sync-worker";
+export type { SyncQueueItem } from "./db";
