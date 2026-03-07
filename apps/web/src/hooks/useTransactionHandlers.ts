@@ -18,6 +18,8 @@ import { createEntryId, toParserAmountToken } from "@/lib/dashboard-page-helpers
 import { recordQuickAddAck } from "@/lib/perf";
 import { TOAST_IDS } from "@/lib/constants";
 import { hapticsSuccess, hapticsMedium } from "@/lib/haptics";
+import { enqueueSyncOperation } from "@kemana/storage";
+import { useAuth } from "./useAuth";
 
 interface MovedToastPayload {
   entryId: string;
@@ -77,6 +79,8 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
     dismissRecallForSession,
     quickInputRef
   } = props;
+
+  const { session } = useAuth();
 
   const undoToastPayloadRef = useRef<UndoToastPayload | null>(null);
   const movedToastPayloadRef = useRef<MovedToastPayload | null>(null);
@@ -151,26 +155,33 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
           ? (updatedItem.paymentMethod as Entry["paymentMethod"])
           : undefined;
 
+      const updatedEntry: Entry = {
+        ...originalEntry,
+        amount: updatedItem.amount,
+        date: updatedItem.time,
+        category: updatedItem.category as Entry["category"],
+        paymentMethod,
+        text: nextText,
+        rawInput: updatedItem.rawInput,
+        parseWarnings: updatedItem.parseWarnings,
+        split: updatedItem.split,
+        updatedAt: new Date().toISOString()
+      };
+
       const nextEntries = entries.map((entry) => {
         if (entry.id !== updatedItem.id) {
           return entry;
         }
-
-        return {
-          ...entry,
-          amount: updatedItem.amount,
-          date: updatedItem.time,
-          category: updatedItem.category as Entry["category"],
-          paymentMethod,
-          text: nextText,
-          rawInput: updatedItem.rawInput,
-          parseWarnings: updatedItem.parseWarnings,
-          split: updatedItem.split,
-          updatedAt: new Date().toISOString()
-        };
+        return updatedEntry;
       });
 
       setEntries(nextEntries);
+      
+      // Enqueue sync if logged in
+      if (session?.user) {
+        enqueueSyncOperation('entry', updatedEntry.id, 'update', updatedEntry).catch(console.error);
+      }
+
       if (categoryChanged) {
         setRules((prev) => updateCategoryRule(prev, nextText, updatedItem.category as Category));
       }
@@ -193,6 +204,7 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
       dateFilter,
       entries,
       normalizedCustomRange,
+      session,
       setEntries,
       setHighlightEntryId,
       setPendingScrollToId,
@@ -208,12 +220,18 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
         return;
       }
 
+      const deletedEntry = entries[deletedIndex];
       const undoPayload: UndoToastPayload = {
-        entry: entries[deletedIndex],
+        entry: deletedEntry,
         index: deletedIndex
       };
 
       setEntries((prev) => prev.filter((entry) => entry.id !== id));
+
+      // Enqueue sync if logged in
+      if (session?.user) {
+        enqueueSyncOperation('entry', id, 'delete', deletedEntry).catch(console.error);
+      }
 
       undoToastPayloadRef.current = undoPayload;
       hapticsMedium();
@@ -234,6 +252,11 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
               next.splice(insertIndex, 0, payload.entry);
               return next;
             });
+
+            // Re-enqueue create if undo
+            if (session?.user) {
+              enqueueSyncOperation('entry', payload.entry.id, 'create', payload.entry).catch(console.error);
+            }
 
             // Flush immediately for undo operations
             flushEntries?.();
@@ -288,6 +311,11 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
       };
 
       setEntries((prev) => [nextEntry, ...prev]);
+
+      // Enqueue sync if logged in
+      if (session?.user) {
+        enqueueSyncOperation('entry', nextEntry.id, 'create', nextEntry).catch(console.error);
+      }
 
       // Flush immediately for quick add to ensure UI updates
       flushEntries?.();
@@ -361,6 +389,11 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
       };
 
       setEntries((prev) => [nextEntry, ...prev]);
+
+      // Enqueue sync if logged in
+      if (session?.user) {
+        enqueueSyncOperation('entry', nextEntry.id, 'create', nextEntry).catch(console.error);
+      }
 
       // Flush immediately for sheet creation
       flushEntries?.();
