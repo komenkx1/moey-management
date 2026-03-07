@@ -4,6 +4,7 @@
  */
 
 import { StatusBar, Style } from "@capacitor/status-bar";
+import { Capacitor } from "@capacitor/core";
 import { isNativePlatform } from "./capacitor";
 
 // Theme colors dari globals.css
@@ -18,7 +19,10 @@ export async function setStatusBarDark() {
   
   try {
     await StatusBar.setStyle({ style: Style.Dark });
-    await StatusBar.setBackgroundColor({ color: DARK_THEME_BG });
+    // setBackgroundColor overrides are only supported on Android
+    if (Capacitor.getPlatform() === 'android') {
+        await StatusBar.setBackgroundColor({ color: DARK_THEME_BG });
+    }
   } catch (error) {
     console.warn("Status bar not available:", error);
   }
