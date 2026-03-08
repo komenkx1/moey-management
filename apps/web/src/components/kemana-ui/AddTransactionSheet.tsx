@@ -157,7 +157,13 @@ export default function AddTransactionSheet({ isOpen, onClose, onSave, prefill }
 
   const handleQtyChange = (event: ChangeEvent<HTMLInputElement>) => {
     const sanitized = event.target.value.replace(/\D/g, "");
-    setQtyStr(sanitized.length ? sanitized : "1");
+    setQtyStr(sanitized);
+  };
+
+  const handleQtyBlur = () => {
+    if (qtyStr === "") {
+      setQtyStr("1");
+    }
   };
 
   const handleSave = () => {
@@ -272,6 +278,7 @@ export default function AddTransactionSheet({ isOpen, onClose, onSave, prefill }
                 inputMode="numeric"
                 value={qtyStr}
                 onChange={handleQtyChange}
+                onBlur={handleQtyBlur}
                 aria-label="Jumlah item"
                 className="w-11 bg-transparent text-center text-[13px] font-semibold text-text-primary outline-none"
               />
