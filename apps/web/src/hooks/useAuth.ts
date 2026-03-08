@@ -27,47 +27,61 @@ export function useAuth() {
     const hasInitializedRef = useRef(false);
 
     useEffect(() => {
-        // Get initial session only once across strict mode re-renders
-        if (!hasInitializedRef.current) {
+        let mounted = true;
+
+        const initializeAuth = async () => {
+            if (hasInitializedRef.current) return;
             hasInitializedRef.current = true;
-            supabase.auth.getSession().then(({ data: { session }, error }) => {
+
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
                 if (error) {
                     console.error("Error getting session:", error);
                 }
-                setSession(session);
-                setInitialized(true);
+                
+                if (mounted) {
+                    setSession(session);
+                    setInitialized(true);
+                }
 
                 // If already logged in, start sync worker and pull fresh remote data
-                if (session?.user) {
+                if (session?.user && mounted) {
                     console.log('🔄 Starting sync worker & fetching latest cloud data for existing session');
                     startSyncWorker(session.user.id);
                     
                     // Fire-and-forget background synchronization to keep multi-device data completely fresh
                     useKemanaStore.getState().setSyncStatus('syncing');
-                    initialSyncOnLogin(session.user.id, supabase)
-                        .then(async (result) => {
-                            if (result.success) {
-                                const [freshEntries, freshRules] = await Promise.all([
-                                    loadEntries(),
-                                    loadRules()
-                                ]);
-                                const store = useKemanaStore.getState();
-                                store.setEntries(freshEntries);
-                                store.setRules(freshRules);
-                                store.setSyncStatus('synced');
-                                store.setLastSyncTime(Date.now());
-                            } else {
-                                useKemanaStore.getState().setSyncStatus('failed');
-                            }
-                        })
-                        .catch(() => {
-                            useKemanaStore.getState().setSyncStatus('failed');
-                        });
+                    const result = await initialSyncOnLogin(session.user.id, supabase);
+                    if (result.success && mounted) {
+                        const [freshEntries, freshRules] = await Promise.all([
+                            loadEntries(),
+                            loadRules()
+                        ]);
+                        const store = useKemanaStore.getState();
+                        store.setEntries(freshEntries);
+                        store.setRules(freshRules);
+                        store.setSyncStatus('synced');
+                        store.setLastSyncTime(Date.now());
+                    } else if (mounted) {
+                        useKemanaStore.getState().setSyncStatus('failed');
+                    }
                 }
-            });
-        }
+            } catch (err) {
+                 if (mounted) {
+                     setInitialized(true); 
+                 }
+            }
+        };
+
+        initializeAuth();
+        
+        return () => {
+             mounted = false;
+        };
+    }, []);
 
         // Listen to auth changes permanently
+        useEffect(() => {
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -162,7 +176,7 @@ export function useAuth() {
         return () => {
             subscription.unsubscribe();
         };
-    }, []); // Empty dependency array so it only mounts/unmounts once 
+    }, []); // Empty deps to listen once // Empty dependency array so it only mounts/unmounts once 
 
     const signInWithGoogle = async () => {
         if (isNativePlatform()) {

@@ -550,7 +550,7 @@ export default function TransactionEditForm({
                                                 ) : (
                                                     <>
                                                         <button onClick={() => setSplitMode("smart")} className="flex items-center gap-1.5 text-[11px] text-brand font-semibold bg-brand-soft/30 border border-brand/20 px-2.5 py-2 rounded-lg mb-2 mt-1 hover:bg-brand-soft/60 transition-colors w-full justify-center active:scale-95">
-                                                            <Sparkles className="w-3.5 h-3.5" /> Kalkulator pintar berdasar item
+                                                            <Sparkles className="w-3.5 h-3.5" /> Kalkulator split
                                                         </button>
                                                         {splitPeople.map((person) => (
                                                             <div key={person} className="flex items-center gap-2">
