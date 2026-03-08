@@ -118,6 +118,7 @@ export default function SmartSplitCalculator({ totalAmount, splitPeople, onShare
                 value={formatCurrencyInputDisplay(subtotalStr)}
                 onChange={(e) => setSubtotalStr(sanitizeCurrencyInput(e.target.value))}
                 placeholder="0"
+                data-testid="smart-split-subtotal"
                 className="w-full bg-transparent text-[20px] font-bold text-text-primary outline-none"
             />
          </div>
@@ -164,12 +165,14 @@ export default function SmartSplitCalculator({ totalAmount, splitPeople, onShare
                                   placeholder="0"
                                   value={formatCurrencyInputDisplay(item.priceStr)}
                                   onChange={(e) => updateItem(item.id, "priceStr", sanitizeCurrencyInput(e.target.value))}
+                                  data-testid={`smart-split-item-price-${index}`}
                                   className="w-full bg-transparent text-[14px] font-semibold text-text-primary outline-none"
                               />
                           </div>
                           <select 
                               value={item.assignedTo}
                               onChange={(e) => updateItem(item.id, "assignedTo", e.target.value)}
+                              data-testid={`smart-split-item-select-${index}`}
                               className="max-w-[120px] bg-bg-subtle rounded-xl px-2 py-2 border border-border-subtle text-[12px] font-semibold text-text-secondary outline-none appearance-none text-center cursor-pointer"
                           >
                               <option value="EQUAL">Bagi Rata</option>
@@ -185,7 +188,8 @@ export default function SmartSplitCalculator({ totalAmount, splitPeople, onShare
           {/* Add Item Button (Moved to bottom) */}
           <button 
               type="button" 
-              onClick={addItem} 
+              onClick={addItem}
+              data-testid="smart-split-add-item"
               className="mt-1 w-full py-2.5 rounded-xl border border-dashed border-border-subtle hover:border-brand hover:bg-brand-soft/50 text-text-secondary hover:text-brand text-[13px] font-semibold flex items-center justify-center gap-1.5 transition-colors active:scale-[0.98]"
           >
               <Plus className="w-4 h-4" /> Tambah Makanan
@@ -193,7 +197,9 @@ export default function SmartSplitCalculator({ totalAmount, splitPeople, onShare
       </div>
 
       {/* Validation Banner */}
-      <div className={cn(
+      <div 
+          data-testid="smart-split-validation"
+          className={cn(
           "p-3 rounded-xl border flex items-center justify-between transition-colors",
           subtotalAmount === 0 ? "bg-bg-subtle border-border-subtle" :
           diff === 0 ? "bg-green-500/10 border-green-500/30 text-green-600" : "bg-red-500/10 border-red-500/30 text-red-500"
