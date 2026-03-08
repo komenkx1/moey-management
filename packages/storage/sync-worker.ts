@@ -3,6 +3,21 @@ import type { Entry, CategoryRules } from "../core/types";
 
 export type SyncWorkerStatus = 'idle' | 'syncing' | 'synced' | 'failed' | 'offline';
 
+/**
+ * Helper to wrap promises with a timeout to prevent infinite hangs on bad connections.
+ */
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
+  let timeoutHandle: any;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => reject(new Error(errorMessage)), timeoutMs);
+  });
+
+  return Promise.race([
+    promise,
+    timeoutPromise,
+  ]).finally(() => clearTimeout(timeoutHandle));
+}
+
 export class SyncWorker {
   private isRunning = false;
   private supabaseClient: any;
@@ -192,20 +207,28 @@ export class SyncWorker {
           updated_at: entry.updatedAt
         };
 
-        const { error } = await this.supabaseClient
-          .from('entries')
-          .upsert(serverEntry, {
-            onConflict: 'id'
-          });
+        const { error } = await withTimeout(
+          this.supabaseClient
+            .from('entries')
+            .upsert(serverEntry, {
+              onConflict: 'id'
+            }) as Promise<{ error: any }>,
+          15000,
+          "Waktu koneksi habis saat menyimpan transaksi."
+        );
 
         if (error) throw error;
 
       } else if (operation === 'delete') {
-        const { error } = await this.supabaseClient
-          .from('entries')
-          .delete()
-          .eq('id', entityId)
-          .eq('owner_id', this.userId);
+        const { error } = await withTimeout(
+          this.supabaseClient
+            .from('entries')
+            .delete()
+            .eq('id', entityId)
+            .eq('owner_id', this.userId) as Promise<{ error: any }>,
+          15000,
+          "Waktu koneksi habis saat menghapus transaksi."
+        );
 
         if (error) throw error;
       }
@@ -222,11 +245,15 @@ export class SyncWorker {
           category: rule.category
         };
 
-        const { error } = await this.supabaseClient
-          .from('rules')
-          .upsert(serverRule, {
-            onConflict: 'owner_id,pattern,match'
-          });
+        const { error } = await withTimeout(
+          this.supabaseClient
+            .from('rules')
+            .upsert(serverRule, {
+              onConflict: 'owner_id,pattern,match'
+            }) as Promise<{ error: any }>,
+          15000,
+          "Waktu koneksi habis saat menyimpan aturan."
+        );
 
         if (error) throw error;
 
@@ -234,12 +261,16 @@ export class SyncWorker {
         if (!payload) throw new Error('Payload required for delete rule');
         
         const rule = payload as CategoryRules[number];
-        const { error } = await this.supabaseClient
-          .from('rules')
-          .delete()
-          .eq('owner_id', this.userId)
-          .eq('pattern', rule.pattern)
-          .eq('match', rule.match);
+        const { error } = await withTimeout(
+          this.supabaseClient
+            .from('rules')
+            .delete()
+            .eq('owner_id', this.userId)
+            .eq('pattern', rule.pattern)
+            .eq('match', rule.match) as Promise<{ error: any }>,
+          15000,
+          "Waktu koneksi habis saat menghapus aturan."
+        );
 
         if (error) throw error;
       }

@@ -142,32 +142,53 @@ export async function migrateLocalDataToAccount(
 }
 
 /**
- * Perform initial sync when user logs in on a new device
- * Downloads all data from server and merges with local data
+ * Helper to wrap promises with a timeout to prevent infinite hangs on bad connections.
+ */
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
+  let timeoutHandle: any;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => reject(new Error(errorMessage)), timeoutMs);
+  });
+
+  return Promise.race([
+    promise,
+    timeoutPromise,
+  ]).finally(() => clearTimeout(timeoutHandle));
+}
+
+/**
+ * Perform initial full fetch from server and sync with local data
  */
 export async function initialSyncOnLogin(
   userId: string,
   supabaseClient: any
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // 1. Fetch all data from server
-    const { data: serverEntries, error: entriesError } = await supabaseClient
+    // 1. Fetch all data from server with a strict 15-second timeout
+    const fetchEntriesPromise = supabaseClient
       .from("entries")
       .select("*")
       .eq("owner_id", userId)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false }) as Promise<{ data: any[] | null; error: any }>;
 
-    if (entriesError) {
-      throw new Error(`Failed to fetch entries: ${entriesError.message}`);
-    }
-
-    const { data: serverRules, error: rulesError } = await supabaseClient
+    const fetchRulesPromise = supabaseClient
       .from("rules")
       .select("*")
-      .eq("owner_id", userId);
+      .eq("owner_id", userId) as Promise<{ data: any[] | null; error: any }>;
 
+    const [entriesResponse, rulesResponse] = await Promise.all([
+      withTimeout(fetchEntriesPromise, 15000, "Waktu koneksi habis saat mengambil transaksi."),
+      withTimeout(fetchRulesPromise, 15000, "Waktu koneksi habis saat mengambil aturan.")
+    ]);
+
+    const { data: serverEntries, error: entriesError } = entriesResponse;
+    const { data: serverRules, error: rulesError } = rulesResponse;
+
+    if (entriesError) {
+      throw new Error(`Gagal mengambil data transaksi: ${entriesError.message}`);
+    }
     if (rulesError) {
-      throw new Error(`Failed to fetch rules: ${rulesError.message}`);
+      throw new Error(`Gagal mengambil data aturan: ${rulesError.message}`);
     }
 
     // 2. Load local data
