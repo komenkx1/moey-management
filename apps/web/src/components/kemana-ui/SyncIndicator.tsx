@@ -24,10 +24,10 @@ export default function SyncIndicator({ className, showText = false }: SyncIndic
                 {displayStatus === 'synced' && (
                     <motion.div
                         key="synced"
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0.8, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15 }}
                         className="flex items-center gap-1.5 text-brand"
                         title="Tersinkronisasi"
                     >
@@ -39,19 +39,14 @@ export default function SyncIndicator({ className, showText = false }: SyncIndic
                 {displayStatus === 'syncing' && (
                     <motion.div
                         key="syncing"
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0.8, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15 }}
                         className="flex items-center gap-1.5 text-text-tertiary"
                         title="Sedang Menyinkronkan..."
                     >
-                        <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ repeat: Infinity, ease: "linear", duration: 1.5 }}
-                        >
-                            <RefreshCw className="w-4 h-4" />
-                        </motion.div>
+                        <RefreshCw className="w-4 h-4 animate-spin transform-gpu" style={{ willChange: 'transform' }} />
                         {showText && <span className="text-[11px] font-medium">Menyinkronkan... {pendingCount > 0 && `(${pendingCount})`}</span>}
                     </motion.div>
                 )}
@@ -59,10 +54,10 @@ export default function SyncIndicator({ className, showText = false }: SyncIndic
                 {displayStatus === 'offline' && (
                     <motion.div
                         key="offline"
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0.8, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15 }}
                         className="flex items-center gap-1.5 text-text-tertiary"
                         title="Sedang Offline (Menunggu Jaringan)"
                     >
@@ -74,10 +69,10 @@ export default function SyncIndicator({ className, showText = false }: SyncIndic
                 {displayStatus === 'failed' && (
                     <motion.div
                         key="failed"
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0.8, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15 }}
                         className="flex items-center gap-1.5 text-semantic-danger"
                         title="Gagal Sinkronisasi"
                     >

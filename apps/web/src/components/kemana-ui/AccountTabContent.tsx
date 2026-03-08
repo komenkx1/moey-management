@@ -180,7 +180,7 @@ export default function AccountTabContent() {
                             disabled={isForceSyncing || syncStatus === 'syncing'}
                             className="w-full flex items-center justify-center gap-2 rounded-2xl h-11 bg-brand/10 text-brand hover:bg-brand/15 border border-brand/20 transition-all font-semibold"
                         >
-                            <RefreshCw className={cn("w-4 h-4", (isForceSyncing || syncStatus === 'syncing') && "animate-spin")} />
+                            <RefreshCw className={cn("w-4 h-4 transform-gpu", (isForceSyncing || syncStatus === 'syncing') && "animate-spin")} style={{ willChange: 'transform' }} />
                             {isForceSyncing || syncStatus === 'syncing' ? "Menyinkronkan..." : "Paksa Sinkronisasi"}
                         </Button>
                     </div>
