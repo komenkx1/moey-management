@@ -77,6 +77,11 @@ export class SyncWorker {
     this.isRunning = false;
     this.userId = null;
     
+    // Cleanup event listeners to prevent memory leaks
+    this.onStatusChange = undefined;
+    this.onPendingCountChange = undefined;
+    this.onLastSyncTimeChange = undefined;
+    
     this.wakeup(); // Wake up so the loop can exit if it's sleeping
     console.log('⏹️ Sync worker stopped');
   }
@@ -381,25 +386,72 @@ export async function enqueueSyncOperation(
     status: 'pending'
   };
 
-  await db.transaction("rw", db.syncQueue, db.entries, db.rules, async () => {
-    // 1. Enqueue to sync worker
-    await db.syncQueue.add(item);
-    
-    // 2. Optimistic local update so UI reflects immediately while offline
-    if (operation === 'create' || operation === 'update') {
-      if (entity === 'entry' && payload) {
-        await db.entries.put(payload as Entry);
-      } else if (entity === 'rule' && payload) {
-        await db.rules.put(payload as CategoryRules[number]);
+  try {
+    await db.transaction("rw", db.syncQueue, db.entries, db.rules, async () => {
+      // 1. Enqueue to sync worker
+      await db.syncQueue.add(item);
+      
+      // 2. Optimistic local update so UI reflects immediately while offline
+      if (operation === 'create' || operation === 'update') {
+        if (entity === 'entry' && payload) {
+          await db.entries.put(payload as Entry);
+        } else if (entity === 'rule' && payload) {
+          await db.rules.put(payload as CategoryRules[number]);
+        }
+      } else if (operation === 'delete') {
+        if (entity === 'entry') {
+          await db.entries.delete(entityId);
+        } else if (entity === 'rule') {
+          await db.rules.delete(entityId);
+        }
       }
-    } else if (operation === 'delete') {
-      if (entity === 'entry') {
-        await db.entries.delete(entityId);
-      } else if (entity === 'rule') {
-        await db.rules.delete(entityId);
-      }
-    }
-  });
+    });
 
-  console.log(`📝 Enqueued & Applied ${entity} ${operation}:`, entityId);
+    console.log(`📝 Enqueued & Applied ${entity} ${operation}:`, entityId);
+    
+  } catch (error: any) {
+    // Handle IndexedDB quota exceeded errors gracefully
+    // Without this, data loss occurs silently when storage is full
+    if (error.name === 'QuotaExceededError') {
+      console.error('❌ Storage quota exceeded');
+      
+      // Notify user with clear Indonesian message about storage issue
+      alert("Penyimpanan browser penuh. Silakan hapus data lama atau bersihkan cache browser.");
+      
+      // Attempt automatic recovery: clear old synced items and retry once
+      try {
+        // Clear synced items from the queue using clearSynced logic
+        const count = await db.syncQueue.where('status').equals('synced').delete();
+        console.log(`🧹 Cleared ${count} synced items from queue`);
+        
+        // Retry the operation after cleanup
+        await db.transaction("rw", db.syncQueue, db.entries, db.rules, async () => {
+          await db.syncQueue.add(item);
+          
+          if (operation === 'create' || operation === 'update') {
+            if (entity === 'entry' && payload) {
+              await db.entries.put(payload as Entry);
+            } else if (entity === 'rule' && payload) {
+              await db.rules.put(payload as CategoryRules[number]);
+            }
+          } else if (operation === 'delete') {
+            if (entity === 'entry') {
+              await db.entries.delete(entityId);
+            } else if (entity === 'rule') {
+              await db.rules.delete(entityId);
+            }
+          }
+        });
+        
+        console.log(`✓ Retry successful after clearing synced items`);
+      } catch (retryError) {
+        console.error('❌ Retry failed after quota cleanup:', retryError);
+        // If automatic recovery fails, inform user they need manual intervention
+        throw new Error("Penyimpanan penuh dan pembersihan otomatis gagal. Silakan hapus data secara manual.");
+      }
+    } else {
+      // Re-throw other errors for normal error handling
+      throw error;
+    }
+  }
 }

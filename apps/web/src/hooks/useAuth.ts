@@ -12,6 +12,25 @@ import CryptoJS from 'crypto-js';
 // Global sync worker instance
 let syncWorkerInstance: SyncWorker | null = null;
 
+// Helper function to log only in development
+const devLog = (...args: any[]) => {
+    if (process.env.NODE_ENV !== 'production') {
+        console.log(...args);
+    }
+};
+
+const devError = (...args: any[]) => {
+    if (process.env.NODE_ENV !== 'production') {
+        console.error(...args);
+    }
+};
+
+const devWarn = (...args: any[]) => {
+    if (process.env.NODE_ENV !== 'production') {
+        console.warn(...args);
+    }
+};
+
 export function useAuth() {
     const {
         session,
@@ -31,13 +50,17 @@ export function useAuth() {
 
         const initializeAuth = async () => {
             if (hasInitializedRef.current) return;
-            hasInitializedRef.current = true;
 
             try {
                 const { data: { session }, error } = await supabase.auth.getSession();
                 if (error) {
-                    console.error("Error getting session:", error);
+                    devError("Error getting session:", error);
                 }
+                
+                // Set initialized flag AFTER async operation completes
+                // This prevents race conditions where UI components check isInitialized
+                // before session data is ready. Guarantees session state is fully resolved.
+                hasInitializedRef.current = true;
                 
                 if (mounted) {
                     setSession(session);
@@ -46,8 +69,8 @@ export function useAuth() {
 
                 // If already logged in, start sync worker and pull fresh remote data
                 if (session?.user && mounted) {
-                    console.log('🔄 Starting sync worker & fetching latest cloud data for existing session');
-                    startSyncWorker(session.user.id);
+                    devLog('🔄 Starting sync worker & fetching latest cloud data for existing session');
+                    await startSyncWorker(session.user.id);
                     
                     // Fire-and-forget background synchronization to keep multi-device data completely fresh
                     useKemanaStore.getState().setSyncStatus('syncing');
@@ -67,6 +90,8 @@ export function useAuth() {
                     }
                 }
             } catch (err) {
+                 // Set initialized flag even on error
+                 hasInitializedRef.current = true;
                  if (mounted) {
                      setInitialized(true); 
                  }
@@ -77,6 +102,11 @@ export function useAuth() {
         
         return () => {
              mounted = false;
+             // Reset initialization flag to allow proper re-initialization on remount
+             // This prevents stale state when component unmounts during async operations
+             hasInitializedRef.current = false;
+             // Stop sync worker and cleanup all resources (listeners, network handlers)
+             stopSyncWorker();
         };
     }, []);
 
@@ -85,7 +115,7 @@ export function useAuth() {
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange(async (event, session) => {
-            console.log('🔐 Auth state changed:', event, session?.user?.id);
+            devLog('🔐 Auth state changed:', event, session?.user?.id);
             setSession(session);
 
             // Handle sign in - migrate local data
@@ -102,12 +132,12 @@ export function useAuth() {
                     if (migrationResult.success) {
                         const totalMigrated = migrationResult.entriesMigrated + migrationResult.rulesMigrated;
                         if (totalMigrated > 0) {
-                            console.log(
+                            devLog(
                                 `✓ Data lokal berhasil di-backup: ${migrationResult.entriesMigrated} transaksi, ${migrationResult.rulesMigrated} aturan`
                             );
                         }
                     } else {
-                        console.error("Migration failed:", migrationResult.error);
+                        devError("Migration failed:", migrationResult.error);
                     }
 
                     // Then, perform initial sync to get server data
@@ -117,7 +147,7 @@ export function useAuth() {
                     );
 
                     if (syncResult.success) {
-                        console.log("✓ Data tersinkronisasi");
+                        devLog("✓ Data tersinkronisasi");
                         // Reload merged data from IndexedDB into UI state
                         try {
                             const [freshEntries, freshRules] = await Promise.all([
@@ -127,27 +157,27 @@ export function useAuth() {
                             const store = useKemanaStore.getState();
                             store.setEntries(freshEntries);
                             store.setRules(freshRules);
-                            console.log(`✓ UI diperbarui: ${freshEntries.length} transaksi, ${freshRules.length} aturan`);
+                            devLog(`✓ UI diperbarui: ${freshEntries.length} transaksi, ${freshRules.length} aturan`);
                         } catch (reloadError) {
-                            console.error("Failed to reload data into UI:", reloadError);
+                            devError("Failed to reload data into UI:", reloadError);
                         }
                     } else {
-                        console.error("Initial sync failed:", syncResult.error);
+                        devError("Initial sync failed:", syncResult.error);
                     }
 
                     // Start sync worker
-                    console.log('🔄 Starting sync worker after sign in');
-                    startSyncWorker(session.user.id);
+                    devLog('🔄 Starting sync worker after sign in');
+                    await startSyncWorker(session.user.id);
 
                 } catch (error) {
-                    console.error("Auth migration/sync error:", error);
+                    devError("Auth migration/sync error:", error);
                 }
             }
 
             // Handle token refresh - ensure worker is running
             if (event === "TOKEN_REFRESHED" && session?.user) {
-                console.log('🔄 Token refreshed, ensuring worker is running');
-                startSyncWorker(session.user.id);
+                devLog('🔄 Token refreshed, ensuring worker is running');
+                await startSyncWorker(session.user.id);
             }
 
             // Reset migration flag on sign out
@@ -166,9 +196,9 @@ export function useAuth() {
                     const store = useKemanaStore.getState();
                     store.setEntries(freshEntries);
                     store.setRules(freshRules);
-                    console.log('🔄 UI reloaded after sign out:', freshEntries.length, 'entries');
+                    devLog('🔄 UI reloaded after sign out:', freshEntries.length, 'entries');
                 } catch (reloadError) {
-                    console.error('Failed to reload after sign out:', reloadError);
+                    devError('Failed to reload after sign out:', reloadError);
                 }
             }
         });
@@ -180,7 +210,7 @@ export function useAuth() {
 
     const signInWithGoogle = async () => {
         if (isNativePlatform()) {
-            console.log("📱 Using Native Google Auth");
+            devLog("📱 Using Native Google Auth");
             
             // Initialize the Google Auth plugin
             GoogleAuth.initialize({
@@ -203,7 +233,7 @@ export function useAuth() {
             if (error) throw error;
             
         } else {
-            console.log("🌐 Using Web Google OAuth");
+            devLog("🌐 Using Web Google OAuth");
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: "google",
                 options: {
@@ -221,16 +251,27 @@ export function useAuth() {
     const flushSyncQueue = async () => {
         if (syncWorkerInstance) {
             await syncWorkerInstance.flushAll();
-            console.log('✓ Sync queue flushed before logout');
+            devLog('✓ Sync queue flushed before logout');
         }
     };
 
     /**
      * Performs a full 2-way sync: flushes local queue up to the cloud, 
      * then pulls latest cloud state down to IndexedDB and refreshes UI.
+     * Validates network connectivity before starting to prevent failures when offline.
      */
     const forceGlobalSync = async () => {
         if (!user) throw new Error("Pengguna belum login.");
+
+        // Check network first to prevent wasted sync attempts when offline
+        // Throws descriptive error to inform user of connectivity requirement
+        const isOnline = isNativePlatform() 
+            ? (await Network.getStatus()).connected 
+            : navigator.onLine;
+        
+        if (!isOnline) {
+            throw new Error("Tidak dapat sinkronisasi saat offline. Silakan periksa koneksi internet Anda.");
+        }
 
         // 1. Flush local queue up to cloud
         if (syncWorkerInstance) {
@@ -261,7 +302,7 @@ export function useAuth() {
             
             useKemanaStore.getState().setSyncStatus('synced');
             useKemanaStore.getState().setLastSyncTime(Date.now());
-            console.log(`✓ Global Sync Complete: UI updated (${freshEntries.length} entries)`);
+            devLog(`✓ Global Sync Complete: UI updated (${freshEntries.length} entries)`);
             
         } catch (error: any) {
             useKemanaStore.getState().setSyncStatus('failed');
@@ -280,9 +321,9 @@ export function useAuth() {
             const store = useKemanaStore.getState();
             store.setEntries([]);
             store.setRules([]);
-            console.log("🧹 UI Memory Cleared");
+            devLog("🧹 UI Memory Cleared");
         } catch (dbError) {
-            console.error("Failed to clear local database upon signout:", dbError);
+            devError("Failed to clear local database upon signout:", dbError);
         }
 
         if (isNativePlatform()) {
@@ -294,7 +335,7 @@ export function useAuth() {
                 });
                 await GoogleAuth.signOut();
             } catch (googleError) {
-                console.warn("⚠️ Non-fatal: Failed to sign out of native Google SDK:", googleError);
+                devWarn("⚠️ Non-fatal: Failed to sign out of native Google SDK:", googleError);
             }
         }
 
@@ -316,8 +357,14 @@ export function useAuth() {
 
 /**
  * Start the sync worker
+ * Validates network connectivity before starting to prevent immediate failures when offline
  */
-function startSyncWorker(userId: string) {
+async function startSyncWorker(userId: string) {
+    // Check network status first to prevent wasted resource allocation when offline
+    const isOnline = isNativePlatform() 
+        ? (await Network.getStatus()).connected 
+        : navigator.onLine;
+    
     if (!syncWorkerInstance) {
         syncWorkerInstance = new SyncWorker(supabase);
         
@@ -333,7 +380,7 @@ function startSyncWorker(userId: string) {
         };
 
         // Use a cached online status to prevent polling the native bridge every second
-        let isCurrentlyOnline = true;
+        let isCurrentlyOnline = isOnline;
 
         if (isNativePlatform()) {
             // Initial check
@@ -345,7 +392,7 @@ function startSyncWorker(userId: string) {
             Network.addListener('networkStatusChange', (status) => {
                 isCurrentlyOnline = status.connected;
                 if (status.connected && syncWorkerInstance) {
-                    console.log('📶 Network restored, waking up sync worker...');
+                    devLog('📶 Network restored, waking up sync worker...');
                     syncWorkerInstance.wakeup();
                 }
             });
@@ -355,15 +402,41 @@ function startSyncWorker(userId: string) {
             syncWorkerInstance.isOnlineFn = async () => navigator.onLine;
         }
     }
+    
+    // Set offline status if not online
+    if (!isOnline) {
+        useKemanaStore.getState().setSyncStatus('offline');
+    }
+    
     syncWorkerInstance.start(userId);
 }
 
 /**
  * Stop the sync worker
+ * Performs complete cleanup to prevent memory leaks:
+ * - Removes all event listener callbacks
+ * - Nullifies global instance for garbage collection
+ * - Removes native platform network listeners
  */
 function stopSyncWorker() {
     if (syncWorkerInstance) {
         syncWorkerInstance.stop();
+        
+        // Cleanup event listeners to prevent memory leaks
+        // These callbacks hold references that prevent garbage collection
+        syncWorkerInstance.onStatusChange = undefined;
+        syncWorkerInstance.onPendingCountChange = undefined;
+        syncWorkerInstance.onLastSyncTimeChange = undefined;
+        
+        // Nullify instance to allow garbage collection
+        // Without this, the instance persists in memory after logout
+        syncWorkerInstance = null;
+    }
+    
+    // Remove network listener on native platforms
+    // Capacitor Network listeners must be explicitly removed to prevent leaks
+    if (isNativePlatform()) {
+        Network.removeAllListeners();
     }
 }
 
