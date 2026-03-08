@@ -21,7 +21,7 @@ import { hapticsSuccess, hapticsMedium } from "@/lib/haptics";
 import { enqueueSyncOperation } from "@kemana/storage";
 import { useKemanaStore } from "@/store/use-kemana-store";
 
-import { useAuth } from "./useAuth";
+import { useAuth, getSyncWorker } from "./useAuth";
 
 interface MovedToastPayload {
   entryId: string;
@@ -180,7 +180,7 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
       
       // Enqueue sync if logged in
       if (session?.user) {
-        enqueueSyncOperation('entry', updatedEntry.id, 'update', updatedEntry).catch(console.error);
+        enqueueSyncOperation('entry', updatedEntry.id, 'update', updatedEntry, getSyncWorker()).catch(console.error);
       }
 
       if (categoryChanged) {
@@ -232,7 +232,7 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
 
       // Enqueue sync if logged in
       if (session?.user) {
-        enqueueSyncOperation('entry', id, 'delete', deletedEntry).catch(console.error);
+        enqueueSyncOperation('entry', id, 'delete', deletedEntry, getSyncWorker()).catch(console.error);
       }
 
       undoToastPayloadRef.current = undoPayload;
@@ -257,7 +257,7 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
 
             // Re-enqueue create if undo
             if (session?.user) {
-              enqueueSyncOperation('entry', payload.entry.id, 'create', payload.entry).catch(console.error);
+              enqueueSyncOperation('entry', payload.entry.id, 'create', payload.entry, getSyncWorker()).catch(console.error);
             }
 
             // Flush immediately for undo operations
@@ -317,7 +317,7 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
 
       // Enqueue sync if logged in
       if (session?.user) {
-        enqueueSyncOperation('entry', nextEntry.id, 'create', nextEntry).catch(console.error);
+        enqueueSyncOperation('entry', nextEntry.id, 'create', nextEntry, getSyncWorker()).catch(console.error);
       }
 
       // Flush immediately for quick add to ensure UI updates
@@ -396,7 +396,7 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
 
       // Enqueue sync if logged in
       if (session?.user) {
-        enqueueSyncOperation('entry', nextEntry.id, 'create', nextEntry).catch(console.error);
+        enqueueSyncOperation('entry', nextEntry.id, 'create', nextEntry, getSyncWorker()).catch(console.error);
       }
 
       // Flush immediately for sheet creation

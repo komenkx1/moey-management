@@ -315,6 +315,54 @@ export class SyncWorker {
   }
 
   /**
+   * Sync a specific item immediately without waiting for batch cycle
+   * This provides instant feedback for user operations (create/update/delete)
+   */
+  public async syncImmediately(itemId: string) {
+    if (!this.userId) {
+      console.warn('⚠️ Cannot sync immediately: no user ID');
+      return;
+    }
+
+    const isOnline = await this.isOnlineFn();
+    if (!isOnline) {
+      console.log('📴 Offline: item will sync when connection restored');
+      return;
+    }
+
+    try {
+      const item = await db.syncQueue.get(itemId);
+      if (!item) {
+        console.warn('⚠️ Item not found in queue:', itemId);
+        return;
+      }
+
+      if (item.status === 'synced') {
+        console.log('✓ Item already synced:', itemId);
+        return;
+      }
+
+      // Mark as syncing
+      await db.syncQueue.update(itemId, { status: 'syncing' });
+
+      // Sync the item
+      await this.syncItem(item);
+
+      // Mark as synced
+      await db.syncQueue.update(itemId, { status: 'synced' });
+      console.log(`✓ Immediately synced ${item.entity} ${item.operation}:`, item.entityId);
+      this.onLastSyncTimeChange?.(Date.now());
+      await this.notifyPendingCount();
+
+    } catch (error) {
+      console.error('❌ Immediate sync failed:', error);
+      // Don't update retry count here - let the batch processor handle retries
+      // Just mark as pending so it will be retried in the next batch
+      await db.syncQueue.update(itemId, { status: 'pending' });
+    }
+  }
+
+  /**
    * Get sync queue status
    */
   async getStatus() {
@@ -373,12 +421,14 @@ export function generateSyncId(): string {
 
 /**
  * Helper to enqueue a sync operation
+ * @param syncWorker Optional sync worker instance for immediate sync
  */
 export async function enqueueSyncOperation(
   entity: 'entry' | 'rule',
   entityId: string,
   operation: 'create' | 'update' | 'delete',
-  payload: Entry | CategoryRules[number] | null
+  payload: Entry | CategoryRules[number] | null,
+  syncWorker?: SyncWorker | null
 ): Promise<void> {
   const item: SyncQueueItem = {
     id: generateSyncId(),
@@ -413,6 +463,15 @@ export async function enqueueSyncOperation(
     });
 
     console.log(`📝 Enqueued & Applied ${entity} ${operation}:`, entityId);
+    
+    // 3. Trigger immediate sync if sync worker is available and running
+    // This provides instant feedback for user operations without waiting for batch cycle
+    if (syncWorker && syncWorker.isRunning) {
+      // Fire and forget - don't await to keep enqueue operation fast
+      syncWorker.syncImmediately(item.id).catch(err => {
+        console.warn('⚠️ Immediate sync failed, will retry in batch:', err);
+      });
+    }
     
   } catch (error: any) {
     // Handle IndexedDB quota exceeded errors gracefully
