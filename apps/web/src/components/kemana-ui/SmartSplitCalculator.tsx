@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { Plus, Trash2, Receipt, Calculator } from "lucide-react";
+import { Plus, Trash2, Receipt, Calculator, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatAmountIDR } from "@kemana/core/format";
 import { formatCurrencyInputDisplay, parseCurrencyInputToNumber, sanitizeCurrencyInput } from "@/lib/kemana-utils";
@@ -142,13 +142,16 @@ export default function SmartSplitCalculator({ totalAmount, splitPeople, onShare
               {items.map((item, index) => (
                   <div key={item.id} className="flex flex-col gap-2 p-3 rounded-2xl border border-border-subtle bg-bg-base">
                       <div className="flex items-center gap-2">
-                          <input 
-                              type="text" 
-                              placeholder={`Item ${index + 1} (Opsional)`}
-                              value={item.name}
-                              onChange={(e) => updateItem(item.id, "name", e.target.value)}
-                              className="flex-1 bg-transparent text-[13px] font-semibold text-text-primary outline-none placeholder:text-text-tertiary"
-                          />
+                          <div className="flex-1 flex items-center gap-2 bg-bg-subtle/50 px-2.5 py-1.5 rounded-lg border border-transparent focus-within:border-border-subtle transition-colors">
+                              <Pencil className="w-3.5 h-3.5 text-text-tertiary shrink-0" />
+                              <input 
+                                  type="text" 
+                                  placeholder={`Masukan nama item ${index + 1} (Opsional)`}
+                                  value={item.name}
+                                  onChange={(e) => updateItem(item.id, "name", e.target.value)}
+                                  className="flex-1 bg-transparent text-[13px] font-semibold text-text-primary outline-none placeholder:text-text-tertiary"
+                              />
+                          </div>
                           {items.length > 1 && (
                               <button type="button" onClick={() => removeItem(item.id)} className="p-1.5 text-text-tertiary hover:text-red-500 transition-colors">
                                   <Trash2 className="w-4 h-4" />
