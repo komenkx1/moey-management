@@ -351,7 +351,7 @@ export default function TransactionEditForm({
                         {/* Amount Input */}
                         <div className="flex flex-col gap-1.5">
                             <label className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
-                                Jumlah (Rp)
+                                Total Tagihan (include Pajak) 
                             </label>
                             <Input
                                 inputMode="numeric"

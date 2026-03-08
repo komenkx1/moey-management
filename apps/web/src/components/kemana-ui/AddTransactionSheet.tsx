@@ -251,7 +251,7 @@ export default function AddTransactionSheet({ isOpen, onClose, onSave, prefill }
         <div className="flex-1 overflow-y-auto px-5 pb-28 pt-1">
           <div className="flex flex-col items-center justify-center pb-5 pt-5 text-center">
             <span className="text-[13px] font-semibold text-text-secondary">
-              {quantity > 1 ? "Nominal per item" : "Jumlah"}
+              {quantity > 1 ? "Nominal per item" : "Total Tagihan"} (Include Pajak)
             </span>
             <div className="mt-1 flex items-center justify-center gap-1 font-bold text-text-primary">
               <span className="text-[24px]">Rp</span>
