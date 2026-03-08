@@ -294,13 +294,14 @@ describe("Bug Condition Exploration - Memory Leaks & Race Conditions", () => {
         const cleanupFunction = useEffectMatch[1];
         
         // BUG CONDITION CHECK: On unfixed code, cleanup is incomplete
-        // Expected: Should reset hasInitializedRef and stop sync worker
-        // Current: Only sets mounted = false
+        // Expected: Should reset hasInitializedRef
+        // Note: Sync worker should NOT be stopped on unmount - it persists across remounts
+        // Worker is only stopped on explicit logout (forceSignOut)
         const resetsInitializedRef = cleanupFunction.includes("hasInitializedRef.current = false");
-        const stopsSyncWorker = cleanupFunction.includes("stopSyncWorker");
+        const doesNotStopWorkerOnUnmount = !cleanupFunction.includes("stopSyncWorker()");
         
         expect(resetsInitializedRef).toBe(true);
-        expect(stopsSyncWorker).toBe(true);
+        expect(doesNotStopWorkerOnUnmount).toBe(true);
       }
     });
   });

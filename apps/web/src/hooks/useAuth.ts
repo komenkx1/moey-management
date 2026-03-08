@@ -105,8 +105,8 @@ export function useAuth() {
              // Reset initialization flag to allow proper re-initialization on remount
              // This prevents stale state when component unmounts during async operations
              hasInitializedRef.current = false;
-             // Stop sync worker and cleanup all resources (listeners, network handlers)
-             stopSyncWorker();
+             // NOTE: Do NOT stop sync worker here - it should persist across component remounts
+             // Worker is only stopped on explicit logout (forceSignOut) or auth state change
         };
     }, []);
 
