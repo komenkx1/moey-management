@@ -30,6 +30,7 @@ import {
     splitFingerprint,
     replaceAmountInRawInput
 } from "./helpers";
+import SmartSplitCalculator from "../SmartSplitCalculator";
 
 interface TransactionEditFormProps {
     item: TransactionItem;
@@ -55,12 +56,14 @@ export default function TransactionEditForm({
     const [draftCategory, setDraftCategory] = useState(item.category);
     const [draftPaymentMethod, setDraftPaymentMethod] = useState(item.paymentMethod || "");
     const [splitEnabled, setSplitEnabled] = useState(Boolean(item.split?.shares?.length));
-    const [splitMode, setSplitMode] = useState<"equal" | "custom">(item.split?.mode ?? "equal");
+    const [splitMode, setSplitMode] = useState<"equal" | "custom" | "smart">(item.split?.mode ?? "equal");
     const [splitPeopleInput, setSplitPeopleInput] = useState(getInitialPeopleText(item));
     const [splitOthersDraft, setSplitOthersDraft] = useState(getSplitOtherPeopleInput(getInitialPeopleText(item)));
     const [splitCustomDraft, setSplitCustomDraft] = useState<Record<string, string>>(
         getInitialCustomDraft(item)
     );
+    const [smartSplitShares, setSmartSplitShares] = useState<{ person: string; amount: number }[]>([]);
+    const [isSmartSplitValid, setIsSmartSplitValid] = useState(false);
     const [draftRawInput, setDraftRawInput] = useState(item.rawInput || getDefaultParserInput(item));
     const [splitError, setSplitError] = useState<string | null>(null);
     const [formatFeedback, setFormatFeedback] = useState<string | null>(null);
@@ -97,6 +100,16 @@ export default function TransactionEditForm({
                 shares: buildEqualSplit(parsedDraftAmount, splitPeople)
             };
         }
+        if (splitMode === "smart") {
+            if (!isSmartSplitValid || smartSplitShares.length === 0) return undefined;
+            const validated = buildCustomSplit(parsedDraftAmount, smartSplitShares);
+            if (!validated) return undefined;
+            return {
+                mode: "custom" as const, // Always save as 'custom' in the database
+                payer: item.split?.payer ?? "Kamu",
+                shares: validated
+            };
+        }
 
         const customShares = splitPeople.map((person) => ({
             person,
@@ -108,7 +121,7 @@ export default function TransactionEditForm({
             payer: item.split?.payer ?? "Kamu",
             shares: customShares
         };
-    }, [parsedDraftAmount, splitCustomDraft, splitEnabled, splitMode, splitPeople]);
+    }, [parsedDraftAmount, splitCustomDraft, splitEnabled, splitMode, splitPeople, isSmartSplitValid, smartSplitShares]);
 
     const customDiff = useMemo(() => {
         if (!splitEnabled || splitMode !== "custom" || !draftSplit) {
@@ -206,6 +219,10 @@ export default function TransactionEditForm({
                     ? `Nominal split kurang Rp${formatAmountIDR(Math.abs(customDiff))}`
                     : `Nominal split lebih Rp${formatAmountIDR(customDiff)}`
             );
+            return;
+        }
+        if (splitEnabled && splitMode === "smart" && !isSmartSplitValid) {
+            setSplitError("Kalkulator pintar belum valid atau seimbang.");
             return;
         }
 
@@ -477,11 +494,11 @@ export default function TransactionEditForm({
 
                                     {splitPeople.length >= 2 && (
                                         <div className="flex flex-col gap-2 rounded-lg border border-border-subtle bg-bg-base p-2">
-                                            <div className="flex items-center gap-2 border-b border-border-subtle/50 pb-2">
+                                            <div className="flex items-center gap-1 border-b border-border-subtle/50 pb-2 overflow-x-auto hide-scrollbar">
                                                 <button
                                                     onClick={() => setSplitMode("equal")}
                                                     className={cn(
-                                                        "flex-1 rounded-md px-2 py-1.5 text-[12px] font-semibold transition-colors",
+                                                        "flex-1 whitespace-nowrap rounded-md px-2 py-1.5 text-[11px] font-semibold transition-colors",
                                                         splitMode === "equal"
                                                             ? "bg-[var(--color-split)] text-[var(--color-split-text-active)] shadow-sm"
                                                             : "bg-bg-subtle text-text-secondary hover:bg-[var(--color-split-bg)] hover:text-[var(--color-split)]"
@@ -490,19 +507,30 @@ export default function TransactionEditForm({
                                                     Bagi Rata
                                                 </button>
                                                 <button
+                                                    onClick={() => setSplitMode("smart")}
+                                                    className={cn(
+                                                        "flex-1 whitespace-nowrap rounded-md px-2 py-1.5 text-[11px] font-semibold transition-colors flex items-center justify-center gap-1",
+                                                        splitMode === "smart"
+                                                            ? "bg-brand text-white shadow-sm"
+                                                            : "bg-bg-subtle text-text-secondary hover:bg-brand-soft hover:text-brand"
+                                                    )}
+                                                >
+                                                    <Sparkles className="w-3 h-3" /> Kalkulator
+                                                </button>
+                                                <button
                                                     onClick={() => setSplitMode("custom")}
                                                     className={cn(
-                                                        "flex-1 rounded-md px-2 py-1.5 text-[12px] font-semibold transition-colors",
+                                                        "flex-1 whitespace-nowrap rounded-md px-2 py-1.5 text-[11px] font-semibold transition-colors",
                                                         splitMode === "custom"
                                                             ? "bg-[var(--color-split)] text-[var(--color-split-text-active)] shadow-sm"
                                                             : "bg-bg-subtle text-text-secondary hover:bg-[var(--color-split-bg)] hover:text-[var(--color-split)]"
                                                     )}
                                                 >
-                                                    Atur Manual
+                                                    Manual
                                                 </button>
                                             </div>
 
-                                            <div className="flex max-h-[160px] flex-col gap-2 overflow-y-auto px-1 py-1">
+                                            <div className="flex flex-col gap-2 overflow-y-auto px-1 py-1 max-h-[400px]">
                                                 {splitMode === "equal" ? (
                                                     <div className="flex items-center justify-between px-1 py-1">
                                                         <span className="text-[12px] font-medium text-text-secondary">
@@ -516,6 +544,15 @@ export default function TransactionEditForm({
                                                             )}
                                                         </span>
                                                     </div>
+                                                ) : splitMode === "smart" ? (
+                                                    <SmartSplitCalculator 
+                                                       totalAmount={parsedDraftAmount}
+                                                       splitPeople={splitPeople}
+                                                       onSharesCalculated={(shares, isValid) => {
+                                                           setSmartSplitShares(shares);
+                                                           setIsSmartSplitValid(isValid);
+                                                       }}
+                                                    />
                                                 ) : (
                                                     <>
                                                         {splitPeople.map((person) => (
