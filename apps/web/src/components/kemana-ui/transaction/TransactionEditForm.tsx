@@ -498,7 +498,7 @@ export default function TransactionEditForm({
                                                 <button
                                                     onClick={() => setSplitMode("equal")}
                                                     className={cn(
-                                                        "flex-1 whitespace-nowrap rounded-md px-2 py-1.5 text-[11px] font-semibold transition-colors",
+                                                        "flex-1 whitespace-nowrap rounded-md px-2 py-1.5 text-[12px] font-semibold transition-colors",
                                                         splitMode === "equal"
                                                             ? "bg-[var(--color-split)] text-[var(--color-split-text-active)] shadow-sm"
                                                             : "bg-bg-subtle text-text-secondary hover:bg-[var(--color-split-bg)] hover:text-[var(--color-split)]"
@@ -507,26 +507,15 @@ export default function TransactionEditForm({
                                                     Bagi Rata
                                                 </button>
                                                 <button
-                                                    onClick={() => setSplitMode("smart")}
+                                                    onClick={() => setSplitMode(splitMode === "smart" ? "smart" : "custom")}
                                                     className={cn(
-                                                        "flex-1 whitespace-nowrap rounded-md px-2 py-1.5 text-[11px] font-semibold transition-colors flex items-center justify-center gap-1",
-                                                        splitMode === "smart"
+                                                        "flex-1 whitespace-nowrap rounded-md px-2 py-1.5 text-[12px] font-semibold transition-colors",
+                                                        splitMode !== "equal"
                                                             ? "bg-[var(--color-split)] text-[var(--color-split-text-active)] shadow-sm"
                                                             : "bg-bg-subtle text-text-secondary hover:bg-[var(--color-split-bg)] hover:text-[var(--color-split)]"
                                                     )}
                                                 >
-                                                    <Sparkles className="w-3 h-3" /> Kalkulator
-                                                </button>
-                                                <button
-                                                    onClick={() => setSplitMode("custom")}
-                                                    className={cn(
-                                                        "flex-1 whitespace-nowrap rounded-md px-2 py-1.5 text-[11px] font-semibold transition-colors",
-                                                        splitMode === "custom"
-                                                            ? "bg-[var(--color-split)] text-[var(--color-split-text-active)] shadow-sm"
-                                                            : "bg-bg-subtle text-text-secondary hover:bg-[var(--color-split-bg)] hover:text-[var(--color-split)]"
-                                                    )}
-                                                >
-                                                    Manual
+                                                    Atur Manual
                                                 </button>
                                             </div>
 
@@ -545,16 +534,24 @@ export default function TransactionEditForm({
                                                         </span>
                                                     </div>
                                                 ) : splitMode === "smart" ? (
-                                                    <SmartSplitCalculator 
-                                                       totalAmount={parsedDraftAmount}
-                                                       splitPeople={splitPeople}
-                                                       onSharesCalculated={(shares, isValid) => {
-                                                           setSmartSplitShares(shares);
-                                                           setIsSmartSplitValid(isValid);
-                                                       }}
-                                                    />
+                                                    <div className="flex flex-col gap-2">
+                                                        <button onClick={() => setSplitMode("custom")} className="flex items-center gap-1.5 text-[11px] text-brand font-semibold bg-brand-soft/30 px-2.5 py-1.5 rounded-lg mt-1 hover:bg-brand-soft/60 transition-colors w-full justify-center">
+                                                            Kembali ke mode grid manual
+                                                        </button>
+                                                        <SmartSplitCalculator 
+                                                           totalAmount={parsedDraftAmount}
+                                                           splitPeople={splitPeople}
+                                                           onSharesCalculated={(shares, isValid) => {
+                                                               setSmartSplitShares(shares);
+                                                               setIsSmartSplitValid(isValid);
+                                                           }}
+                                                        />
+                                                    </div>
                                                 ) : (
                                                     <>
+                                                        <button onClick={() => setSplitMode("smart")} className="flex items-center gap-1.5 text-[11px] text-brand font-semibold bg-brand-soft/30 border border-brand/20 px-2.5 py-2 rounded-lg mb-2 mt-1 hover:bg-brand-soft/60 transition-colors w-full justify-center active:scale-95">
+                                                            <Sparkles className="w-3.5 h-3.5" /> Kalkulator pintar berdasar item
+                                                        </button>
                                                         {splitPeople.map((person) => (
                                                             <div key={person} className="flex items-center gap-2">
                                                                 <span className="w-24 truncate text-[12px] font-medium text-text-secondary">
