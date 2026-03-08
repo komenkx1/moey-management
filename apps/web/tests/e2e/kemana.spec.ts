@@ -151,6 +151,17 @@ async function ensureUiUnblocked(page: Page, fallbackName = "Komang") {
   if (await closeDataToolsButton.isVisible().catch(() => false)) {
     await closeDataToolsButton.click();
   }
+
+  // Close install banner if visible
+  try {
+    const installBanner = page.locator('section[aria-label="Install aplikasi"]');
+    if (await installBanner.isVisible({ timeout: 500 })) {
+      await installBanner.locator('button').last().click();
+      await page.waitForTimeout(300);
+    }
+  } catch (e) {
+    // No install banner, continue
+  }
 }
 
 async function expandEntryByText(page: Page, title: string): Promise<Locator> {
@@ -316,7 +327,7 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     const entry = await expandEntryByText(page, "makan");
 
     await entry.getByPlaceholder("Misal: Makan siang").fill("makan siang kantor");
-    await entry.locator("label:has-text('Jumlah') + input").first().fill("25000");
+    await entry.locator('input[inputmode="numeric"][placeholder="0"]').fill("25000");
     await entry.getByPlaceholder("Tambah detail...").fill("siang kantor");
     await entry.getByRole("button", { name: "Simpan", exact: true }).click();
 
@@ -334,7 +345,7 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     await expect(entry.getByTestId("inline-quick-format-input")).toHaveValue("jfdds 10k");
 
     // Ubah nominal dari 10k jadi 30k
-    await entry.locator("label:has-text('Jumlah') + input").first().fill("30000");
+    await entry.locator('input[inputmode="numeric"][placeholder="0"]').fill("30000");
     await page.waitForTimeout(500); // Wait for React useEffect to fire
 
     // Format cepat harus otomatis ter-update jadi "jfdds 30k"
@@ -353,7 +364,7 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     await expect(entry.getByText("Rp45.000")).toBeVisible();
     await page.waitForTimeout(500); // Wait for React state to fully commit
     await entry.getByTestId("inline-quick-format-apply").click();
-    await expect(entry.locator("label:has-text('Jumlah') + input").first()).toHaveValue("45.000");
+    await expect(entry.locator('input[inputmode="numeric"][placeholder="0"]')).toHaveValue("45.000");
 
     await entry.getByRole("button", { name: "Simpan", exact: true }).click();
     // Nominal list menampilkan porsi pengguna saat split aktif.

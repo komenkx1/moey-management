@@ -22,7 +22,7 @@ export default defineConfig({
         },
     ],
     webServer: {
-        command: `PORT=${PLAYWRIGHT_PORT} NODE_OPTIONS='' node scripts/serve-static-export.mjs`,
+        command: `PORT=${PLAYWRIGHT_PORT} node scripts/serve-static-export.mjs`,
         port: PLAYWRIGHT_PORT,
         reuseExistingServer: false,
         timeout: 120000,
