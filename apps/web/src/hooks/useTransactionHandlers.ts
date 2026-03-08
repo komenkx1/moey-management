@@ -395,8 +395,11 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
       useKemanaStore.getState().setEntries((prev: Entry[]) => [nextEntry, ...prev]);
 
       // Enqueue sync if logged in
+      console.log(`🎯 handleCreateFromSheet: session=${!!session?.user}, nextEntry.id=${nextEntry.id}`);
       if (session?.user) {
-        enqueueSyncOperation('entry', nextEntry.id, 'create', nextEntry, getSyncWorker()).catch(console.error);
+        const syncWorker = getSyncWorker();
+        console.log(`🔧 getSyncWorker result: worker=${!!syncWorker}, isRunning=${syncWorker?.isRunning}`);
+        enqueueSyncOperation('entry', nextEntry.id, 'create', nextEntry, syncWorker).catch(console.error);
       }
 
       // Flush immediately for sheet creation
@@ -407,7 +410,7 @@ export function useTransactionHandlers(props: UseTransactionHandlersProps) {
       hapticsSuccess();
       toast.success("Catatan tersimpan.");
     },
-    [dismissRecallForSession, setEntries, flushEntries, setRecallInputPrimed]
+    [dismissRecallForSession, setEntries, flushEntries, setRecallInputPrimed, session]
   );
 
   return {
