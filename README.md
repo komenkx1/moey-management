@@ -2,6 +2,52 @@
 
 KeMana adalah aplikasi pencatatan pengeluaran single-device, local-first, dengan fokus input cepat: "Biar tau uangmu kemana".
 
+## Fitur Keamanan
+
+KeMana menerapkan beberapa lapisan keamanan untuk melindungi data pengguna:
+
+### 1. Enkripsi localStorage (AES-256)
+- **Masalah**: localStorage rentan terhadap serangan XSS yang dapat membaca data pengguna
+- **Solusi**: Semua data pengguna (preferensi, nama) dienkripsi menggunakan AES-256 sebelum disimpan
+- **Implementasi**: Kunci enkripsi diturunkan dari user ID menggunakan SHA-256 (deterministik, konsisten antar sesi)
+- **Performa**: Overhead enkripsi < 5ms untuk operasi store normal
+
+### 2. Validasi CSV Import
+- **Batas Ukuran File**: Maksimal 10MB untuk mencegah crash browser
+- **Batas Jumlah Baris**: Maksimal 10,000 baris untuk mencegah UI freeze
+- **Rasional**: Batas ini wajar untuk pemrosesan berbasis browser dan mencegah serangan DoS
+- **Validasi**: Dilakukan sebelum parsing untuk fail-fast (tidak alokasi memori)
+
+### 3. Proteksi Kredensial
+- **File `.env.local`**: Otomatis diabaikan oleh git untuk mencegah kebocoran kredensial
+- **Template**: File `.env.local.example` tersedia sebagai template dengan placeholder values
+- **Best Practice**: Jangan pernah commit file yang berisi kredensial aktual
+
+### 4. Logging Produksi
+- **Development**: Console logs aktif untuk debugging
+- **Production**: Console logs otomatis dinonaktifkan untuk mencegah eksposur informasi sensitif
+- **Implementasi**: Semua console statements dibungkus dengan `if (process.env.NODE_ENV !== 'production')`
+
+### 5. Validasi Split Transaction
+- **Validasi**: Sum dari shares harus sama dengan total amount (toleransi ±1 untuk rounding)
+- **Rasional**: Mencegah inkonsistensi data (contoh: 100k split jadi 60k + 30k = 90k)
+- **Toleransi**: ±1 untuk menangani floating-point rounding errors
+
+### Breaking Changes
+Tidak ada breaking changes - semua perbaikan keamanan mempertahankan backward compatibility dengan kode yang ada.
+
+## Memory Management & Resource Cleanup
+
+KeMana menerapkan strategi komprehensif untuk mencegah memory leak dan race condition:
+
+- **Sync Worker Cleanup**: Instance dan event listener dibersihkan sepenuhnya saat logout
+- **Auth Initialization Timing**: Flag initialized hanya diset setelah async session fetch selesai
+- **Network Validation**: Operasi sync memvalidasi koneksi sebelum dimulai
+- **Quota Handling**: Error IndexedDB quota exceeded ditangani dengan notifikasi user dan retry otomatis
+- **useEffect Cleanup**: Refs direset dan resources dibersihkan saat component unmount
+
+Untuk detail lengkap, lihat [MEMORY_MANAGEMENT.md](MEMORY_MANAGEMENT.md).
+
 ## Progress Terkini (7 Maret 2026)
 
 - Import/Export `JSON + CSV` sudah stabil (nama file jelas, parser CSV + fallback format).
@@ -51,6 +97,12 @@ npm run dev
 ```
 
 Buka `http://localhost:3000`.
+
+### Setup Environment Variables
+
+1. Salin file template: `cp apps/web/.env.local.example apps/web/.env.local`
+2. Isi kredensial Supabase dan OAuth di `.env.local`
+3. File `.env.local` otomatis diabaikan oleh git untuk keamanan
 
 ## Status Test (28 Feb 2026)
 
