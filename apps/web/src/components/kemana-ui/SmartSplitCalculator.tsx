@@ -83,6 +83,33 @@ export default function SmartSplitCalculator({ totalAmount, splitPeople, onShare
       allocatedTotal += finalAmount;
     });
 
+    // 3. Validate that sum of shares equals total amount (within ±1 tolerance for rounding)
+    /**
+     * Split Transaction Validation
+     * 
+     * Validation Rationale:
+     * - Ensures data integrity (sum of shares must equal total)
+     * - ±1 tolerance accounts for floating-point rounding errors
+     * - Prevents inconsistent transactions (e.g., 100k split into 60k + 30k)
+     * - Returns empty array on validation failure (prevents save)
+     * 
+     * Example Valid Cases:
+     * - Total: 100,000, Shares: [50,000, 50,000] → difference = 0 ✓
+     * - Total: 100,000, Shares: [33,333, 33,333, 33,334] → difference = 0 ✓
+     * - Total: 100,000, Shares: [33,333, 33,333, 33,333] → difference = 1 ✓
+     * 
+     * Example Invalid Case:
+     * - Total: 100,000, Shares: [60,000, 30,000] → difference = 10,000 ✗
+     */
+    const sumOfShares = shares.reduce((acc, s) => acc + s.amount, 0);
+    const difference = Math.abs(sumOfShares - totalAmount);
+    
+    if (difference > 1) {
+      // Validation failed - sum doesn't match total
+      console.error(`Split validation failed: sum=${sumOfShares}, total=${totalAmount}, diff=${difference}`);
+      return [];
+    }
+
     return shares;
   }, [isValid, sumOfItems, parsedItems, splitPeople, taxAmount, totalAmount]);
 

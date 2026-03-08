@@ -273,14 +273,22 @@ export function useAuth() {
             throw new Error("Tidak dapat sinkronisasi saat offline. Silakan periksa koneksi internet Anda.");
         }
 
-        // 1. Flush local queue up to cloud
-        if (syncWorkerInstance) {
-            await syncWorkerInstance.flushAll();
+        // CRITICAL: Pause sync worker to prevent race conditions during global sync
+        // Without this, new items could be added to queue between flush and fetch,
+        // causing them to be overwritten by stale server data
+        const wasRunning = syncWorkerInstance?.isRunning || false;
+        if (syncWorkerInstance && wasRunning) {
+            syncWorkerInstance.stop();
         }
 
         useKemanaStore.getState().setSyncStatus('syncing');
 
         try {
+            // 1. Flush local queue up to cloud
+            if (syncWorkerInstance) {
+                await syncWorkerInstance.flushAll();
+            }
+
             // 2. Fetch all fresh data down from cloud and merge into IndexedDB
             const syncResult = await initialSyncOnLogin(user.id, supabase);
             if (!syncResult.success) {
@@ -304,8 +312,19 @@ export function useAuth() {
             useKemanaStore.getState().setLastSyncTime(Date.now());
             devLog(`✓ Global Sync Complete: UI updated (${freshEntries.length} entries)`);
             
+            // Resume sync worker if it was running before
+            if (syncWorkerInstance && wasRunning) {
+                syncWorkerInstance.start(user.id);
+            }
+            
         } catch (error: any) {
             useKemanaStore.getState().setSyncStatus('failed');
+            
+            // Resume sync worker even on error if it was running before
+            if (syncWorkerInstance && wasRunning) {
+                syncWorkerInstance.start(user.id);
+            }
+            
             throw error;
         }
     };

@@ -19,7 +19,7 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: st
 }
 
 export class SyncWorker {
-  private isRunning = false;
+  private _isRunning = false;
   private supabaseClient: any;
   private userId: string | null = null;
   private checkInterval = 2000; // Check every 2 seconds
@@ -35,6 +35,11 @@ export class SyncWorker {
 
   constructor(supabaseClient: any) {
     this.supabaseClient = supabaseClient;
+  }
+
+  // Public getter for isRunning status
+  get isRunning(): boolean {
+    return this._isRunning;
   }
 
   private setStatus(status: SyncWorkerStatus) {
@@ -58,13 +63,13 @@ export class SyncWorker {
    * Start the sync worker
    */
   async start(userId: string) {
-    if (this.isRunning) {
+    if (this._isRunning) {
       console.log('⚠️ Sync worker already running');
       return;
     }
 
     this.userId = userId;
-    this.isRunning = true;
+    this._isRunning = true;
     console.log('🔄 Sync worker started for user:', userId);
 
     this.processQueue();
@@ -74,7 +79,7 @@ export class SyncWorker {
    * Stop the sync worker
    */
   stop() {
-    this.isRunning = false;
+    this._isRunning = false;
     this.userId = null;
     
     // Cleanup event listeners to prevent memory leaks
@@ -90,7 +95,7 @@ export class SyncWorker {
    * Main processing loop
    */
   private async processQueue() {
-    while (this.isRunning) {
+    while (this._isRunning) {
       try {
         // Check if online using injected function
         const isOnline = await this.isOnlineFn();
@@ -135,7 +140,7 @@ export class SyncWorker {
    */
   private async processBatch(items: SyncQueueItem[]) {
     for (const item of items) {
-      if (!this.isRunning) break;
+      if (!this._isRunning) break;
 
       try {
         // Mark as syncing

@@ -13,9 +13,13 @@ out/
 .cache/
 
 # Env files
+# Security: .env.local contains sensitive credentials (Supabase, OAuth)
+# and must never be committed to version control
 .env
 .env.*
+.env.local
 !.env.example
+!.env.local.example
 
 # Logs
 logs/

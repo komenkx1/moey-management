@@ -102,7 +102,7 @@ export default function DataToolsSheet({
                     <section className="mt-4 rounded-2xl border border-border-subtle bg-bg-elevated p-4">
                         <h3 className="text-[13px] font-semibold text-text-primary">Import</h3>
                         <p className="mt-1 text-[12px] font-medium text-text-secondary">
-                            File yang didukung: JSON backup atau CSV export KeMana.
+                            File yang didukung: JSON backup atau CSV export KeMana. Batas: 10MB, 10,000 baris.
                         </p>
 
                         <label className="mt-3 flex items-center gap-2 text-[12px] font-medium text-text-secondary">

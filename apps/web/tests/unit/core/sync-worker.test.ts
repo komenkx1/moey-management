@@ -22,7 +22,7 @@ describe("SyncWorker", () => {
   describe("flushAll", () => {
     it("should process pending items in the queue", async () => {
        (worker as any).userId = "test-user-123";
-       (worker as any).isRunning = true;
+       (worker as any)._isRunning = true;
 
        await enqueueSyncOperation("entry", "entry-1", "create", {
          id: "entry-1",
@@ -45,7 +45,7 @@ describe("SyncWorker", () => {
 
     it("should handle upsert failures safely without crashing", async () => {
        (worker as any).userId = "test-user-123";
-       (worker as any).isRunning = true;
+       (worker as any)._isRunning = true;
 
        mockSupabase.from.mockImplementation(() => ({
          upsert: vi.fn().mockRejectedValue(new Error("Network Error"))
@@ -72,7 +72,7 @@ describe("SyncWorker", () => {
 
     it("should gracefully do nothing if queue is empty", async () => {
        (worker as any).userId = "test-user-123";
-       (worker as any).isRunning = true;
+       (worker as any)._isRunning = true;
        await worker.flushAll(); 
        const items = await db.syncQueue.toArray();
        expect(items).toHaveLength(0);

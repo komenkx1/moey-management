@@ -14,7 +14,16 @@ export function mergeEntriesById(currentEntries: Entry[], incomingEntries: Entry
   return sortEntriesNewestFirst(Array.from(map.values()));
 }
 
-function parseCsvRows(raw: string): string[][] {
+function parseCsvRows(raw: string, maxRows: number = 10000): { rows: string[][], error?: string } {
+  /**
+   * CSV Row Count Validation
+   * 
+   * Limit Rationale:
+   * - 10,000 rows is reasonable for browser-based processing
+   * - Prevents UI freezing and browser crashes from large files
+   * - Validates during parsing to fail fast (before memory allocation)
+   * - User-friendly error message in Indonesian
+   */
   const rows: string[][] = [];
   let currentRow: string[] = [];
   let currentCell = "";
@@ -54,6 +63,15 @@ function parseCsvRows(raw: string): string[][] {
       rows.push(currentRow);
       currentRow = [];
       currentCell = "";
+      
+      // Check row count limit
+      if (rows.length > maxRows) {
+        return {
+          rows: [],
+          error: `File terlalu banyak baris. Maksimal ${maxRows.toLocaleString('id-ID')} baris.`
+        };
+      }
+      
       continue;
     }
 
@@ -69,7 +87,7 @@ function parseCsvRows(raw: string): string[][] {
     rows.push(currentRow);
   }
 
-  return rows;
+  return { rows };
 }
 
 function parsePaymentMethodFromCsv(value: string): Entry["paymentMethod"] | undefined {
@@ -141,6 +159,7 @@ export function importEntriesFromCsv(params: {
   raw: string;
   currentEntries: Entry[];
   mode: "merge" | "replace";
+  fileSize?: number;
 }): {
   ok: boolean;
   message: string;
@@ -148,8 +167,43 @@ export function importEntriesFromCsv(params: {
   importedEntries: number;
   ignoredEntries: number;
 } {
-  const { raw, currentEntries, mode } = params;
-  const rows = parseCsvRows(raw);
+  const { raw, currentEntries, mode, fileSize } = params;
+  
+  /**
+   * CSV File Size Validation
+   * 
+   * Limit Rationale:
+   * - 10MB is reasonable for browser memory constraints
+   * - Prevents browser tab crashes from oversized files
+   * - Validates BEFORE parsing to fail fast (no memory allocation)
+   * - Typical CSV with 10k rows is ~500KB-2MB
+   * - User-friendly error message in Indonesian
+   */
+  // Validate file size (10MB limit)
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+  if (fileSize && fileSize > MAX_FILE_SIZE) {
+    return {
+      ok: false,
+      message: "File terlalu besar. Maksimal 10MB.",
+      entries: currentEntries,
+      importedEntries: 0,
+      ignoredEntries: 0
+    };
+  }
+  
+  // Parse CSV with row count validation
+  const parseResult = parseCsvRows(raw, 10000);
+  if (parseResult.error) {
+    return {
+      ok: false,
+      message: parseResult.error,
+      entries: currentEntries,
+      importedEntries: 0,
+      ignoredEntries: 0
+    };
+  }
+  
+  const rows = parseResult.rows;
   if (rows.length < 2) {
     return {
       ok: false,

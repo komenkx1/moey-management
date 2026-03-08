@@ -17,7 +17,17 @@ export const useAuthStore = create<AuthState>((set) => ({
     user: null,
     isLoading: true,
     isInitialized: false,
-    setSession: (session) => set({ session, user: session?.user || null }),
+    setSession: (session) => {
+        // Store user ID in localStorage for encryption key derivation
+        if (typeof window !== 'undefined') {
+            if (session?.user?.id) {
+                localStorage.setItem('kemana.auth.userId', session.user.id);
+            } else {
+                localStorage.removeItem('kemana.auth.userId');
+            }
+        }
+        set({ session, user: session?.user || null });
+    },
     setUser: (user) => set({ user }),
     setLoading: (isLoading) => set({ isLoading }),
     setInitialized: (isInitialized) => set({ isInitialized, isLoading: false }),

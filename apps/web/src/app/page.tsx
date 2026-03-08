@@ -630,7 +630,8 @@ export default function DashboardPage() {
         const csvResult = importEntriesFromCsv({
           raw,
           currentEntries: entries,
-          mode: importMode
+          mode: importMode,
+          fileSize: file.size
         });
         if (csvResult.ok) {
           setEntries(csvResult.entries);
