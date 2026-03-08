@@ -131,11 +131,8 @@ export default function SmartSplitCalculator({ totalAmount, splitPeople, onShare
 
       {/* Item List */}
       <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between px-1">
+          <div className="flex items-center px-1">
               <span className="text-[12px] font-semibold text-text-secondary">Detail Item</span>
-              <button type="button" onClick={addItem} className="text-brand text-[12px] font-semibold flex items-center gap-1 active:scale-95 transition-transform">
-                  <Plus className="w-3.5 h-3.5" /> Tambah Makanan
-              </button>
           </div>
 
           <div className="flex flex-col gap-2">
@@ -184,6 +181,15 @@ export default function SmartSplitCalculator({ totalAmount, splitPeople, onShare
                   </div>
               ))}
           </div>
+          
+          {/* Add Item Button (Moved to bottom) */}
+          <button 
+              type="button" 
+              onClick={addItem} 
+              className="mt-1 w-full py-2.5 rounded-xl border border-dashed border-border-subtle hover:border-brand hover:bg-brand-soft/50 text-text-secondary hover:text-brand text-[13px] font-semibold flex items-center justify-center gap-1.5 transition-colors active:scale-[0.98]"
+          >
+              <Plus className="w-4 h-4" /> Tambah Makanan
+          </button>
       </div>
 
       {/* Validation Banner */}

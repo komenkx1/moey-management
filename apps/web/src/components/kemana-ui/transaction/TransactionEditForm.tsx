@@ -511,8 +511,8 @@ export default function TransactionEditForm({
                                                     className={cn(
                                                         "flex-1 whitespace-nowrap rounded-md px-2 py-1.5 text-[11px] font-semibold transition-colors flex items-center justify-center gap-1",
                                                         splitMode === "smart"
-                                                            ? "bg-brand text-white shadow-sm"
-                                                            : "bg-bg-subtle text-text-secondary hover:bg-brand-soft hover:text-brand"
+                                                            ? "bg-[var(--color-split)] text-[var(--color-split-text-active)] shadow-sm"
+                                                            : "bg-bg-subtle text-text-secondary hover:bg-[var(--color-split-bg)] hover:text-[var(--color-split)]"
                                                     )}
                                                 >
                                                     <Sparkles className="w-3 h-3" /> Kalkulator
