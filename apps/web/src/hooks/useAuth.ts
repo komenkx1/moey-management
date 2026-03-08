@@ -168,12 +168,7 @@ export function useAuth() {
         if (isNativePlatform()) {
             console.log("📱 Using Native Google Auth");
             
-            // Generate a secure random nonce
-            const rawNonce = CryptoJS.lib.WordArray.random(32).toString();
-            // Hash the nonce with SHA-256 (Google requires the hashed version, Supabase requires the raw version)
-            const hashedNonce = CryptoJS.SHA256(rawNonce).toString(CryptoJS.enc.Hex);
-            
-            // Initialize the Google Auth plugin with the hashed nonce
+            // Initialize the Google Auth plugin
             GoogleAuth.initialize({
                 scopes: ['profile', 'email'],
                 grantOfflineAccess: true,
@@ -185,11 +180,11 @@ export function useAuth() {
                 throw new Error("Google Login failed: No ID Token returned.");
             }
             
-            // Provide the RAW nonce to Supabase so it can hash it and compare against the token's internal hash
+            // Pass the ID Token directly to Supabase without a nonce, 
+            // as the old @codetrix-studio plugin does not support nonce injection.
             const { error } = await supabase.auth.signInWithIdToken({
                 provider: "google",
                 token: googleUser.authentication.idToken,
-                nonce: rawNonce, // <--- Crucial step for high security
             });
             if (error) throw error;
             
