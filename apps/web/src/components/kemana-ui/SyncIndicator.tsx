@@ -20,67 +20,33 @@ export default function SyncIndicator({ className, showText = false }: SyncIndic
 
     return (
         <div className={cn("flex items-center gap-1.5", className)}>
-            <AnimatePresence mode="wait">
-                {displayStatus === 'synced' && (
-                    <motion.div
-                        key="synced"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.15 }}
-                        className="flex items-center gap-1.5 text-brand"
-                        title="Tersinkronisasi"
-                    >
-                        <CheckCircle2 className="w-4 h-4" />
-                        {showText && <span className="text-[11px] font-medium">Tersimpan</span>}
-                    </motion.div>
-                )}
+            {displayStatus === 'synced' && (
+                <div className="flex items-center gap-1.5 text-brand" title="Tersinkronisasi">
+                    <CheckCircle2 className="w-4 h-4" />
+                    {showText && <span className="text-[11px] font-medium">Tersimpan</span>}
+                </div>
+            )}
 
-                {displayStatus === 'syncing' && (
-                    <motion.div
-                        key="syncing"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.15 }}
-                        className="flex items-center gap-1.5 text-text-tertiary"
-                        title="Sedang Menyinkronkan..."
-                    >
-                        <RefreshCw className="w-4 h-4 animate-spin transform-gpu" style={{ willChange: 'transform' }} />
-                        {showText && <span className="text-[11px] font-medium">Menyinkronkan... {pendingCount > 0 && `(${pendingCount})`}</span>}
-                    </motion.div>
-                )}
+            {displayStatus === 'syncing' && (
+                <div className="flex items-center gap-1.5 text-text-tertiary" title="Sedang Menyinkronkan...">
+                    <RefreshCw className="w-4 h-4 animate-spin transform-gpu" style={{ willChange: 'transform' }} />
+                    {showText && <span className="text-[11px] font-medium">Menyinkronkan... {pendingCount > 0 && `(${pendingCount})`}</span>}
+                </div>
+            )}
 
-                {displayStatus === 'offline' && (
-                    <motion.div
-                        key="offline"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.15 }}
-                        className="flex items-center gap-1.5 text-text-tertiary"
-                        title="Sedang Offline (Menunggu Jaringan)"
-                    >
-                        <CloudOff className="w-4 h-4" />
-                        {showText && <span className="text-[11px] font-medium">Offline {pendingCount > 0 && `(${pendingCount} tunda)`}</span>}
-                    </motion.div>
-                )}
+            {displayStatus === 'offline' && (
+                <div className="flex items-center gap-1.5 text-text-tertiary" title="Sedang Offline (Menunggu Jaringan)">
+                    <CloudOff className="w-4 h-4" />
+                    {showText && <span className="text-[11px] font-medium">Offline {pendingCount > 0 && `(${pendingCount} tunda)`}</span>}
+                </div>
+            )}
 
-                {displayStatus === 'failed' && (
-                    <motion.div
-                        key="failed"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.15 }}
-                        className="flex items-center gap-1.5 text-semantic-danger"
-                        title="Gagal Sinkronisasi"
-                    >
-                        <AlertCircle className="w-4 h-4" />
-                        {showText && <span className="text-[11px] font-medium">Gagal {pendingCount > 0 && `(${pendingCount})`}</span>}
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {displayStatus === 'failed' && (
+                <div className="flex items-center gap-1.5 text-semantic-danger" title="Gagal Sinkronisasi">
+                    <AlertCircle className="w-4 h-4" />
+                    {showText && <span className="text-[11px] font-medium">Gagal {pendingCount > 0 && `(${pendingCount})`}</span>}
+                </div>
+            )}
         </div>
     );
 }
