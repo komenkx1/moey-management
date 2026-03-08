@@ -13,6 +13,7 @@ import {
 } from "@/lib/kemana-utils";
 import { Coffee, Utensils, Car, ShoppingBag, Receipt, MoreHorizontal, X, Users, CalendarDays } from "lucide-react";
 import { useBottomSheetDrag } from "./use-bottom-sheet-drag";
+import SmartSplitCalculator from "./SmartSplitCalculator";
 
 type TxType = "expense";
 
@@ -78,7 +79,8 @@ export default function AddTransactionSheet({ isOpen, onClose, onSave, prefill }
   const [splitMode, setSplitMode] = useState<"equal" | "custom">("equal");
   const [splitPeopleInput, setSplitPeopleInput] = useState("Kamu, Teman");
   const [splitOthersDraft, setSplitOthersDraft] = useState("Teman");
-  const [splitCustomDraft, setSplitCustomDraft] = useState<Record<string, string>>({});
+  const [smartSplitShares, setSmartSplitShares] = useState<{ person: string; amount: number }[]>([]);
+  const [isSmartSplitValid, setIsSmartSplitValid] = useState(false);
 
   const { dragY, dragHandleProps } = useBottomSheetDrag({
     isOpen,
@@ -106,12 +108,6 @@ export default function AddTransactionSheet({ isOpen, onClose, onSave, prefill }
     );
     setSplitPeopleInput(initialSplitPeopleInput);
     setSplitOthersDraft(getSplitOtherPeopleInput(initialSplitPeopleInput));
-    setSplitCustomDraft(
-      prefill?.split?.shares?.reduce<Record<string, string>>((acc, share) => {
-        acc[share.person] = String(Math.round(share.amount));
-        return acc;
-      }, {}) ?? {}
-    );
   }, [isOpen, prefill]);
 
   const unitAmount = useMemo(
@@ -127,34 +123,6 @@ export default function AddTransactionSheet({ isOpen, onClose, onSave, prefill }
     () => normalizeSplitPeopleWithLockedSelf(splitPeopleInput),
     [splitPeopleInput]
   );
-  const splitCustomShares = useMemo(
-    () =>
-      splitPeople.map((person) => ({
-        person,
-        amount: parseCurrencyInputToNumber(splitCustomDraft[person] ?? "")
-      })),
-    [splitCustomDraft, splitPeople]
-  );
-  const splitCustomTotal = useMemo(
-    () => splitCustomShares.reduce((sum, share) => sum + share.amount, 0),
-    [splitCustomShares]
-  );
-  const splitCustomDiff = splitCustomTotal - totalAmount;
-
-  useEffect(() => {
-    setSplitCustomDraft((prev) => {
-      const next: Record<string, string> = {};
-      for (const person of splitPeople) {
-        next[person] = prev[person] ?? "";
-      }
-
-      const changed =
-        Object.keys(next).length !== Object.keys(prev).length ||
-        Object.entries(next).some(([person, amount]) => prev[person] !== amount);
-
-      return changed ? next : prev;
-    });
-  }, [splitPeople]);
 
   const splitDraft = useMemo(() => {
     if (!splitEnabled || splitPeople.length < 2 || totalAmount <= 0) {
@@ -162,7 +130,8 @@ export default function AddTransactionSheet({ isOpen, onClose, onSave, prefill }
     }
 
     if (splitMode === "custom") {
-      const validated = buildCustomSplit(totalAmount, splitCustomShares);
+      if (!isSmartSplitValid || smartSplitShares.length === 0) return undefined;
+      const validated = buildCustomSplit(totalAmount, smartSplitShares);
       if (!validated) {
         return undefined;
       }
@@ -179,7 +148,7 @@ export default function AddTransactionSheet({ isOpen, onClose, onSave, prefill }
       payer: "Kamu",
       shares: buildEqualSplit(totalAmount, splitPeople)
     } satisfies EntrySplit;
-  }, [splitCustomShares, splitEnabled, splitMode, splitPeople, totalAmount]);
+  }, [smartSplitShares, isSmartSplitValid, splitEnabled, splitMode, splitPeople, totalAmount]);
 
   const handleAmountChange = (event: ChangeEvent<HTMLInputElement>) => {
     const sanitized = sanitizeCurrencyInput(event.target.value);
@@ -200,7 +169,7 @@ export default function AddTransactionSheet({ isOpen, onClose, onSave, prefill }
       return;
     }
 
-    if (splitEnabled && splitMode === "custom" && splitCustomDiff !== 0) {
+    if (splitEnabled && splitMode === "custom" && !isSmartSplitValid) {
       return;
     }
 
@@ -231,7 +200,7 @@ export default function AddTransactionSheet({ isOpen, onClose, onSave, prefill }
     onClose();
   };
 
-  const isCustomSplitInvalid = splitEnabled && splitMode === "custom" && splitCustomDiff !== 0;
+  const isCustomSplitInvalid = splitEnabled && splitMode === "custom" && !isSmartSplitValid;
 
   return (
     <div
@@ -481,43 +450,14 @@ export default function AddTransactionSheet({ isOpen, onClose, onSave, prefill }
                   className="h-10 w-full rounded-xl border border-border-subtle bg-bg-base px-3 text-[14px] text-text-primary outline-none focus:border-brand"
                 />
                 {splitMode === "custom" ? (
-                  <div className="grid gap-2">
-                    {splitPeople.map((person) => (
-                      <div key={person} className="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-2">
-                        <span
-                          title={person}
-                          className="truncate text-[12px] font-medium text-text-secondary"
-                        >
-                          {person}
-                        </span>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          value={formatCurrencyInputDisplay(splitCustomDraft[person] ?? "")}
-                          onChange={(event) =>
-                            setSplitCustomDraft((prev) => ({
-                              ...prev,
-                              [person]: sanitizeCurrencyInput(event.target.value)
-                            }))
-                          }
-                          placeholder="0"
-                          className="h-9 w-full rounded-xl border border-border-subtle bg-bg-base px-3 text-[13px] text-text-primary outline-none focus:border-brand"
-                        />
-                      </div>
-                    ))}
-                    <span
-                      className={cn(
-                        "text-[12px] font-medium",
-                        splitCustomDiff === 0 ? "text-success" : "text-warning"
-                      )}
-                    >
-                      {splitCustomDiff === 0
-                        ? "Nominal split sudah pas."
-                        : splitCustomDiff < 0
-                          ? `Masih kurang Rp${formatAmountIDR(Math.abs(splitCustomDiff))}`
-                          : `Kelebihan Rp${formatAmountIDR(splitCustomDiff)}`}
-                    </span>
-                  </div>
+                  <SmartSplitCalculator 
+                     totalAmount={totalAmount}
+                     splitPeople={splitPeople}
+                     onSharesCalculated={(shares, isValid) => {
+                         setSmartSplitShares(shares);
+                         setIsSmartSplitValid(isValid);
+                     }}
+                  />
                 ) : null}
               </div>
             ) : null}
