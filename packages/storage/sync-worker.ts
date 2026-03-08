@@ -319,12 +319,16 @@ export class SyncWorker {
    * This provides instant feedback for user operations (create/update/delete)
    */
   public async syncImmediately(itemId: string) {
+    console.log(`🚀 syncImmediately called for item: ${itemId}`);
+    
     if (!this.userId) {
       console.warn('⚠️ Cannot sync immediately: no user ID');
       return;
     }
 
     const isOnline = await this.isOnlineFn();
+    console.log(`📡 Network status: ${isOnline ? 'online' : 'offline'}`);
+    
     if (!isOnline) {
       console.log('📴 Offline: item will sync when connection restored');
       return;
@@ -337,18 +341,28 @@ export class SyncWorker {
         return;
       }
 
+      console.log(`📦 Found item in queue:`, { 
+        id: item.id, 
+        entity: item.entity, 
+        operation: item.operation, 
+        status: item.status 
+      });
+
       if (item.status === 'synced') {
         console.log('✓ Item already synced:', itemId);
         return;
       }
 
       // Mark as syncing
+      console.log(`⏳ Marking item as syncing...`);
       await db.syncQueue.update(itemId, { status: 'syncing' });
 
       // Sync the item
+      console.log(`🔄 Syncing item to server...`);
       await this.syncItem(item);
 
       // Mark as synced
+      console.log(`✅ Marking item as synced...`);
       await db.syncQueue.update(itemId, { status: 'synced' });
       console.log(`✓ Immediately synced ${item.entity} ${item.operation}:`, item.entityId);
       this.onLastSyncTimeChange?.(Date.now());
@@ -466,11 +480,16 @@ export async function enqueueSyncOperation(
     
     // 3. Trigger immediate sync if sync worker is available and running
     // This provides instant feedback for user operations without waiting for batch cycle
+    console.log(`🔍 Checking immediate sync: syncWorker=${!!syncWorker}, isRunning=${syncWorker?.isRunning}`);
+    
     if (syncWorker && syncWorker.isRunning) {
+      console.log(`⚡ Triggering immediate sync for item: ${item.id}`);
       // Fire and forget - don't await to keep enqueue operation fast
       syncWorker.syncImmediately(item.id).catch(err => {
         console.warn('⚠️ Immediate sync failed, will retry in batch:', err);
       });
+    } else {
+      console.log(`⏸️ Immediate sync skipped: ${!syncWorker ? 'no worker' : 'worker not running'}`);
     }
     
   } catch (error: any) {
