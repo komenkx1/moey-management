@@ -1,7 +1,8 @@
 const pkg = require("./package.json");
+const { withSentryConfig } = require("@sentry/nextjs");
 
 /** @type {import('next').NextConfig} */
-module.exports = {
+const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@kemana/core", "@kemana/storage"],
   outputFileTracingRoot: __dirname,
@@ -18,6 +19,57 @@ module.exports = {
   assetPrefix: process.env.ASSET_PREFIX || undefined,
   experimental: {
     externalDir: true,
-    optimizePackageImports: ["lucide-react"]
+    optimizePackageImports: ["lucide-react"],
+    // Enable instrumentation hook for Sentry
+    instrumentationHook: true,
   }
 };
+
+// Sentry webpack plugin options
+const sentryWebpackPluginOptions = {
+  // Sentry organization and project (set via env vars)
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+
+  // Auth token for uploading source maps (set via env var)
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  // Only upload source maps in production builds
+  dryRun: process.env.NODE_ENV !== "production",
+
+  // Enable source map upload
+  sourcemaps: {
+    // Include source maps from .next directory
+    assets: [".next/static/**/*", ".next/server/**/*"],
+    // Ignore files
+    ignore: ["node_modules"],
+  },
+
+  // Release version
+  release: {
+    name: pkg.version,
+    // Create a release in Sentry
+    create: process.env.NODE_ENV === "production",
+    // Associate commits with the release
+    setCommits: process.env.SENTRY_SET_COMMITS
+      ? {
+          auto: true,
+        }
+      : undefined,
+  },
+
+  // Enable telemetry
+  telemetry: false,
+
+  // Suppress logs in CI
+  silent: process.env.CI === "true",
+
+  // Configure source map path prefixes
+  urlPrefix: process.env.SENTRY_URL_PREFIX || "~/",
+
+  // Debug mode
+  debug: process.env.SENTRY_DEBUG === "true",
+};
+
+// Export with Sentry config
+module.exports = withSentryConfig(nextConfig, sentryWebpackPluginOptions);

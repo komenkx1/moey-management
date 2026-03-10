@@ -1,6 +1,7 @@
 "use client";
 
 import React, { Component, type ReactNode } from "react";
+import * as Sentry from "@sentry/nextjs";
 
 interface Props {
   children: ReactNode;
@@ -10,16 +11,17 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+  eventId: string | null;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, eventId: null };
   }
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+    return { hasError: true, error, eventId: null };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
@@ -28,12 +30,45 @@ export class ErrorBoundary extends Component<Props, State> {
       console.error("ErrorBoundary caught an error:", error, errorInfo);
     }
     
-    // In production, you could send to error tracking service
-    // Example: Sentry.captureException(error, { extra: errorInfo });
+    // Send error to Sentry with additional context
+    Sentry.withScope((scope) => {
+      // Add component stack as extra context
+      scope.setExtra("componentStack", errorInfo.componentStack);
+      // Set the level to error
+      scope.setLevel("error");
+      // Set the context for React errors
+      scope.setContext("react", {
+        componentStack: errorInfo.componentStack,
+      });
+      
+      // Capture the exception and store the event ID
+      const eventId = Sentry.captureException(error);
+      this.setState({ eventId });
+    });
   }
 
   handleReset = () => {
-    this.setState({ hasError: false, error: null });
+    this.setState({ hasError: false, error: null, eventId: null });
+  };
+
+  handleReportFeedback = () => {
+    // Show Sentry feedback dialog if available
+    if (Sentry.getClient()) {
+      Sentry.showReportDialog({
+        eventId: this.state.eventId || undefined,
+        title: "Laporkan Masalah",
+        subtitle: "Terjadi kesalahan yang tidak terduga.",
+        subtitle2: "Bantu kami memperbaiki masalah ini dengan mengirimkan laporan.",
+        labelName: "Nama",
+        labelEmail: "Email",
+        labelComments: "Komentar atau deskripsi masalah",
+        labelClose: "Tutup",
+        labelSubmit: "Kirim Laporan",
+        errorGeneric: "Terjadi kesalahan saat mengirim laporan. Silakan coba lagi.",
+        errorFormEntry: "Beberapa kolom tidak valid. Periksa kembali isian Anda.",
+        successMessage: "Terima kasih! Laporan Anda telah dikirim.",
+      });
+    }
   };
 
   render() {
@@ -83,6 +118,20 @@ export class ErrorBoundary extends Component<Props, State> {
             >
               Muat Ulang Aplikasi
             </button>
+            
+            {this.state.eventId && (
+              <>
+                <div className="mt-3 text-xs text-gray-500">
+                  Error ID: <code className="bg-gray-100 px-1 py-0.5 rounded">{this.state.eventId}</code>
+                </div>
+                <button
+                  onClick={this.handleReportFeedback}
+                  className="mt-3 w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+                >
+                  Laporkan Masalah ke Tim Support
+                </button>
+              </>
+            )}
           </div>
         </div>
       );
