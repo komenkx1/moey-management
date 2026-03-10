@@ -19,7 +19,7 @@ export const PAYMENT_METHODS = [
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 export type SplitMode = "equal" | "custom";
-export type EntrySource = "quick_add" | "bulk_paste" | "scan_receipt";
+export type EntrySource = "quick_add" | "bulk_paste" | "scan_receipt" | "test";
 export type ParseWarningCode =
   | "ASSUMED_THOUSANDS"
   | "AMOUNT_TOKEN_CLEANED"

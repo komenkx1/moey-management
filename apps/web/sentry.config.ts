@@ -11,8 +11,8 @@ export const sentryConfig = {
   // Release version (uses app version from package.json)
   release: process.env.NEXT_PUBLIC_APP_VERSION,
 
-  // Enable debug mode in development
-  debug: process.env.NODE_ENV === "development",
+  // Enable debug mode only when explicitly set
+  debug: process.env.SENTRY_DEBUG === "true",
 
   // Sample rate for error events (1.0 = 100%)
   sampleRate: 1.0,

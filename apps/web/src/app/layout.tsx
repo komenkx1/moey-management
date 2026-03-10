@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import PwaInstallBanner from "@/components/PwaInstallBanner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import SentryInit from "@/components/SentryInit";
+import WebVitalsMonitor from "@/components/WebVitalsMonitor";
 import SafeAreaSync from "./safe-area-sync";
 import CapacitorInit from "./capacitor-init";
 import SWRegister from "./sw-register";
@@ -43,6 +44,8 @@ export default function RootLayout({
       <body>
         {/* Initialize Sentry as early as possible */}
         <SentryInit />
+        {/* Monitor Web Vitals performance */}
+        <WebVitalsMonitor />
         <ErrorBoundary>
           <SafeAreaSync />
           <CapacitorInit />
