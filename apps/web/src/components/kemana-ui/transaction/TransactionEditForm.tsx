@@ -12,6 +12,7 @@ import {
     parseCurrencyInputToNumber,
     sanitizeCurrencyInput,
     splitDisplayText,
+    toDateKey,
     warningShortText,
     toSplitPeopleInputWithLockedSelf
 } from "@/lib/kemana-utils";
@@ -52,7 +53,7 @@ export default function TransactionEditForm({
     const [draftTitle, setDraftTitle] = useState(item.title);
     const [draftAmount, setDraftAmount] = useState(String(item.amount));
     const [draftNote, setDraftNote] = useState(item.note || "");
-    const [draftDate, setDraftDate] = useState(() => normalizeDateInput(item.time) ?? new Date().toISOString().slice(0, 10));
+    const [draftDate, setDraftDate] = useState(() => normalizeDateInput(item.time) ?? toDateKey(new Date()));
     const [draftCategory, setDraftCategory] = useState(item.category);
     const [draftPaymentMethod, setDraftPaymentMethod] = useState(item.paymentMethod || "");
     const [splitEnabled, setSplitEnabled] = useState(Boolean(item.split?.shares?.length));
@@ -139,7 +140,7 @@ export default function TransactionEditForm({
 
     const rawInputDirty = normalizeInputText(draftRawInput) !== normalizeInputText(item.rawInput || "");
     const normalizedRawInput = normalizeInputText(draftRawInput);
-    const normalizedItemDate = normalizeDateInput(item.time) ?? new Date().toISOString().slice(0, 10);
+    const normalizedItemDate = normalizeDateInput(item.time) ?? toDateKey(new Date());
 
     const parserPreview = useMemo(() => {
         if (normalizedRawInput.length === 0) return null;

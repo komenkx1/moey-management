@@ -1,6 +1,6 @@
 import { CATEGORIES, PAYMENT_METHODS, type Entry } from "@kemana/core/types";
 import type { TransactionItem } from "@/components/kemana-ui/TransactionCard";
-import { normalizeDateInput, splitDisplayText } from "@/lib/kemana-utils";
+import { normalizeDateInput, splitDisplayText, toDateKey } from "@/lib/kemana-utils";
 import { createEntryId, escapeCsvCell, sortEntriesNewestFirst, toParserAmountToken, triggerDownloadFromText } from "@/lib/dashboard-page-helpers";
 
 export function mergeEntriesById(currentEntries: Entry[], incomingEntries: Entry[]): Entry[] {
@@ -358,7 +358,7 @@ export function downloadCsv(entries: Entry[]): void {
   const rowLines = rows.map((row) => row.map((cell) => escapeCsvCell(cell)).join(","));
   const content = [headerLine, ...rowLines].join("\n");
 
-  const date = new Date().toISOString().slice(0, 10);
+  const date = toDateKey(new Date());
   triggerDownloadFromText({
     content,
     mimeType: "text/csv;charset=utf-8;",

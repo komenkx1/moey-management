@@ -9,6 +9,7 @@ import {
   normalizeSplitPeopleWithLockedSelf,
   parseCurrencyInputToNumber,
   sanitizeCurrencyInput,
+  toDateKey,
   toSplitPeopleInputWithLockedSelf
 } from "@/lib/kemana-utils";
 import { Coffee, Utensils, Car, ShoppingBag, Receipt, MoreHorizontal, X, Users, CalendarDays } from "lucide-react";
@@ -55,7 +56,7 @@ const PAYMENTS = [
 ] as const;
 
 function getTodayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  return toDateKey(new Date());
 }
 
 function toParserAmountToken(amount: number): string {

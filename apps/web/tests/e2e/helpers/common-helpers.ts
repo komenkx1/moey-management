@@ -1,6 +1,6 @@
-import { test, expect } from '@playwright/test';
+import { expect, type Page } from "@playwright/test";
 
-function getTodayKey() {
+export function getTodayKey() {
   const d = new Date();
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, "0");
@@ -8,7 +8,7 @@ function getTodayKey() {
   return `${year}-${month}-${day}`;
 }
 
-async function clearLocalData(page: any) {
+export async function clearLocalData(page: Page) {
   await page.evaluate(async () => {
     const databaseList = await window.indexedDB.databases();
     for (const db of databaseList) {
@@ -32,15 +32,15 @@ async function clearLocalData(page: any) {
   });
 }
 
-async function seedUserName(page: any, userName = "Tester") {
-  await page.addInitScript((nextName: string) => {
+export async function seedUserName(page: Page, userName = "Tester") {
+  await page.addInitScript((nextName) => {
     window.localStorage.setItem("kemana.userName", nextName);
     window.localStorage.setItem("pwa_install_banner_seen_v1", "e2e");
   }, userName);
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      await page.evaluate((nextName: string) => {
+      await page.evaluate((nextName) => {
         window.localStorage.setItem("kemana.userName", nextName);
         window.localStorage.setItem("pwa_install_banner_seen_v1", "e2e");
       }, userName);
@@ -50,18 +50,25 @@ async function seedUserName(page: any, userName = "Tester") {
       const isExecutionContextRace =
         message.includes("Execution context was destroyed") ||
         message.includes("Target page, context or browser has been closed");
+      const isNoOriginYet =
+        message.includes("Failed to read the 'localStorage' property from 'Window'") ||
+        message.includes("Access is denied for this document");
+
+      if (isNoOriginYet) {
+        return;
+      }
 
       if (!isExecutionContextRace || attempt === 2) {
         throw error;
       }
 
-      await page.goto("/", { waitUntil: "domcontentloaded" });
+      await gotoHomeStable(page);
       await page.waitForTimeout(120);
     }
   }
 }
 
-async function gotoHomeStable(page: any) {
+export async function gotoHomeStable(page: Page) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       await page.goto("/", { waitUntil: "domcontentloaded" });
@@ -91,12 +98,36 @@ async function gotoHomeStable(page: any) {
   }
 }
 
-async function waitForHomeReady(page: any) {
+export async function waitForHomeReady(page: Page) {
   await expect(page.getByRole("heading", { name: "KeMana" })).toBeVisible();
   await expect(page.locator("main input[type='text']").first()).toBeVisible();
 }
 
-async function ensureUiUnblocked(page: any, fallbackName = "Tester") {
+export async function quickAdd(page: Page, input: string) {
+  const quickInput = page.locator("main input[type='text']").first();
+  await quickInput.fill(input);
+  await quickInput.press("Enter");
+}
+
+export async function openNotesTab(page: Page) {
+  const notesTabButton = page.locator("nav").last().getByRole("button", { name: "Catatan", exact: true });
+  const notesIndicator = page.getByRole("button", { name: "Catat banyak" });
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await notesTabButton.click();
+
+    const isVisible = await notesIndicator.isVisible().catch(() => false);
+    if (isVisible) {
+      return;
+    }
+
+    await page.waitForTimeout(180);
+  }
+
+  await expect(notesIndicator).toBeVisible();
+}
+
+export async function ensureUiUnblocked(page: Page, fallbackName = "Tester") {
   const namePrompt = page.getByRole("heading", { name: "Biar sapaan lebih personal" });
   const isNamePromptVisible = await namePrompt.isVisible().catch(() => false);
   if (isNamePromptVisible) {
@@ -127,7 +158,6 @@ async function ensureUiUnblocked(page: any, fallbackName = "Tester") {
     await closeDataToolsButton.click();
   }
 
-  // Close install banner if visible
   try {
     const installBanner = page.locator('section[aria-label="Install aplikasi"]');
     if (await installBanner.isVisible({ timeout: 500 })) {
@@ -138,80 +168,3 @@ async function ensureUiUnblocked(page: any, fallbackName = "Tester") {
     // No install banner, continue
   }
 }
-
-test.describe('Smart Split Calculator Flows', () => {
-  test.beforeEach(async ({ page }) => {
-    await gotoHomeStable(page);
-    await clearLocalData(page);
-    await seedUserName(page);
-    await gotoHomeStable(page);
-    await waitForHomeReady(page);
-    await ensureUiUnblocked(page);
-  });
-
-  test('user can split bill using smart calculator', async ({ page }) => {
-    // Navigate to Notes tab first
-    await page.locator("nav").last().getByRole("button", { name: "Catatan", exact: true }).click();
-    
-    // Click Add Transaction button
-    await page.getByRole("button", { name: "Catat pengeluaran" }).click();
-
-    // Verify modal is open
-    await expect(page.getByRole('heading', { name: 'Catat pengeluaran', exact: true })).toBeVisible();
-
-    // Enter Amount (100k total)
-    const amountInput = page.locator('input[placeholder="0"]').first();
-    await amountInput.fill('100000');
-    await page.locator("input[type='date']").fill(getTodayKey());
-
-    // Select category Makan
-    await page.getByRole('button', { name: 'Makan' }).click();
-
-    // Enable Split Bill by clicking "Custom" button (use exact match)
-    await page.getByRole('button', { name: 'Custom', exact: true }).click();
-
-    // Enter split people (Kamu + Teman1 = 2 people)
-    const splitInput = page.getByPlaceholder('Contoh: Budi, Cici');
-    await splitInput.fill('Teman1');
-    await splitInput.blur();
-    
-    // Wait for split people to update and SmartSplitCalculator to render
-    await page.waitForTimeout(1000);
-
-    // Wait for SmartSplitCalculator to appear
-    await expect(page.getByTestId('smart-split-subtotal')).toBeVisible({ timeout: 10000 });
-
-    // Fill subtotal (90k before tax)
-    await page.getByTestId('smart-split-subtotal').fill('90000');
-
-    // Fill Item 1 price (50k)
-    await page.getByTestId('smart-split-item-price-0').fill('50000');
-    
-    // Assign Item 1 to Kamu
-    await page.getByTestId('smart-split-item-select-0').selectOption('Kamu');
-
-    // Add Item 2
-    await page.getByTestId('smart-split-add-item').click();
-    
-    // Fill Item 2 price (40k)
-    await page.getByTestId('smart-split-item-price-1').fill('40000');
-    
-    // Assign Item 2 to Teman1
-    await page.getByTestId('smart-split-item-select-1').selectOption('Teman1');
-
-    // Verify validation shows success
-    await expect(page.getByTestId('smart-split-validation')).toContainText('Semua item cocok!');
-    const saveButton = page.getByRole('button', { name: 'Simpan catatan' });
-    await expect(saveButton).toBeEnabled();
-
-    // Save transaction
-    await saveButton.click();
-    await page.waitForTimeout(500);
-    await page.locator("nav").last().getByRole("button", { name: "Catatan", exact: true }).click();
-
-    // Verify we are back to notes tab and transaction exists
-    const firstEntry = page.locator('[data-entry-id]').first();
-    await expect(firstEntry).toContainText('Makan', { timeout: 10000 });
-    await expect(firstEntry).toContainText('55.556');
-  });
-});
