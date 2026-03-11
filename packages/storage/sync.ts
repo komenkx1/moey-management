@@ -186,6 +186,21 @@ export async function setLastSyncTime(userId: string, time: string): Promise<voi
 }
 
 /**
+ * Clear stored sync cursor. Needed after hard logout/local DB wipes so the next
+ * login performs a full restore instead of a delta fetch against an empty DB.
+ */
+export async function clearLastSyncTime(userId: string): Promise<void> {
+  if (typeof window === 'undefined') return;
+
+  try {
+    const key = `kemana.lastSync.${userId}`;
+    localStorage.removeItem(key);
+  } catch (error) {
+    console.warn('Failed to clear last sync time:', error);
+  }
+}
+
+/**
  * Perform initial full fetch from server and sync with local data
  * Uses delta sync (only fetch changed data) after first sync
  */
@@ -194,14 +209,32 @@ export async function initialSyncOnLogin(
   supabaseClient: any
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Get last sync time for delta sync
-    const lastSyncTime = await getLastSyncTime(userId);
-    const isDeltaSync = lastSyncTime !== null;
+    // Load local snapshot first so we can decide whether delta sync is safe.
+    const localEntries = await loadEntries();
+    const localRules = await loadRules();
+    const pendingItems = await db.syncQueue
+      .where('status')
+      .anyOf(['pending', 'failed'])
+      .toArray();
+
+    // Delta sync requires a local entry snapshot to merge against.
+    // After hard logout the IndexedDB is wiped, so a stale cursor would otherwise
+    // fetch only recently changed rows and make old entries disappear.
+    const storedLastSyncTime = await getLastSyncTime(userId);
+    const hasLocalEntrySnapshot =
+      localEntries.length > 0 ||
+      pendingItems.some(q => q.entity === 'entry');
+    const isDeltaSync = storedLastSyncTime !== null && hasLocalEntrySnapshot;
+    const lastSyncTime = isDeltaSync ? storedLastSyncTime : null;
     
     if (isDeltaSync) {
       console.log(`📊 Delta sync: fetching changes after ${lastSyncTime}`);
     } else {
-      console.log(`📊 Full sync: first time login`);
+      if (storedLastSyncTime && !hasLocalEntrySnapshot) {
+        console.log(`📊 Full sync: stale delta cursor ignored because local entries are empty`);
+      } else {
+        console.log(`📊 Full sync: first time login`);
+      }
     }
     
     // 1. Fetch data from server with optional delta filter
@@ -241,16 +274,7 @@ export async function initialSyncOnLogin(
       throw new Error(`Gagal mengambil data aturan: ${rulesError.message}`);
     }
 
-    // 2. Load local data
-    const localEntries = await loadEntries();
-    const localRules = await loadRules();
-
     // 2.1 Identify pending deletions in the local sync queue to prevent server resurrection
-    const pendingItems = await db.syncQueue
-      .where('status')
-      .anyOf(['pending', 'failed'])
-      .toArray();
-    
     // Deletions that haven't reached the server yet
     const pendingDeletedEntryIds = new Set(
       pendingItems.filter(q => q.entity === 'entry' && q.operation === 'delete').map(q => q.entityId)

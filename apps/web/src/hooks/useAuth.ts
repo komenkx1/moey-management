@@ -2,9 +2,9 @@ import { useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/use-auth-store";
 import { useKemanaStore } from "@/store/use-kemana-store";
-import { migrateLocalDataToAccount, initialSyncOnLogin, SyncWorker, loadEntries, loadRules, clearLocalDatabase } from "@kemana/storage";
+import { migrateLocalDataToAccount, initialSyncOnLogin, SyncWorker, loadEntries, loadRules, clearLocalDatabase, clearLastSyncTime } from "@kemana/storage";
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
-import { isNativePlatform } from '@/lib/capacitor';
+import { isNativeAndroid, isNativePlatform } from '@/lib/capacitor';
 import { Network } from '@capacitor/network';
 import { checkRateLimit } from '@/lib/rate-limiter';
 import { logInvalidAuth, logUnauthorizedAccess } from '@/lib/security-monitoring';
@@ -31,6 +31,29 @@ const devWarn = (...args: any[]) => {
     if (process.env.NODE_ENV !== 'production') {
         console.warn(...args);
     }
+};
+
+const getNativeGoogleAuthInitOptions = () => {
+    const options: {
+        clientId?: string;
+        scopes: string[];
+        grantOfflineAccess: boolean;
+    } = {
+        scopes: ['profile', 'email'],
+        grantOfflineAccess: true,
+    };
+
+    // The Android plugin incorrectly uses `clientId` for offline access.
+    // Force the Web OAuth client here so Google can mint an ID token/auth code.
+    if (isNativeAndroid()) {
+        const webClientId = process.env.NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+        if (!webClientId) {
+            throw new Error("Missing NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID for Android Google Sign-In.");
+        }
+        options.clientId = webClientId;
+    }
+
+    return options;
 };
 
 export function useAuth() {
@@ -221,10 +244,7 @@ export function useAuth() {
             devLog("📱 Using Native Google Auth");
             
             // Initialize the Google Auth plugin
-            GoogleAuth.initialize({
-                scopes: ['profile', 'email'],
-                grantOfflineAccess: true,
-            });
+            await GoogleAuth.initialize(getNativeGoogleAuthInitOptions());
             
             const googleUser = await GoogleAuth.signIn();
             
@@ -349,6 +369,9 @@ export function useAuth() {
      */
     const forceSignOut = async () => {
         try {
+            if (user?.id) {
+                await clearLastSyncTime(user.id);
+            }
             await clearLocalDatabase();
             
             const store = useKemanaStore.getState();
@@ -362,10 +385,7 @@ export function useAuth() {
         if (isNativePlatform()) {
             try {
                 // Prevent Swift fatal crash by ensuring Native SDK is initialized
-                GoogleAuth.initialize({
-                    scopes: ['profile', 'email'],
-                    grantOfflineAccess: true,
-                });
+                await GoogleAuth.initialize(getNativeGoogleAuthInitOptions());
                 await GoogleAuth.signOut();
             } catch (googleError) {
                 devWarn("⚠️ Non-fatal: Failed to sign out of native Google SDK:", googleError);

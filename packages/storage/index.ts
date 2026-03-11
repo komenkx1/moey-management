@@ -388,7 +388,7 @@ export {
 } from "./habits";
 export { migrateFromLocalStorage } from "./migrate-localstorage";
 export { db } from "./db";
-export { migrateLocalDataToAccount, initialSyncOnLogin, getLastSyncTime, setLastSyncTime } from "./sync";
+export { migrateLocalDataToAccount, initialSyncOnLogin, getLastSyncTime, setLastSyncTime, clearLastSyncTime } from "./sync";
 export type { MigrationResult } from "./sync";
 export { SyncWorker, enqueueSyncOperation, enqueueSyncOperationBatch, generateSyncId } from "./sync-worker";
 export type { SyncQueueItem } from "./db";

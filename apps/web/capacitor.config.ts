@@ -43,7 +43,8 @@ const config: CapacitorConfig = {
     GoogleAuth: {
       scopes: ["profile", "email"],
       serverClientId: process.env.GOOGLE_WEB_CLIENT_ID ?? "ENTER_YOUR_GOOGLE_WEB_CLIENT_ID_HERE",
-      iosClientId: process.env.GOOGLE_IOS_CLIENT_ID ?? process.env.GOOGLE_WEB_CLIENT_ID ?? "ENTER_YOUR_GOOGLE_WEB_CLIENT_ID_HERE",
+      iosClientId: process.env.GOOGLE_IOS_CLIENT_ID ?? "ENTER_YOUR_GOOGLE_IOS_CLIENT_ID_HERE",
+      androidClientId: process.env.GOOGLE_ANDROID_CLIENT_ID ?? "ENTER_YOUR_GOOGLE_ANDROID_CLIENT_ID_HERE",
       forceCodeForRefreshToken: true
     }
   }

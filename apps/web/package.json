@@ -16,6 +16,7 @@
     "perf:ack:auto": "node scripts/ack-perceived-benchmark.mjs --auto-server",
     "cap:setup": "bash scripts/capacitor-setup.sh",
     "cap:setup-assets": "bash scripts/setup-assets.sh",
+    "cap:inject-oauth": "node scripts/inject-google-oauth-config.mjs",
     "cap:sync": "npx cap sync",
     "cap:sync:ios:dev": "CAP_APP_ID=com.kemana.app.dev CAP_APP_NAME='KeMana Dev' npx cap sync ios",
     "cap:sync:ios:beta": "CAP_APP_ID=com.kemana.app.beta CAP_APP_NAME='KeMana Beta' npx cap sync ios",

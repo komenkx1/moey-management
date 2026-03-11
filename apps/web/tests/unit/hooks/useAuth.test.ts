@@ -34,6 +34,7 @@ vi.mock("@kemana/storage", () => {
         loadEntries: vi.fn().mockResolvedValue([{ id: "test-entry" }]),
         loadRules: vi.fn().mockResolvedValue([{ pattern: "test", match: "exact", category: "Test" }]),
         clearLocalDatabase: vi.fn().mockResolvedValue(undefined),
+        clearLastSyncTime: vi.fn().mockResolvedValue(undefined),
         SyncWorker: vi.fn().mockImplementation(function() {
             return {
                 start: mockStart,

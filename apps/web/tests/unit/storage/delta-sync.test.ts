@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { getLastSyncTime, setLastSyncTime, initialSyncOnLogin } from '@kemana/storage';
+import { getLastSyncTime, setLastSyncTime, clearLastSyncTime, initialSyncOnLogin } from '@kemana/storage';
 import { db } from '@kemana/storage';
 
 describe('Delta Sync', () => {
@@ -96,6 +96,18 @@ describe('Delta Sync', () => {
       
       // Restore
       Storage.prototype.setItem = originalSetItem;
+    });
+  });
+
+  describe('clearLastSyncTime', () => {
+    it('should remove stored sync time', async () => {
+      const timestamp = '2026-03-11T10:00:00.000Z';
+      await setLastSyncTime(userId, timestamp);
+      expect(await getLastSyncTime(userId)).toBe(timestamp);
+
+      await clearLastSyncTime(userId);
+
+      expect(await getLastSyncTime(userId)).toBeNull();
     });
   });
 
@@ -207,6 +219,75 @@ describe('Delta Sync', () => {
       expect(entries.length).toBe(2);
       expect(entries.some(e => e.id === 'entry-1')).toBe(true);
       expect(entries.some(e => e.id === 'entry-2')).toBe(true);
+    });
+
+    it('should fall back to full sync when last sync exists but local entries were wiped', async () => {
+      const lastSyncTime = '2026-03-11T10:00:00.000Z';
+      await setLastSyncTime(userId, lastSyncTime);
+
+      let usedDeltaFilter = false;
+      let usedFullOrder = false;
+
+      const mockSupabase = {
+        from: vi.fn((table: string) => ({
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              order: vi.fn(() => {
+                if (table === 'entries') {
+                  usedFullOrder = true;
+                  return Promise.resolve({
+                    data: [
+                      {
+                        id: 'entry-restore-1',
+                        owner_id: userId,
+                        text: 'Recovered entry',
+                        amount: 30000,
+                        date: '2026-03-11',
+                        category: 'Makan',
+                        source: 'quick_add',
+                        created_at: '2026-03-11T08:00:00.000Z',
+                        updated_at: '2026-03-11T08:00:00.000Z'
+                      }
+                    ],
+                    error: null
+                  });
+                }
+
+                return Promise.resolve({
+                  data: [
+                    {
+                      owner_id: userId,
+                      pattern: 'kopi',
+                      match: 'contains',
+                      category: 'Makan'
+                    }
+                  ],
+                  error: null
+                });
+              }),
+              gt: vi.fn(() => {
+                usedDeltaFilter = true;
+                return {
+                  order: vi.fn(() => Promise.resolve({
+                    data: [],
+                    error: null
+                  }))
+                };
+              })
+            }))
+          }))
+        }))
+      };
+
+      const result = await initialSyncOnLogin(userId, mockSupabase);
+
+      expect(result.success).toBe(true);
+      expect(usedDeltaFilter).toBe(false);
+      expect(usedFullOrder).toBe(true);
+
+      const entries = await db.entries.toArray();
+      expect(entries).toHaveLength(1);
+      expect(entries[0].id).toBe('entry-restore-1');
     });
 
     it('should update last sync time after successful sync', async () => {

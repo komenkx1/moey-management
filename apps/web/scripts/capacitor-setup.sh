@@ -85,6 +85,11 @@ echo ""
 echo "🔄 Syncing assets to native platforms..."
 npx cap sync
 
+# Inject Google OAuth configuration
+echo ""
+echo "🔐 Injecting Google OAuth configuration..."
+node scripts/inject-google-oauth-config.mjs
+
 echo ""
 echo "✅ Setup complete!"
 echo ""

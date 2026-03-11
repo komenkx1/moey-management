@@ -13,7 +13,9 @@ const nextConfig = {
     unoptimized: true
   },
   env: {
-    NEXT_PUBLIC_APP_VERSION: pkg.version
+    NEXT_PUBLIC_APP_VERSION: pkg.version,
+    // Exposed so Android can override the legacy GoogleAuth plugin's clientId at runtime.
+    NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID: process.env.GOOGLE_WEB_CLIENT_ID,
   },
   // Ensure assets are served from the correct port in all environments
   assetPrefix: process.env.ASSET_PREFIX || undefined,
