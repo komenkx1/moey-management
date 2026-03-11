@@ -17,25 +17,48 @@ const nextConfig = {
   },
   // Ensure assets are served from the correct port in all environments
   assetPrefix: process.env.ASSET_PREFIX || undefined,
-  // Content Security Policy headers
+  // Security headers with environment-aware CSP
   async headers() {
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    // Production CSP: Strict, no unsafe-inline/unsafe-eval
+    const productionCSP = [
+      "default-src 'self'",
+      "script-src 'self'",
+      "style-src 'self'",
+      "img-src 'self' data: blob: https:",
+      "font-src 'self' data:",
+      "connect-src 'self' https://*.supabase.co https://*.sentry.io wss://*.supabase.co",
+      "frame-src 'self' https://*.supabase.co",
+      "media-src 'self' blob:",
+      "worker-src 'self' blob:",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+      "upgrade-insecure-requests",
+    ].join("; ");
+    
+    // Development CSP: Relaxed for HMR and dev tools
+    const developmentCSP = [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https:",
+      "font-src 'self' data:",
+      "connect-src 'self' https://*.supabase.co https://*.sentry.io wss://*.supabase.co ws://localhost:* http://localhost:*",
+      "frame-src 'self' https://*.supabase.co",
+      "media-src 'self' blob:",
+      "worker-src 'self' blob:",
+    ].join("; ");
+    
     return [
       {
         source: "/(.*)",
         headers: [
           {
             key: "Content-Security-Policy",
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob: https:",
-              "font-src 'self' data:",
-              "connect-src 'self' https://*.supabase.co https://*.sentry.io wss://*.supabase.co",
-              "frame-src 'self' https://*.supabase.co",
-              "media-src 'self' blob:",
-              "worker-src 'self' blob:",
-            ].join("; "),
+            value: isProduction ? productionCSP : developmentCSP,
           },
           {
             key: "X-Content-Type-Options",
@@ -56,6 +79,24 @@ const nextConfig = {
           {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=()",
+          },
+          // NEW: HSTS (only in production with HTTPS)
+          ...(isProduction ? [{
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains; preload",
+          }] : []),
+          // NEW: Cross-Origin Isolation
+          {
+            key: "Cross-Origin-Embedder-Policy",
+            value: "credentialless", // Less strict than require-corp, better compatibility
+          },
+          {
+            key: "Cross-Origin-Opener-Policy",
+            value: "same-origin",
+          },
+          {
+            key: "Cross-Origin-Resource-Policy",
+            value: "same-origin",
           },
         ],
       },

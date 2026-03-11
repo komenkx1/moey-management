@@ -6,6 +6,8 @@ import { migrateLocalDataToAccount, initialSyncOnLogin, SyncWorker, loadEntries,
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { isNativePlatform } from '@/lib/capacitor';
 import { Network } from '@capacitor/network';
+import { checkRateLimit } from '@/lib/rate-limiter';
+import { logInvalidAuth, logUnauthorizedAccess } from '@/lib/security-monitoring';
 
 import CryptoJS from 'crypto-js';
 
@@ -209,6 +211,12 @@ export function useAuth() {
     }, []); // Empty deps to listen once // Empty dependency array so it only mounts/unmounts once 
 
     const signInWithGoogle = async () => {
+        // Check rate limit for auth endpoint
+        const { allowed, retryAfter } = checkRateLimit('auth');
+        if (!allowed) {
+            throw new Error(`Too many login attempts. Please try again in ${retryAfter} seconds.`);
+        }
+
         if (isNativePlatform()) {
             devLog("📱 Using Native Google Auth");
             
@@ -262,6 +270,12 @@ export function useAuth() {
      */
     const forceGlobalSync = async () => {
         if (!user) throw new Error("Pengguna belum login.");
+
+        // Check rate limit for sync endpoint
+        const { allowed, retryAfter } = checkRateLimit('sync');
+        if (!allowed) {
+            throw new Error(`Too many sync requests. Please try again in ${retryAfter} seconds.`);
+        }
 
         // Check network first to prevent wasted sync attempts when offline
         // Throws descriptive error to inform user of connectivity requirement

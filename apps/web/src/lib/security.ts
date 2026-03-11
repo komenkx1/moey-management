@@ -1,6 +1,15 @@
+import { logXSSAttempt, logSQLInjectionAttempt } from './security-monitoring';
+
 /**
  * Security utilities for input sanitization and validation
  * Protects against XSS and other injection attacks
+ * 
+ * Security Features:
+ * - XSS prevention (HTML sanitization)
+ * - SQL injection detection
+ * - Input validation
+ * - Rate limiting with memory leak prevention
+ * - Attack detection and logging
  */
 
 // Regex patterns for detecting XSS attempts
@@ -24,6 +33,14 @@ const XSS_PATTERNS = [
 export function sanitizeInput(input: string): string {
   if (!input || typeof input !== "string") {
     return "";
+  }
+
+  // Detect XSS attempts and log them
+  for (const pattern of XSS_PATTERNS) {
+    if (pattern.test(input)) {
+      logXSSAttempt(input, { function: 'sanitizeInput' });
+      break; // Only log once per input
+    }
   }
 
   let sanitized = input;
