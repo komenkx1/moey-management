@@ -157,19 +157,69 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: st
 }
 
 /**
+ * Get last sync timestamp for delta sync
+ */
+export async function getLastSyncTime(userId: string): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
+  
+  try {
+    const key = `kemana.lastSync.${userId}`;
+    return localStorage.getItem(key);
+  } catch (error) {
+    console.warn('Failed to get last sync time:', error);
+    return null;
+  }
+}
+
+/**
+ * Set last sync timestamp for delta sync
+ */
+export async function setLastSyncTime(userId: string, time: string): Promise<void> {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    const key = `kemana.lastSync.${userId}`;
+    localStorage.setItem(key, time);
+  } catch (error) {
+    console.warn('Failed to set last sync time:', error);
+  }
+}
+
+/**
  * Perform initial full fetch from server and sync with local data
+ * Uses delta sync (only fetch changed data) after first sync
  */
 export async function initialSyncOnLogin(
   userId: string,
   supabaseClient: any
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // 1. Fetch all data from server with a strict 15-second timeout
-    const fetchEntriesPromise = supabaseClient
+    // Get last sync time for delta sync
+    const lastSyncTime = await getLastSyncTime(userId);
+    const isDeltaSync = lastSyncTime !== null;
+    
+    if (isDeltaSync) {
+      console.log(`📊 Delta sync: fetching changes after ${lastSyncTime}`);
+    } else {
+      console.log(`📊 Full sync: first time login`);
+    }
+    
+    // 1. Fetch data from server with optional delta filter
+    let fetchEntriesPromise = supabaseClient
       .from("entries")
       .select("*")
       .eq("owner_id", userId)
       .order("created_at", { ascending: false }) as Promise<{ data: any[] | null; error: any }>;
+    
+    // Apply delta filter if we have last sync time
+    if (isDeltaSync) {
+      fetchEntriesPromise = supabaseClient
+        .from("entries")
+        .select("*")
+        .eq("owner_id", userId)
+        .gt("updated_at", lastSyncTime)
+        .order("created_at", { ascending: false }) as Promise<{ data: any[] | null; error: any }>;
+    }
 
     const fetchRulesPromise = supabaseClient
       .from("rules")
@@ -234,17 +284,44 @@ export async function initialSyncOnLogin(
       .map(normalizeServerRule)
       .filter((rule: CategoryRules[number]) => !pendingDeletedRuleKeys.has(`${rule.pattern}:${rule.match}`));
 
-    // 3. Merge: Server is the Absolute Truth, EXCEPT for items pending inside our local sync queue
-    const mergedEntries = mergeWithServerPriority(localEntries, validServerEntries, pendingUpsertEntryIds, pendingDeletedEntryIds);
-    const mergedRules = mergeRules(localRules, validServerRules, pendingUpsertRuleKeys, pendingDeletedRuleKeys);
+    // 3. Merge strategy depends on sync type
+    let mergedEntries: Entry[];
+    let mergedRules: CategoryRules;
+    
+    if (isDeltaSync) {
+      // Delta sync: merge changed entries with local data
+      mergedEntries = mergeDeltaEntries(localEntries, validServerEntries, pendingUpsertEntryIds, pendingDeletedEntryIds);
+      mergedRules = mergeRules(localRules, validServerRules, pendingUpsertRuleKeys, pendingDeletedRuleKeys);
+      
+      console.log(`📊 Delta sync merged: ${validServerEntries.length} changed entries`);
+    } else {
+      // Full sync: server is absolute truth (except pending items)
+      mergedEntries = mergeWithServerPriority(localEntries, validServerEntries, pendingUpsertEntryIds, pendingDeletedEntryIds);
+      mergedRules = mergeRules(localRules, validServerRules, pendingUpsertRuleKeys, pendingDeletedRuleKeys);
+      
+      console.log(`📊 Full sync merged: ${validServerEntries.length} total entries`);
+    }
 
     // 4. Save merged data to local IndexedDB
     await db.transaction("rw", db.entries, db.rules, async () => {
-      await db.entries.clear();
-      await db.entries.bulkPut(mergedEntries);
-      await db.rules.clear();
-      await db.rules.bulkPut(mergedRules);
+      if (isDeltaSync) {
+        // Delta sync: only update changed entries
+        await db.entries.bulkPut(mergedEntries);
+        await db.rules.clear();
+        await db.rules.bulkPut(mergedRules);
+      } else {
+        // Full sync: replace all data
+        await db.entries.clear();
+        await db.entries.bulkPut(mergedEntries);
+        await db.rules.clear();
+        await db.rules.bulkPut(mergedRules);
+      }
     });
+
+    // 5. Update last sync time for next delta sync
+    const now = new Date().toISOString();
+    await setLastSyncTime(userId, now);
+    console.log(`✓ Last sync time updated: ${now}`);
 
     return { success: true };
   } catch (error) {
@@ -254,6 +331,56 @@ export async function initialSyncOnLogin(
       error: error instanceof Error ? error.message : "Unknown error"
     };
   }
+}
+
+/**
+ * Merge delta entries (only changed entries from server)
+ * Used for incremental sync after first login
+ */
+function mergeDeltaEntries(
+  local: Entry[],
+  changedFromServer: Entry[],
+  pendingUpsertIds: Set<string>,
+  pendingDeleteIds: Set<string>
+): Entry[] {
+  const map = new Map<string, Entry>();
+
+  // 1. Start with all local entries
+  for (const entry of local) {
+    if (!pendingDeleteIds.has(entry.id)) {
+      map.set(entry.id, entry);
+    }
+  }
+
+  // 2. Apply changed entries from server
+  for (const entry of changedFromServer) {
+    if (pendingDeleteIds.has(entry.id)) {
+      // Deleted locally but not synced yet
+      continue;
+    }
+
+    if (pendingUpsertIds.has(entry.id)) {
+      // Has pending local changes
+      const existing = map.get(entry.id);
+      if (existing) {
+        const localTime = new Date(existing.updatedAt).getTime();
+        const serverTime = new Date(entry.updatedAt).getTime();
+        // Keep newer version
+        if (serverTime > localTime) {
+          map.set(entry.id, entry);
+        }
+      } else {
+        map.set(entry.id, entry);
+      }
+    } else {
+      // No pending changes, server wins
+      map.set(entry.id, entry);
+    }
+  }
+
+  return Array.from(map.values()).sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
 }
 
 /**

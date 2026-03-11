@@ -50,7 +50,9 @@ import {
   downloadBackupFile,
   importBackupFromText,
   clearStorageHealthWarnings,
-  incrementRecoveryCount
+  incrementRecoveryCount,
+  enqueueSyncOperation,
+  enqueueSyncOperationBatch
 } from "@kemana/storage";
 import {
   normalizeCustomDateRange,
@@ -86,7 +88,7 @@ import { useQuickAdd } from "@/hooks/useQuickAdd";
 import { useInsightData } from "@/hooks/useInsightData";
 import { useScrollToEntry } from "@/hooks/useScrollToEntry";
 import { useNotesVirtualization } from "@/hooks/useNotesVirtualization";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, getSyncWorker } from "@/hooks/useAuth";
 
 interface ParsedBulkLine extends BulkPreviewLine {
   parsed?: Extract<ParseQuickAddResult, { ok: true }>;
@@ -558,12 +560,28 @@ export default function DashboardPage() {
     });
 
     debouncedSetEntries((prev) => [...newEntries.reverse(), ...prev]);
+    
+    // Batch enqueue sync for all entries if logged in
+    if (session?.user) {
+      const syncWorker = getSyncWorker();
+      
+      // Use batch sync for better performance and reliability
+      const operations = newEntries.map(entry => ({
+        entity: 'entry' as const,
+        entityId: entry.id,
+        operation: 'create' as const,
+        payload: entry
+      }));
+      
+      enqueueSyncOperationBatch(operations, syncWorker).catch(console.error);
+    }
+    
     setBulkInput("");
     setBulkOpen(false);
     dismissRecallForSession();
     setRecallInputPrimed(false);
     toast.success(`${newEntries.length} catatan berhasil ditambahkan.`);
-  }, [bulkDraftLines, dismissRecallForSession, rules, debouncedSetEntries, setBulkInput, setBulkOpen, setRecallInputPrimed]);
+  }, [bulkDraftLines, dismissRecallForSession, rules, debouncedSetEntries, setBulkInput, setBulkOpen, setRecallInputPrimed, session]);
 
   const handleExportJson = useCallback(async () => {
     const payload = createBackupPayload(entries, rules, "kemana-web");

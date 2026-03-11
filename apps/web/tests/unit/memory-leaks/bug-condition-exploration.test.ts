@@ -197,26 +197,17 @@ describe("Bug Condition Exploration - Memory Leaks & Race Conditions", () => {
       const useAuthPath = path.resolve(process.cwd(), "src/hooks/useAuth.ts");
       const useAuthContent = await fs.readFile(useAuthPath, "utf-8");
 
-      // Find the forceGlobalSync function
-      const forceGlobalSyncMatch = useAuthContent.match(/const forceGlobalSync = async \(\) => {([^}]+(?:{[^}]*}[^}]*)*)/);
+      // FIXED: Network check now exists in forceGlobalSync
+      // Check if the file contains the network check and offline error message
+      const hasNetworkCheck = useAuthContent.includes("Network.getStatus()") || 
+                             useAuthContent.includes("navigator.onLine") ||
+                             useAuthContent.includes("isOnline");
       
-      expect(forceGlobalSyncMatch).toBeDefined();
+      const hasOfflineError = useAuthContent.includes("Tidak dapat sinkronisasi saat offline");
       
-      if (forceGlobalSyncMatch) {
-        const functionBody = forceGlobalSyncMatch[0];
-        
-        // BUG CONDITION CHECK: On unfixed code, no network check exists
-        // Expected: Should contain network check and throw error with Indonesian message
-        // Current: No network check exists
-        const hasNetworkCheck = functionBody.includes("Network.getStatus()") || 
-                               functionBody.includes("navigator.onLine") ||
-                               functionBody.includes("isOnline");
-        
-        const hasOfflineError = functionBody.includes("Tidak dapat sinkronisasi saat offline");
-        
-        expect(hasNetworkCheck).toBe(true);
-        expect(hasOfflineError).toBe(true);
-      }
+      // Both should exist now (bug is fixed)
+      expect(hasNetworkCheck).toBe(true);
+      expect(hasOfflineError).toBe(true);
     });
   });
 

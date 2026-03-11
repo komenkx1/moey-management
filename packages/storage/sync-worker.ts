@@ -22,11 +22,13 @@ export class SyncWorker {
   private _isRunning = false;
   private supabaseClient: any;
   private userId: string | null = null;
-  private checkInterval = 2000; // Check every 2 seconds
+  private checkInterval = 2000; // Dynamic interval (default 2 seconds)
   private maxRetries = 10;
   private baseDelay = 1000; // 1 second
   private wakeupResolver: (() => void) | null = null;
   public isOnlineFn: () => Promise<boolean> = async () => navigator.onLine;
+  private batteryManager: any = null;
+  private batteryListenersAttached = false;
 
   public onStatusChange?: (status: SyncWorkerStatus) => void;
   public onPendingCountChange?: (count: number) => void;
@@ -72,6 +74,9 @@ export class SyncWorker {
     this._isRunning = true;
     console.log('🔄 Sync worker started for user:', userId);
 
+    // Initialize battery monitoring for adaptive sync
+    await this.initBatteryMonitoring();
+
     this.processQueue();
   }
 
@@ -86,6 +91,9 @@ export class SyncWorker {
     this.onStatusChange = undefined;
     this.onPendingCountChange = undefined;
     this.onLastSyncTimeChange = undefined;
+    
+    // Cleanup battery listeners
+    this.cleanupBatteryMonitoring();
     
     this.wakeup(); // Wake up so the loop can exit if it's sleeping
     console.log('⏹️ Sync worker stopped');
@@ -288,6 +296,102 @@ export class SyncWorker {
   }
 
   /**
+   * Initialize battery monitoring for adaptive sync intervals
+   * Adjusts sync frequency based on battery level to save power
+   */
+  private async initBatteryMonitoring() {
+    // Check if Battery API is supported
+    if (typeof navigator === 'undefined' || !('getBattery' in navigator)) {
+      console.log('⚠️ Battery API not supported, using default sync interval');
+      return;
+    }
+
+    try {
+      this.batteryManager = await (navigator as any).getBattery();
+      
+      // Initial adjustment
+      this.adjustSyncInterval();
+      
+      // Bind event handlers to preserve 'this' context
+      const handleBatteryChange = () => this.adjustSyncInterval();
+      
+      // Listen for battery changes
+      this.batteryManager.addEventListener('levelchange', handleBatteryChange);
+      this.batteryManager.addEventListener('chargingchange', handleBatteryChange);
+      
+      this.batteryListenersAttached = true;
+      
+      console.log('🔋 Battery monitoring initialized');
+    } catch (error) {
+      console.warn('⚠️ Failed to initialize battery monitoring:', error);
+    }
+  }
+
+  /**
+   * Adjust sync interval based on battery level and charging status
+   * Reduces sync frequency when battery is low to extend battery life
+   */
+  private adjustSyncInterval() {
+    if (!this.batteryManager) return;
+
+    const level = this.batteryManager.level;
+    const charging = this.batteryManager.charging;
+    
+    let newInterval: number;
+    let description: string;
+
+    if (charging) {
+      // Charging: use normal sync interval
+      newInterval = 2000; // 2 seconds
+      description = 'charging (normal)';
+    } else if (level < 0.15) {
+      // Critical battery (< 15%): very slow sync
+      newInterval = 60000; // 1 minute
+      description = 'critical (<15%)';
+    } else if (level < 0.20) {
+      // Low battery (< 20%): slow sync
+      newInterval = 30000; // 30 seconds
+      description = 'low (<20%)';
+    } else if (level < 0.50) {
+      // Medium battery (< 50%): reduced sync
+      newInterval = 10000; // 10 seconds
+      description = 'medium (<50%)';
+    } else {
+      // Good battery (>= 50%): normal sync
+      newInterval = 2000; // 2 seconds
+      description = 'good (>=50%)';
+    }
+
+    // Only log if interval changed
+    if (this.checkInterval !== newInterval) {
+      this.checkInterval = newInterval;
+      console.log(`🔋 Battery ${Math.round(level * 100)}% ${description}: sync interval ${newInterval}ms`);
+      
+      // Wake up worker to apply new interval immediately
+      this.wakeup();
+    }
+  }
+
+  /**
+   * Cleanup battery monitoring listeners
+   * Prevents memory leaks when worker is stopped
+   */
+  private cleanupBatteryMonitoring() {
+    if (this.batteryManager && this.batteryListenersAttached) {
+      try {
+        const handleBatteryChange = () => this.adjustSyncInterval();
+        this.batteryManager.removeEventListener('levelchange', handleBatteryChange);
+        this.batteryManager.removeEventListener('chargingchange', handleBatteryChange);
+        this.batteryListenersAttached = false;
+        console.log('🔋 Battery monitoring cleaned up');
+      } catch (error) {
+        console.warn('⚠️ Failed to cleanup battery monitoring:', error);
+      }
+    }
+    this.batteryManager = null;
+  }
+
+  /**
    * Helper to sleep (interruptible)
    */
   private sleep(ms: number): Promise<void> {
@@ -375,6 +479,82 @@ export class SyncWorker {
       await db.syncQueue.update(itemId, { status: 'pending' });
     }
   }
+  /**
+   * Sync multiple items immediately in batch
+   * More efficient than calling syncImmediately multiple times
+   */
+  /**
+     * Sync multiple items immediately in batch
+     * More efficient than calling syncImmediately multiple times
+     */
+    public async syncImmediatelyBatch(itemIds: string[]) {
+      console.log(`🚀 syncImmediatelyBatch called for ${itemIds.length} items`);
+
+      if (!this.userId) {
+        console.warn('⚠️ Cannot sync immediately: no user ID');
+        return;
+      }
+
+      const isOnline = await this.isOnlineFn();
+      console.log(`📡 Network status: ${isOnline ? 'online' : 'offline'}`);
+
+      if (!isOnline) {
+        console.log('📴 Offline: items will sync when connection restored');
+        return;
+      }
+
+      try {
+        // Fetch all items from queue
+        const items = await db.syncQueue.bulkGet(itemIds);
+        const validItems = items.filter((item): item is SyncQueueItem => 
+          item !== undefined && item.status !== 'synced'
+        );
+
+        if (validItems.length === 0) {
+          console.log('✓ All items already synced or not found');
+          return;
+        }
+
+        console.log(`📦 Found ${validItems.length} items to sync`);
+
+        // Mark all as syncing
+        await Promise.all(
+          validItems.map(item => db.syncQueue.update(item.id, { status: 'syncing' as const }))
+        );
+
+        // Sync all items sequentially to avoid overwhelming the connection
+        const results = await Promise.allSettled(
+          validItems.map(item => this.syncItem(item))
+        );
+
+        // Update status based on results
+        await Promise.all(
+          results.map((result, index) => {
+            const item = validItems[index];
+            if (result.status === 'fulfilled') {
+              console.log(`✓ Synced ${item.entity} ${item.operation}:`, item.entityId);
+              return db.syncQueue.update(item.id, { status: 'synced' as const });
+            } else {
+              console.error(`❌ Failed to sync ${item.entity}:`, result.reason);
+              return db.syncQueue.update(item.id, { status: 'pending' as const });
+            }
+          })
+        );
+
+        const successCount = results.filter(r => r.status === 'fulfilled').length;
+        console.log(`✅ Batch sync complete: ${successCount}/${validItems.length} succeeded`);
+
+        this.onLastSyncTimeChange?.(Date.now());
+        await this.notifyPendingCount();
+
+      } catch (error) {
+        console.error('❌ Batch immediate sync failed:', error);
+        // Mark all as pending for retry
+        await Promise.all(
+          itemIds.map(id => db.syncQueue.update(id, { status: 'pending' as const }))
+        );
+      }
+    }
 
   /**
    * Get sync queue status
@@ -443,7 +623,7 @@ export async function enqueueSyncOperation(
   operation: 'create' | 'update' | 'delete',
   payload: Entry | CategoryRules[number] | null,
   syncWorker?: SyncWorker | null
-): Promise<void> {
+): Promise<string> {  // Return item ID for batch sync
   const item: SyncQueueItem = {
     id: generateSyncId(),
     entity,
@@ -459,7 +639,7 @@ export async function enqueueSyncOperation(
     await db.transaction("rw", db.syncQueue, db.entries, db.rules, async () => {
       // 1. Enqueue to sync worker
       await db.syncQueue.add(item);
-      
+
       // 2. Optimistic local update so UI reflects immediately while offline
       if (operation === 'create' || operation === 'update') {
         if (entity === 'entry' && payload) {
@@ -477,40 +657,29 @@ export async function enqueueSyncOperation(
     });
 
     console.log(`📝 Enqueued & Applied ${entity} ${operation}:`, entityId);
-    
-    // 3. Trigger immediate sync if sync worker is available and running
-    // This provides instant feedback for user operations without waiting for batch cycle
-    console.log(`🔍 Checking immediate sync: syncWorker=${!!syncWorker}, isRunning=${syncWorker?.isRunning}`);
-    
-    if (syncWorker && syncWorker.isRunning) {
-      console.log(`⚡ Triggering immediate sync for item: ${item.id}`);
-      // Fire and forget - don't await to keep enqueue operation fast
-      syncWorker.syncImmediately(item.id).catch(err => {
-        console.warn('⚠️ Immediate sync failed, will retry in batch:', err);
-      });
-    } else {
-      console.log(`⏸️ Immediate sync skipped: ${!syncWorker ? 'no worker' : 'worker not running'}`);
-    }
-    
+
+    // Return item ID so caller can batch sync if needed
+    return item.id;
+
   } catch (error: any) {
     // Handle IndexedDB quota exceeded errors gracefully
     // Without this, data loss occurs silently when storage is full
     if (error.name === 'QuotaExceededError') {
       console.error('❌ Storage quota exceeded');
-      
+
       // Notify user with clear Indonesian message about storage issue
       alert("Penyimpanan browser penuh. Silakan hapus data lama atau bersihkan cache browser.");
-      
+
       // Attempt automatic recovery: clear old synced items and retry once
       try {
         // Clear synced items from the queue using clearSynced logic
         const count = await db.syncQueue.where('status').equals('synced').delete();
         console.log(`🧹 Cleared ${count} synced items from queue`);
-        
+
         // Retry the operation after cleanup
         await db.transaction("rw", db.syncQueue, db.entries, db.rules, async () => {
           await db.syncQueue.add(item);
-          
+
           if (operation === 'create' || operation === 'update') {
             if (entity === 'entry' && payload) {
               await db.entries.put(payload as Entry);
@@ -525,8 +694,9 @@ export async function enqueueSyncOperation(
             }
           }
         });
-        
+
         console.log(`✓ Retry successful after clearing synced items`);
+        return item.id;
       } catch (retryError) {
         console.error('❌ Retry failed after quota cleanup:', retryError);
         // If automatic recovery fails, inform user they need manual intervention
@@ -536,5 +706,51 @@ export async function enqueueSyncOperation(
       // Re-throw other errors for normal error handling
       throw error;
     }
+  }
+}
+/**
+ * Enqueue multiple sync operations and trigger batch immediate sync
+ * More efficient than calling enqueueSyncOperation multiple times
+ */
+export async function enqueueSyncOperationBatch(
+  operations: Array<{
+    entity: 'entry' | 'rule';
+    entityId: string;
+    operation: 'create' | 'update' | 'delete';
+    payload: Entry | CategoryRules[number] | null;
+  }>,
+  syncWorker?: SyncWorker | null
+): Promise<void> {
+  console.log(`📦 Enqueueing ${operations.length} operations in batch`);
+
+  // Enqueue all operations and collect item IDs
+  const itemIds: string[] = [];
+
+  for (const op of operations) {
+    try {
+      const itemId = await enqueueSyncOperation(
+        op.entity,
+        op.entityId,
+        op.operation,
+        op.payload,
+        undefined  // Don't trigger individual immediate sync
+      );
+      itemIds.push(itemId);
+    } catch (error) {
+      console.error('❌ Failed to enqueue operation:', error);
+    }
+  }
+
+  console.log(`✓ Enqueued ${itemIds.length}/${operations.length} operations`);
+
+  // Trigger batch immediate sync if sync worker is available
+  if (syncWorker && syncWorker.isRunning && itemIds.length > 0) {
+    console.log(`⚡ Triggering batch immediate sync for ${itemIds.length} items`);
+    // Fire and forget - don't await to keep enqueue operation fast
+    syncWorker.syncImmediatelyBatch(itemIds).catch(err => {
+      console.warn('⚠️ Batch immediate sync failed, will retry in batch:', err);
+    });
+  } else {
+    console.log(`⏸️ Batch immediate sync skipped: ${!syncWorker ? 'no worker' : 'worker not running'}`);
   }
 }
