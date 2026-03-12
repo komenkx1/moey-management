@@ -27,7 +27,11 @@
     "cap:run:ios": "bash scripts/prepare-ios-derived-data.sh && COPYFILE_DISABLE=1 npx cap run ios",
     "cap:open:android": "npx cap open android",
     "cap:open:ios": "npx cap open ios",
-    "ipa:ios": "bash scripts/build-ios-ipa.sh"
+    "ipa:ios": "bash scripts/build-ios-ipa.sh",
+    "apk:android": "bash scripts/build-android-apk.sh",
+    "apk:android:prod": "ANDROID_PACKAGE_NAME=com.kemana.app ANDROID_APP_NAME='KeMana' bash scripts/build-android-apk.sh",
+    "apk:android:beta": "ANDROID_PACKAGE_NAME=com.kemana.app.beta ANDROID_APP_NAME='KeMana Beta' bash scripts/build-android-apk.sh",
+    "aab:android:prod": "ANDROID_PACKAGE_NAME=com.kemana.app ANDROID_APP_NAME='KeMana' bash scripts/build-android-apk.sh --aab"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.0",
