@@ -547,12 +547,31 @@ export function getSummaryStats(params: {
       trackedDays
     });
     const emptyState = filteredEntries.length === 0 ? getSmartEmptyState(allEntries, now) : null;
-    const compareText =
-      trackedDays < 3
-        ? `Baru ${trackedDays} hari data, insight masih awal.`
-        : trackedDays < 7
-          ? `Masih belajar dari ${trackedDays} hari catatan.`
-          : `Rata-rata 7 hari: Rp${formatAmountIDR(Math.round(sevenDayAverage))}`;
+    
+    // Generate comparison text based on today vs average
+    let compareText: string;
+    if (trackedDays < 3) {
+      compareText = `Baru ${trackedDays} hari data, insight masih awal.`;
+    } else if (trackedDays < 7) {
+      compareText = `Masih belajar dari ${trackedDays} hari catatan.`;
+    } else {
+      // Calculate difference from average
+      const difference = totalAmount - sevenDayAverage;
+      const absDiff = Math.abs(difference);
+      
+      if (totalAmount === 0) {
+        compareText = `Hemat! Rata-rata harian biasanya Rp${formatAmountIDR(Math.round(sevenDayAverage))}`;
+      } else if (Math.abs(difference) < sevenDayAverage * 0.1) {
+        // Within 10% of average - considered same
+        compareText = `Sama dengan rata-rata harian (Rp${formatAmountIDR(Math.round(sevenDayAverage))})`;
+      } else if (difference < 0) {
+        // Today is lower than average
+        compareText = `Hemat Rp${formatAmountIDR(Math.round(absDiff))} dari rata-rata harian`;
+      } else {
+        // Today is higher than average
+        compareText = `Rp${formatAmountIDR(Math.round(absDiff))} lebih tinggi dari rata-rata harian`;
+      }
+    }
 
     return {
       periodLabel: getFilterLabel(preset, customRange, now),
@@ -592,6 +611,51 @@ export function getSummaryStats(params: {
           : Math.max(1, new Set(filteredEntries.map((entry) => entry.date)).size);
   const averageForRange = totalAmount / dayCount;
 
+  // Generate comparison text for non-today presets
+  let compareText: string;
+  if (preset === "all") {
+    const activeDaysCount = new Set(filteredEntries.map((entry) => entry.date)).size;
+    compareText = `Rata-rata dari ${activeDaysCount} hari aktif: Rp${formatAmountIDR(Math.round(averageForRange))} per hari`;
+  } else {
+    // For 7d, 30d, and custom: compare with previous period
+    const windowDays = dayCount;
+    const previousPeriodEnd = offsetDate(now, -windowDays);
+    const previousEntries = getFilteredEntries(
+      allEntries,
+      preset,
+      previousPeriodEnd,
+      preset === "custom" ? normalizedCustomRange : null
+    );
+    const previousTotal = previousEntries.reduce(
+      (sum, entry) => sum + getEntryReportAmount(entry),
+      0
+    );
+    const previousActiveDays = new Set(previousEntries.map((entry) => entry.date)).size;
+
+    // Require at least 7 active days in previous period for meaningful comparison
+    if (previousTotal === 0 || previousActiveDays < 7) {
+      // Not enough previous data for comparison - show average for current period
+      const periodLabel = preset === "7d" ? "7 hari ini" : preset === "30d" ? "30 hari ini" : "periode ini";
+      compareText = `Rata-rata ${periodLabel}: Rp${formatAmountIDR(Math.round(averageForRange))} per hari`;
+    } else {
+      const previousAverage = previousTotal / windowDays;
+      const difference = totalAmount - previousTotal;
+      const absDiff = Math.abs(difference);
+      const percentChange = Math.round((absDiff / previousTotal) * 100);
+
+      if (Math.abs(difference) < previousTotal * 0.05) {
+        // Within 5% - considered stable
+        compareText = `Stabil dibanding periode sebelumnya`;
+      } else if (difference < 0) {
+        // Current period is lower
+        compareText = `Turun ${percentChange}% dibanding periode sebelumnya`;
+      } else {
+        // Current period is higher
+        compareText = `Naik ${percentChange}% dibanding periode sebelumnya`;
+      }
+    }
+  }
+
   return {
     periodLabel: getFilterLabel(preset, customRange, now),
     totalAmount,
@@ -599,10 +663,7 @@ export function getSummaryStats(params: {
     topCategory,
     topCategories,
     sevenDayAverage,
-    compareText:
-      preset === "all"
-        ? `Rata-rata per hari aktif: -Rp${formatAmountIDR(Math.round(averageForRange))}`
-        : `Rata-rata ${dayCount} hari: -Rp${formatAmountIDR(Math.round(averageForRange))}`,
+    compareText,
     status,
     emptyState
   };
