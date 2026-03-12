@@ -17,6 +17,7 @@ RESTORE_APP_NAME="${IOS_RESTORE_APP_NAME:-KeMana Dev}"
 SKIP_WEB_BUILD=false
 SKIP_SYNC=false
 RESTORE_AFTER_EXPORT=true
+XCODEBUILD_SIGNING_ARGS=()
 
 usage() {
   cat <<'EOF'
@@ -114,6 +115,10 @@ cat > "$EXPORT_OPTIONS_PATH" <<EOF
 EOF
 
 if [[ -n "${IOS_TEAM_ID:-}" ]]; then
+  XCODEBUILD_SIGNING_ARGS+=(
+    DEVELOPMENT_TEAM="$IOS_TEAM_ID"
+    CODE_SIGN_STYLE=Automatic
+  )
   cat >> "$EXPORT_OPTIONS_PATH" <<EOF
   <key>teamID</key>
   <string>${IOS_TEAM_ID}</string>
@@ -132,6 +137,7 @@ xcodebuild \
   -configuration "$CONFIGURATION" \
   -destination "generic/platform=iOS" \
   -archivePath "$ARCHIVE_PATH" \
+  "${XCODEBUILD_SIGNING_ARGS[@]}" \
   archive
 
 echo "==> Exporting IPA"
