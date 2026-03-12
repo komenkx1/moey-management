@@ -1,12 +1,14 @@
 import type { MutableRefObject, RefObject } from "react";
+import { useMemo } from "react";
 import { PieChart, WandSparkles, Clock3 } from "lucide-react";
 import { formatAmountIDR } from "@kemana/core/format";
-import type { ParseQuickAddResult } from "@kemana/core/types";
+import type { ParseQuickAddResult, Entry } from "@kemana/core/types";
 import { warningShortText, type TodaySummaryStats } from "@/lib/kemana-utils";
 import type {
   LatestEntryInsight,
   QuickFormatTemplate
 } from "@/lib/dashboard-page-utils";
+import { deriveTodayVsAverageInsight } from "@/lib/dashboard-page-utils/insight";
 import type { SmartRecallPrompt } from "@/app/recall";
 import LastEntryGapIndicator from "@/app/LastEntryGapIndicator";
 import SummaryHeroCard from "@/components/kemana-ui/SummaryHeroCard";
@@ -18,8 +20,13 @@ import { useExpandedIds } from "@/store/kemana/hooks-granular";
 import { useCallback } from "react";
 
 interface HomeTabContentProps {
+  entries: Entry[];
   storageWarning: string | null;
   summaryStats: TodaySummaryStats;
+  trendBadge?: {
+    label: string;
+    tone: "up" | "down" | "neutral";
+  } | null;
   onOpenInsight: () => void;
 
   quickInputRef: RefObject<HTMLInputElement>;
@@ -79,8 +86,10 @@ interface HomeTabContentProps {
 }
 
 export default function HomeTabContent({
+  entries,
   storageWarning,
   summaryStats,
+  trendBadge,
   onOpenInsight,
   quickInputRef,
   quickInput,
@@ -129,6 +138,16 @@ export default function HomeTabContent({
 }: HomeTabContentProps) {
   const { expandedIds, setExpandedIds } = useExpandedIds();
 
+  // Calculate today vs average insight
+  const todayVsAverageInsight = useMemo(() => {
+    try {
+      return deriveTodayVsAverageInsight(entries, new Date());
+    } catch (error) {
+      console.error("Failed to calculate today vs average:", error);
+      return null;
+    }
+  }, [entries]);
+
   const handleToggleExpand = useCallback((id: string) => {
     setExpandedIds(prev => {
       const next = new Set(prev);
@@ -154,6 +173,7 @@ export default function HomeTabContent({
         transactionCount={summaryStats.entryCount}
         averagePerDay={summaryStats.sevenDayAverage}
         periodLabel={summaryStats.periodLabel}
+        trendBadge={trendBadge}
       >
         <div className="relative overflow-hidden rounded-[20px] border border-insight-border bg-insight-bg p-4">
           <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/20 blur-2xl" />

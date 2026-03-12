@@ -7,6 +7,10 @@ interface SummaryHeroCardProps {
     transactionCount: number;
     averagePerDay: number;
     periodLabel?: string;
+    trendBadge?: {
+        label: string;
+        tone: "up" | "down" | "neutral";
+    } | null;
     className?: string;
     children?: React.ReactNode;
 }
@@ -16,6 +20,7 @@ function SummaryHeroCard({
     transactionCount,
     averagePerDay,
     periodLabel = "Bulan ini",
+    trendBadge,
     className,
     children,
 }: SummaryHeroCardProps) {
@@ -29,9 +34,21 @@ function SummaryHeroCard({
             )}
         >
             <div className="flex flex-col gap-1.5">
-                <span className="w-fit rounded-full bg-bg-subtle px-3 py-1 text-[11px] font-semibold tracking-wide text-text-secondary">
-                    {periodLabel}
-                </span>
+                <div className="flex items-center gap-2">
+                    <span className="w-fit rounded-full bg-bg-subtle px-3 py-1 text-[11px] font-semibold tracking-wide text-text-secondary">
+                        {periodLabel}
+                    </span>
+                    {trendBadge && (
+                        <span className={cn(
+                            "w-fit rounded-full px-2.5 py-1 text-[11px] font-semibold",
+                            trendBadge.tone === "up" && "bg-danger-soft text-danger",
+                            trendBadge.tone === "down" && "bg-success-soft text-success",
+                            trendBadge.tone === "neutral" && "bg-bg-subtle text-text-tertiary"
+                        )}>
+                            {trendBadge.label}
+                        </span>
+                    )}
+                </div>
                 <div className="mt-1 flex flex-col gap-0">
                     <h2 className="text-[14px] font-medium text-text-secondary">Pengeluaran</h2>
                     <div className="text-[32px] font-bold tracking-tight text-text-primary">
@@ -70,6 +87,8 @@ export default memo(SummaryHeroCard, (prev, next) => {
     prev.transactionCount === next.transactionCount &&
     prev.averagePerDay === next.averagePerDay &&
     prev.periodLabel === next.periodLabel &&
+    prev.trendBadge?.label === next.trendBadge?.label &&
+    prev.trendBadge?.tone === next.trendBadge?.tone &&
     prev.className === next.className
   );
 });
