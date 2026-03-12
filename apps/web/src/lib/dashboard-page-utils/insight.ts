@@ -55,6 +55,7 @@ export interface InsightSevenDaySummary {
   averagePerDay: number;
   entryCount: number;
   activeDays: number;
+  previousActiveDays: number;
   topCategories: InsightTopCategoryItem[];
   topCategory: InsightTopCategoryItem | null;
   topPayment: InsightTopDimensionItem | null;
@@ -82,6 +83,27 @@ export interface InsightCoachCopy {
 export interface InsightTrendBadge {
   label: string;
   tone: "up" | "down" | "neutral";
+}
+
+export interface TodayVsAverageInsight {
+  todayTotal: number;
+  dailyAverage: number;
+  difference: number;
+  direction: "up" | "down" | "neutral";
+  hasData: boolean;
+  hasSufficientHistory: boolean;
+}
+
+export interface PeriodComparisonInsight {
+  currentTotal: number;
+  previousTotal: number;
+  percentageChange: number | null;
+  direction: "up" | "down" | "neutral";
+  hasData: boolean;
+  hasPreviousData: boolean;
+  currentActiveDays: number;
+  previousActiveDays: number;
+  hasSufficientPreviousData: boolean;
 }
 
 function getInsightTimeSlotLabel(hour: number): string {
@@ -298,6 +320,7 @@ export function deriveInsightSummary(
     });
 
   const activeDays = new Set(currentEntries.map((entry) => entry.date)).size;
+  const previousActiveDays = new Set(previousEntries.map((entry) => entry.date)).size;
   const averageDivisor = windowDays ?? Math.max(1, activeDays);
 
   return {
@@ -312,6 +335,7 @@ export function deriveInsightSummary(
     averagePerDay: Math.round(total / Math.max(1, averageDivisor)),
     entryCount: currentEntries.length,
     activeDays,
+    previousActiveDays,
     topCategories: categoryBreakdown.slice(0, 4),
     topCategory: categoryBreakdown[0] ?? null,
     topPayment,
@@ -438,6 +462,15 @@ export function deriveInsightTrendBadge(insight: InsightSevenDaySummary): Insigh
     };
   }
 
+  // Hide badge if previous period doesn't have sufficient data
+  // For 30d preset, require at least 7 active days in previous period
+  if (insight.windowDays === 30 && insight.previousActiveDays < 7) {
+    return {
+      label: "Belum ada pembanding",
+      tone: "neutral"
+    };
+  }
+
   if (insight.direction === "up") {
     return {
       label: `+${insight.deltaPct}% vs ${insight.comparisonLabel}`,
@@ -455,5 +488,177 @@ export function deriveInsightTrendBadge(insight: InsightSevenDaySummary): Insigh
   return {
     label: `Stabil vs ${insight.comparisonLabel}`,
     tone: "neutral"
+  };
+}
+
+export function deriveTodayVsAverageInsight(
+  entries: Entry[],
+  now: Date = new Date()
+): TodayVsAverageInsight {
+  // Validate inputs
+  if (!Array.isArray(entries)) {
+    return {
+      todayTotal: 0,
+      dailyAverage: 0,
+      difference: 0,
+      direction: "neutral",
+      hasData: false,
+      hasSufficientHistory: false
+    };
+  }
+
+  // Validate date
+  if (!now || Number.isNaN(now.getTime())) {
+    now = new Date();
+  }
+
+  // Filter entries for today
+  const todayEntries = getFilteredEntries(entries, "today", now);
+  const todayTotal = sumAmount(todayEntries);
+
+  // Get all entries excluding today for historical calculation
+  const todayKey = toDateKey(now);
+  const historicalEntries = entries.filter((entry) => entry.date !== todayKey);
+
+  // If no historical data, return early
+  if (historicalEntries.length === 0) {
+    return {
+      todayTotal,
+      dailyAverage: 0,
+      difference: todayTotal,
+      direction: todayTotal > 0 ? "up" : "neutral",
+      hasData: todayEntries.length > 0,
+      hasSufficientHistory: false
+    };
+  }
+
+  // Group historical entries by date and calculate total
+  const dateGroups = new Map<string, number>();
+  let totalHistorical = 0;
+
+  for (const entry of historicalEntries) {
+    const amount = getEntryReportAmount(entry);
+    totalHistorical += amount;
+
+    const currentAmount = dateGroups.get(entry.date) ?? 0;
+    dateGroups.set(entry.date, currentAmount + amount);
+  }
+
+  // Count active days (days with at least one transaction)
+  const activeDays = dateGroups.size;
+
+  // Calculate daily average (excluding zero-transaction days)
+  const dailyAverage = activeDays > 0 ? totalHistorical / activeDays : 0;
+
+  // Calculate difference and direction
+  const difference = todayTotal - dailyAverage;
+  let direction: "up" | "down" | "neutral";
+  if (difference > 0) {
+    direction = "up";
+  } else if (difference < 0) {
+    direction = "down";
+  } else {
+    direction = "neutral";
+  }
+
+  // Check if we have sufficient history (at least 3 days)
+  const hasSufficientHistory = activeDays >= 3;
+
+  return {
+    todayTotal,
+    dailyAverage,
+    difference,
+    direction,
+    hasData: todayEntries.length > 0 || historicalEntries.length > 0,
+    hasSufficientHistory
+  };
+}
+export function derivePeriodComparison(
+  entries: Entry[],
+  preset: DateFilterPreset = "30d",
+  now: Date = new Date()
+): PeriodComparisonInsight {
+  // Validate inputs
+  if (!Array.isArray(entries)) {
+    return {
+      currentTotal: 0,
+      previousTotal: 0,
+      percentageChange: null,
+      direction: "neutral",
+      hasData: false,
+      hasPreviousData: false,
+      currentActiveDays: 0,
+      previousActiveDays: 0,
+      hasSufficientPreviousData: false
+    };
+  }
+
+  // Validate date
+  if (!now || Number.isNaN(now.getTime())) {
+    now = new Date();
+  }
+
+  // Get window days for the preset
+  const { windowDays } = getInsightWindowMeta(preset, null, now);
+
+  // If windowDays is null (e.g., "all" preset), return early
+  if (windowDays === null) {
+    return {
+      currentTotal: 0,
+      previousTotal: 0,
+      percentageChange: null,
+      direction: "neutral",
+      hasData: false,
+      hasPreviousData: false,
+      currentActiveDays: 0,
+      previousActiveDays: 0,
+      hasSufficientPreviousData: false
+    };
+  }
+
+  // Get current period entries
+  const currentEntries = getFilteredEntries(entries, preset, now);
+  const currentTotal = sumAmount(currentEntries);
+
+  // Calculate previous period start date
+  const previousPeriodEnd = offsetDate(now, -windowDays);
+
+  // Get previous period entries
+  const previousEntries = getFilteredEntries(entries, preset, previousPeriodEnd);
+  const previousTotal = sumAmount(previousEntries);
+
+  // Count active days in both periods (days with at least one transaction)
+  const currentActiveDays = new Set(currentEntries.map((entry) => entry.date)).size;
+  const previousActiveDays = new Set(previousEntries.map((entry) => entry.date)).size;
+
+  // Check if previous period has sufficient data (at least 7 active days)
+  const hasSufficientPreviousData = previousActiveDays >= 7;
+
+  // Calculate percentage change
+  let percentageChange: number | null = null;
+  if (previousTotal > 0) {
+    percentageChange = Math.round(Math.abs((currentTotal - previousTotal) / previousTotal) * 100);
+  }
+
+  // Determine direction
+  let direction: "up" | "down" | "neutral";
+  if (currentTotal > previousTotal) {
+    direction = "up";
+  } else if (currentTotal < previousTotal) {
+    direction = "down";
+  } else {
+    direction = "neutral";
+  }
+
+  return {
+    currentTotal,
+    previousTotal,
+    percentageChange,
+    direction,
+    hasData: currentEntries.length > 0,
+    hasPreviousData: previousEntries.length > 0,
+    currentActiveDays,
+    previousActiveDays,
+    hasSufficientPreviousData
   };
 }
