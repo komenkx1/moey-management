@@ -379,6 +379,11 @@ export default function DashboardPage() {
     [dateFilter, entries, filteredEntries, normalizedCustomRange]
   );
 
+  const trendBadge = useMemo(() => {
+    // Home tab: no badge (to avoid duplication with Insight tab)
+    return null;
+  }, []);
+
   const latestEntryInsight = useMemo(() => deriveLatestEntryInsight(entries), [entries]);
   const lastEntryAt = useMemo(() => getLastEntryTimestamp(entries), [entries]);
   const showSuggestionCard = Boolean(smartRecallPrompt && topAdaptiveRecallItem);
@@ -871,8 +876,10 @@ export default function DashboardPage() {
       />
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <HomeTabContent
+          entries={entries}
           storageWarning={storageWarning}
           summaryStats={summaryStats}
+          trendBadge={trendBadge}
           onOpenInsight={handleOpenInsightTab}
           quickInputRef={quickInputRef}
           quickInput={quickInput}
