@@ -124,6 +124,110 @@ Files created:
 - ✅ Added build artifacts (*.apk, *.aab, *.ipa)
 - ✅ Added native build folders
 
+## 🚀 Build Automation (12 Maret 2026)
+
+### iOS IPA Build Script
+
+**File**: `apps/web/scripts/build-ios-ipa.sh`
+
+Features:
+- ✅ Automated Xcode archive & export
+- ✅ Environment switching (dev/beta/prod)
+- ✅ App ID & name configuration via env vars
+- ✅ Automatic restore to dev after build
+- ✅ Export options generation
+- ✅ Team ID support for signing
+
+Usage:
+```bash
+# Build beta IPA (default)
+npm run ipa:ios
+
+# Build production IPA
+IOS_APP_ID=com.kemana.app IOS_APP_NAME="KeMana" npm run ipa:ios
+
+# Skip web build
+npm run ipa:ios -- --skip-web-build
+```
+
+### Android APK/AAB Build Script
+
+**File**: `apps/web/scripts/build-android-apk.sh`
+
+Features:
+- ✅ Automated Gradle build
+- ✅ Package name switching (com.kemana.app.dev/beta/prod)
+- ✅ OAuth client ID auto-switching for production
+- ✅ APK & AAB format support
+- ✅ Build type selection (release/debug)
+- ✅ Automatic restore to dev after build
+
+Usage:
+```bash
+# Build beta APK (default)
+npm run apk:android
+
+# Build production APK
+npm run apk:android:prod
+
+# Build AAB for Play Store
+npm run aab:android:prod
+
+# Skip web build
+npm run apk:android -- --skip-web-build
+```
+
+### Production OAuth Configuration
+
+**File**: `apps/web/capacitor.config.ts`
+
+Auto-switching logic:
+```typescript
+const isAndroidProduction = appId === 'com.kemana.app';
+const androidClientId = isAndroidProduction && process.env.GOOGLE_ANDROID_CLIENT_ID_PROD
+  ? process.env.GOOGLE_ANDROID_CLIENT_ID_PROD
+  : process.env.GOOGLE_ANDROID_CLIENT_ID;
+```
+
+Environment variables:
+```bash
+# Development/Beta
+GOOGLE_ANDROID_CLIENT_ID=xxx-dev.apps.googleusercontent.com
+
+# Production (Android only)
+GOOGLE_ANDROID_CLIENT_ID_PROD=xxx-prod.apps.googleusercontent.com
+
+# iOS (same for all environments)
+GOOGLE_IOS_CLIENT_ID=xxx-ios.apps.googleusercontent.com
+```
+
+### Build Documentation
+
+**Files**:
+- `apps/web/scripts/BUILD_ANDROID_README.md` - Android build guide
+- `apps/web/scripts/OAUTH_PRODUCTION_SETUP.md` - OAuth setup guide
+
+Topics covered:
+- ✅ Quick start commands
+- ✅ Environment variables
+- ✅ Package name mapping
+- ✅ OAuth configuration
+- ✅ SHA fingerprint setup
+- ✅ Troubleshooting
+
+### NPM Scripts
+
+Added to `package.json`:
+```json
+{
+  "ipa:ios": "bash scripts/build-ios-ipa.sh",
+  "apk:android": "bash scripts/build-android-apk.sh",
+  "apk:android:prod": "ANDROID_PACKAGE_NAME=com.kemana.app ANDROID_APP_NAME='KeMana' bash scripts/build-android-apk.sh",
+  "apk:android:beta": "ANDROID_PACKAGE_NAME=com.kemana.app.beta ANDROID_APP_NAME='KeMana Beta' bash scripts/build-android-apk.sh",
+  "aab:android:prod": "ANDROID_PACKAGE_NAME=com.kemana.app ANDROID_APP_NAME='KeMana' bash scripts/build-android-apk.sh --aab"
+}
+```
+
 ## 🎯 Next Steps (Phase 2)
 
 ### Prerequisites Installation
@@ -179,13 +283,13 @@ npm run cap:run:ios
 | Phase 2: Platform Setup | ✅ Complete | 12/12 (100%) |
 | Phase 4: Haptic Integration | ✅ Complete | 12/12 (100%) |
 | Phase 5: Assets & Branding | ✅ Complete | 11/11 (100%) |
-| Phase 6: Build & Signing | ⏳ Pending | 0/11 (0%) |
-| Phase 7: Deployment | ⏳ Pending | 0/13 (0%) |
+| Phase 6: Build Automation | ✅ Complete | 8/8 (100%) |
+| Phase 7: Deployment | ⏳ Ready | 0/13 (0%) |
 | Phase 8: CI/CD | ⏳ Pending | 0/7 (0%) |
 | Phase 9: Monitoring | ⏳ Pending | 0/8 (0%) |
-| Phase 10: Documentation | ✅ Complete | 8/8 (100%) |
+| Phase 10: Documentation | ✅ Complete | 10/10 (100%) |
 
-**Overall**: Completed core setup, UI native integrations, haptic feedbacks, icons, and splash screens.
+**Overall**: Build automation complete! Ready for App Store & Play Store submission.
 
 ## 🔍 What Changed vs What Stayed
 

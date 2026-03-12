@@ -1,9 +1,10 @@
 # TODO Eksekusi MVP KeMana (Single-Device First)
 
-## 0. Progress Update (Per 11 Maret 2026)
+## 0. Progress Update (Per 12 Maret 2026)
 - **Phase 1 MVP PRODUCTION-READY** ✅ - Dogfooding intensif single-device complete.
 - **Phase 2 BACKEND & SYNC COMPLETE** ✅ - Full auth, sync worker, dan multi-device ready!
-- **Sentry Integration COMPLETE** - Monitoring & error tracking aktif (v2.1.1).
+- **Build Automation COMPLETE** ✅ - iOS IPA & Android APK/AAB automated build scripts ready!
+- **Sentry Integration COMPLETE** - Monitoring & error tracking aktif (v2.1.21).
 - **Security Hardening COMPLETE** - Enhanced security utilities dengan memory leak prevention.
 - **Web Vitals Monitoring ACTIVE** - Performance tracking terintegrasi dengan Sentry.
 - **E2E Test Suite COMPLETE** - 40 new tests (Auth, Sync, Errors) + 34 existing tests.
@@ -368,8 +369,8 @@ Status:
 - [ ] No data loss in offline/online transitions.
 - [ ] Auth flow works on mobile Safari + Chrome Android.
 
-## 3. PHASE 2 (Backend & Sync) - ✅ COMPLETE (11 Maret 2026)
-Status: **PRODUCTION READY**
+## 3. PHASE 2 (Backend & Sync) - ✅ COMPLETE (12 Maret 2026)
+Status: **PRODUCTION READY - BUILD AUTOMATION COMPLETE**
 
 ### Implemented Features:
 - [x] Supabase project setup + Google OAuth provider configured
@@ -420,14 +421,16 @@ Status: **PRODUCTION READY**
 - Error handling: ✅ Comprehensive (network, storage, validation)
 - Test coverage: ✅ 40 E2E tests + unit tests
 - Multi-device: ✅ Ready (sync queue + conflict resolution)
+- Build automation: ✅ iOS IPA & Android APK/AAB scripts ready
+- Production OAuth: ✅ Auto-switching configuration
 
-### Next Steps (Optional Enhancements):
-- [ ] Multi-device beta testing dengan 2+ devices per tester
-- [ ] Monitor sync reliability metrics in production
-- [ ] Tune retry parameters based on real usage
-- [ ] Add sync analytics dashboard
-- [ ] Implement delta sync optimization
-- [ ] Add battery optimization (reduce frequency when low battery)
+### Next Steps (App Store Submission):
+- [ ] Test production builds on real iOS devices
+- [ ] Test production builds on real Android devices
+- [ ] Submit iOS app to App Store Connect
+- [ ] Submit Android app to Google Play Console
+- [ ] Setup production monitoring dashboard
+- [ ] Beta testing program with TestFlight & Play Store Beta
 
 ## 4. Backlog Setelah MVP (Tidak Dikerjakan Sekarang)
 - [ ] Analytics events pipeline tanpa ubah domain model inti.

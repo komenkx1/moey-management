@@ -48,8 +48,10 @@ KeMana menerapkan strategi komprehensif untuk mencegah memory leak dan race cond
 
 Untuk detail lengkap, lihat [MEMORY_MANAGEMENT.md](MEMORY_MANAGEMENT.md).
 
-## Progress Terkini (7 Maret 2026)
+## Progress Terkini (12 Maret 2026)
 
+- **Phase 2 Backend & Sync COMPLETE** ✅ - Full authentication, multi-device sync, production-grade security
+- **Build Automation COMPLETE** ✅ - iOS IPA & Android APK/AAB automated build scripts
 - Import/Export `JSON + CSV` sudah stabil (nama file jelas, parser CSV + fallback format).
 - Kompatibilitas data lama untuk metode bayar (`Lainnya`/`Belum pilih`) dinormalisasi aman ke `Unknown`.
 - Bottom sheet `Catat pengeluaran` sekarang punya input terpisah `Nama catatan` agar judul item bisa diisi langsung.
@@ -79,6 +81,9 @@ Untuk detail lengkap, lihat [MEMORY_MANAGEMENT.md](MEMORY_MANAGEMENT.md).
   - Capacitor Keyboard API override untuk kelancaran typing composer mobile
   - Capacitor Status Bar sync (adaptif per theme dark/light, seamless logic fallback Safari PWA)
   - Haptic Feedback utilities native terintegrasi (heavy tap, success save)
+  - Native Google Auth integration (iOS + Android)
+  - **Build Automation Scripts** (iOS IPA & Android APK/AAB)
+  - **Production OAuth Configuration** (auto-switching based on package name)
 - Migrasi state ke Zustand untuk orchestration terpusat dan perbaikan re-render.
 - Migrasi komponen UI ke shadcn/ui dan Tailwind CSS v4.
 - Toast notifikasi dimigrasikan ke ekosistem Sonner.
