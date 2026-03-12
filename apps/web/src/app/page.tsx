@@ -876,7 +876,6 @@ export default function DashboardPage() {
       />
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <HomeTabContent
-          entries={entries}
           storageWarning={storageWarning}
           summaryStats={summaryStats}
           trendBadge={trendBadge}

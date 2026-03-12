@@ -1,5 +1,5 @@
 export interface QuickFormatTemplate {
-  id: "basic" | "qty" | "sum" | "split";
+  id: "basic" | "qty" | "sum" | "split" | "delay";
   sample: string;
   description: string;
 }
@@ -72,11 +72,18 @@ export function deriveQuickFormatTemplates(params: {
       id: "split",
       sample: `${base} 45k 3p`,
       description: "Split 3 orang"
+    },
+    {
+      id: "delay",
+      sample: `${base} 20k kemarin`,
+      description: "Catat belakangan"
     }
   ];
 
   const intent =
-    /\d+\s*p$/i.test(params.quickInput) || /\bp\d+$/i.test(params.quickInput)
+    /\bkemari?n\b/i.test(params.quickInput)
+      ? "delay"
+      : /\d+\s*p$/i.test(params.quickInput) || /\bp\d+$/i.test(params.quickInput)
       ? "split"
       : /[+]/.test(params.quickInput)
         ? "sum"

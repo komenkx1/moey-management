@@ -32,6 +32,63 @@ export function toISODate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+function offsetDate(base: Date, days: number): Date {
+  const next = new Date(base);
+  next.setDate(base.getDate() + days);
+  return next;
+}
+
+function normalizeDateKeyword(token: string): string {
+  return token.trim().toLowerCase().replace(/^[,.;:!?]+|[,.;:!?]+$/g, "");
+}
+
+function parseTrailingRelativeDate(tokens: string[], searchLimit: number, now: Date): {
+  date: string;
+  searchLimit: number;
+  consumedIndices: number[];
+} {
+  if (searchLimit <= 0) {
+    return {
+      date: toISODate(now),
+      searchLimit,
+      consumedIndices: []
+    };
+  }
+
+  const lastToken = normalizeDateKeyword(tokens[searchLimit - 1]);
+  const secondLastToken = searchLimit >= 2 ? normalizeDateKeyword(tokens[searchLimit - 2]) : "";
+
+  if (lastToken === "kemarin" || lastToken === "kemaren" || lastToken === "yesterday") {
+    return {
+      date: toISODate(offsetDate(now, -1)),
+      searchLimit: searchLimit - 1,
+      consumedIndices: [searchLimit - 1]
+    };
+  }
+
+  if (lastToken === "today" || lastToken === "hariini") {
+    return {
+      date: toISODate(now),
+      searchLimit: searchLimit - 1,
+      consumedIndices: [searchLimit - 1]
+    };
+  }
+
+  if (secondLastToken === "hari" && lastToken === "ini") {
+    return {
+      date: toISODate(now),
+      searchLimit: searchLimit - 2,
+      consumedIndices: [searchLimit - 2, searchLimit - 1]
+    };
+  }
+
+  return {
+    date: toISODate(now),
+    searchLimit,
+    consumedIndices: []
+  };
+}
+
 function cleanAmountToken(rawToken: string): string {
   let cleaned = rawToken.trim().toLowerCase();
   cleaned = cleaned.replace(/^rp\s*/i, "");
@@ -313,14 +370,17 @@ export function parseQuickAdd(
   }
 
   const { splitCount, splitTokenIndex } = splitTokenResult;
+  const rawSearchLimit = splitTokenIndex === -1 ? tokens.length : splitTokenIndex;
+  const relativeDate = parseTrailingRelativeDate(tokens, rawSearchLimit, now);
+  const searchLimit = relativeDate.searchLimit;
+  const relativeDateIndexSet = new Set(relativeDate.consumedIndices);
 
   if (hasAdditionOperator) {
     const additionWarnings: ParseWarning[] = [];
-    const excludedIndices = new Set<number>();
+    const excludedIndices = new Set<number>(relativeDate.consumedIndices);
     const qtySuffixIndices = new Set<number>();
     let amountParts = 0;
     let summedAmount = 0;
-    const searchLimit = splitTokenIndex === -1 ? tokens.length : splitTokenIndex;
 
     for (let index = 0; index < searchLimit; index += 1) {
       if (tokens[index] === "+") {
@@ -416,7 +476,7 @@ export function parseQuickAdd(
           text,
           amount: summedAmount,
           splitCount,
-          date: toISODate(now),
+          date: relativeDate.date,
           source
         },
         warnings: warnings.length > 0 ? warnings : undefined
@@ -424,7 +484,6 @@ export function parseQuickAdd(
     }
   }
 
-  const searchLimit = splitTokenIndex === -1 ? tokens.length : splitTokenIndex;
   let amountIndices: number[] = [];
   let qtySuffixIndices: number[] = [];
   let amountValue: number | null = null;
@@ -453,7 +512,7 @@ export function parseQuickAdd(
   const qtySuffixSet = new Set(qtySuffixIndices);
   const textTokens = tokens
     .map((token, index) => {
-      if (amountIndexSet.has(index) || index === splitTokenIndex) {
+      if (amountIndexSet.has(index) || index === splitTokenIndex || relativeDateIndexSet.has(index)) {
         return null;
       }
       if (qtySuffixSet.has(index) && !/[x×]$/i.test(token)) {
@@ -476,7 +535,7 @@ export function parseQuickAdd(
       text,
       amount: amountValue,
       splitCount,
-      date: toISODate(now),
+      date: relativeDate.date,
       source
     },
     warnings:

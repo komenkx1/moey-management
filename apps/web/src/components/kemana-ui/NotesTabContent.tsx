@@ -101,6 +101,8 @@ export default function NotesTabContent({
               "rounded-full px-2.5 py-1 text-[11px] font-semibold",
               summaryStats.status.tone === "boros"
                 ? "bg-danger-soft text-danger"
+                : summaryStats.status.tone === "aman"
+                  ? "bg-success-soft text-success"
                 : summaryStats.status.tone === "lumayan"
                   ? "bg-warning-soft text-warning"
                   : "bg-bg-subtle text-text-secondary"

@@ -1,14 +1,12 @@
 import type { MutableRefObject, RefObject } from "react";
-import { useMemo } from "react";
 import { PieChart, WandSparkles, Clock3 } from "lucide-react";
 import { formatAmountIDR } from "@kemana/core/format";
-import type { ParseQuickAddResult, Entry } from "@kemana/core/types";
-import { warningShortText, type TodaySummaryStats } from "@/lib/kemana-utils";
+import type { ParseQuickAddResult } from "@kemana/core/types";
+import { formatDayLabel, warningShortText, type TodaySummaryStats } from "@/lib/kemana-utils";
 import type {
   LatestEntryInsight,
   QuickFormatTemplate
 } from "@/lib/dashboard-page-utils";
-import { deriveTodayVsAverageInsight } from "@/lib/dashboard-page-utils/insight";
 import type { SmartRecallPrompt } from "@/app/recall";
 import LastEntryGapIndicator from "@/app/LastEntryGapIndicator";
 import SummaryHeroCard from "@/components/kemana-ui/SummaryHeroCard";
@@ -20,7 +18,6 @@ import { useExpandedIds } from "@/store/kemana/hooks-granular";
 import { useCallback } from "react";
 
 interface HomeTabContentProps {
-  entries: Entry[];
   storageWarning: string | null;
   summaryStats: TodaySummaryStats;
   trendBadge?: {
@@ -86,7 +83,6 @@ interface HomeTabContentProps {
 }
 
 export default function HomeTabContent({
-  entries,
   storageWarning,
   summaryStats,
   trendBadge,
@@ -137,16 +133,6 @@ export default function HomeTabContent({
   onOpenNotes
 }: HomeTabContentProps) {
   const { expandedIds, setExpandedIds } = useExpandedIds();
-
-  // Calculate today vs average insight
-  const todayVsAverageInsight = useMemo(() => {
-    try {
-      return deriveTodayVsAverageInsight(entries, new Date());
-    } catch (error) {
-      console.error("Failed to calculate today vs average:", error);
-      return null;
-    }
-  }, [entries]);
 
   const handleToggleExpand = useCallback((id: string) => {
     setExpandedIds(prev => {
@@ -256,7 +242,7 @@ export default function HomeTabContent({
             <span className="text-[11px] font-medium text-text-tertiary">Geser, lalu tap untuk pakai</span>
           </div>
           <div className="relative -mx-4">
-            <div className="flex gap-2 overflow-x-auto pl-4 pr-0 pb-1 scrollbar-hide">
+            <div className="flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-hide">
               {quickFormatTemplates.map((template) => (
                 <button
                   key={template.id}
@@ -270,7 +256,7 @@ export default function HomeTabContent({
               ))}
             </div>
             <div
-              className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-bg-base via-bg-base/70 to-transparent"
+              className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-bg-base via-bg-base/70 to-transparent"
               aria-hidden
             />
           </div>
@@ -300,7 +286,7 @@ export default function HomeTabContent({
               <Clock3 className="h-4.5 w-4.5" />
             </div>
             <div className="min-w-0 flex-1">
-              <LastEntryGapIndicator lastEntryAt={lastEntryAt} />
+              {smartRecallPrompt.kind !== "gap" ? <LastEntryGapIndicator lastEntryAt={lastEntryAt} /> : null}
               <p className="mt-1 text-[14px] font-semibold leading-snug text-text-primary">{smartRecallPrompt.title}</p>
               <p className="mt-0.5 text-[12px] font-medium text-text-secondary">
                 {smartRecallPrompt.subtitle ??
@@ -323,7 +309,7 @@ export default function HomeTabContent({
               onClick={onRecallAddRecent}
               className="rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-brand-pressed"
             >
-              Tambah lagi
+              Catat sekarang
             </button>
           </div>
         </section>
@@ -358,7 +344,7 @@ export default function HomeTabContent({
             {quickPreviewTextParts?.title ?? quickPreview.value.text} • Rp{formatAmountIDR(quickPreview.value.amount)}
           </div>
           <div className="mt-0.5 text-[12px] font-medium text-text-secondary">
-            {quickPreview.value.date}
+            {formatDayLabel(quickPreview.value.date)}
             {quickPreview.value.splitCount ? ` • ${quickPreview.value.splitCount} orang` : ""}
             {summedAmountMeta ? ` • total ${summedAmountMeta.parts} item` : ""}
           </div>

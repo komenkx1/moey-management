@@ -80,23 +80,23 @@ export function getSmartRecallPrompt(params: {
   if (!hasTodayEntry && nowDate.getHours() >= 12) {
     return {
       kind: "first_today",
-      title: "Belum ada catatan hari ini - Ada transaksi yang belum dicatat?",
-      subtitle: "Barusan bayar apa?"
+      title: "Belum ada catatan hari ini",
+      subtitle: "Ada pengeluaran yang belum masuk? Catat sekarang atau pakai tanggal kemarin."
     };
   }
 
   if (lastEntryTimestamp !== null && now - lastEntryTimestamp >= THREE_HOURS_MS) {
     return {
       kind: "gap",
-      title: `Terakhir mencatat ${formatRelativeTime(lastEntryTimestamp, now)} - Ingat ada pengeluaran setelah itu?`,
-      subtitle: undefined
+      title: `Sudah ${formatRelativeTime(lastEntryTimestamp, now)} sejak catatan terakhir`,
+      subtitle: `Cek lagi, mungkin ada pengeluaran setelah ${formatHourMinute(lastEntryTimestamp)} yang belum masuk.`
     };
   }
   if (lastAppOpenAt !== null && now - lastAppOpenAt >= SIX_HOURS_MS) {
     return {
       kind: "comeback",
-      title: "Kamu sempat keluar tadi? - Ada pengeluaran yang belum dicatat?",
-      subtitle: undefined
+      title: "Balik lagi setelah beberapa jam",
+      subtitle: "Kalau sempat keluar tadi, cek apakah ada transaksi yang belum kamu catat."
     };
   }
 

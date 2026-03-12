@@ -17,13 +17,12 @@ export function getTrendGranularity(
   customRange?: CustomDateRange | null,
   now = new Date()
 ): TrendGranularity {
-  if (preset === "today") return "hour";
+  if (preset === "today") return "day";
   if (preset === "7d") return "day";
   if (preset === "30d") return "week";
   if (preset === "all") return "month";
 
   const rangeDays = getCustomRangeDayCount(normalizeCustomDateRange(customRange, now));
-  if (rangeDays <= 2) return "hour";
   if (rangeDays <= 14) return "day";
   if (rangeDays <= 45) return "week";
   return "month";
@@ -35,10 +34,10 @@ export function getTrendTitle(
   customRange?: CustomDateRange | null,
   now = new Date()
 ): string {
-  if (preset === "today") return "Ritme pengeluaran hari ini";
-  if (preset === "7d") return "Ritme 7 hari terakhir";
-  if (preset === "30d") return "Ritme 30 hari terakhir";
-  if (preset === "all") return "Ritme semua periode";
+  if (preset === "today") return "Catatan hari ini";
+  if (preset === "7d") return "Tren 7 hari terakhir";
+  if (preset === "30d") return "Tren 30 hari terakhir";
+  if (preset === "all") return "Tren semua periode";
 
   const rangeDays = getCustomRangeDayCount(normalizeCustomDateRange(customRange, now));
   if (granularity === "hour" || granularity === "day") {
@@ -53,9 +52,9 @@ export function getTrendTitle(
 export function getTrendSubtitle(granularity: TrendGranularity): string {
   switch (granularity) {
     case "hour":
-      return "Biar kelihatan jam paling sering keluar uang.";
+      return "Dipakai kalau kamu sudah mencatat waktu transaksi dengan akurat.";
     case "day":
-      return "Lihat pola hari ke hari.";
+      return "Berdasarkan tanggal transaksi yang sudah dicatat, bukan jam saat kamu input.";
     case "week":
       return "Lihat naik-turun dari pekan ke pekan.";
     case "month":

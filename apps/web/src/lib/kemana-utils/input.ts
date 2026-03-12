@@ -252,12 +252,20 @@ export function getInputHints(
     return ["Jumlahkan pakai + : 25 + 10 + 5"];
   }
 
+  if (preview?.ok && preview.value.date !== undefined) {
+    const todayKey = new Date();
+    const isBackdated = preview.value.date !== `${todayKey.getFullYear()}-${`${todayKey.getMonth() + 1}`.padStart(2, "0")}-${`${todayKey.getDate()}`.padStart(2, "0")}`;
+    if (isBackdated) {
+      return ['Catatan ini akan masuk ke tanggal yang kamu pilih, bukan waktu saat input.'];
+    }
+  }
+
   if (hasMerchantFormat || endsWithMerchantDash) {
     return ["Format merchant: Gacoan - mie 25k + es 10k"];
   }
 
   if (!hasDigit) {
-    return ["Format cepat: kopi 18 atau dinner 120 3p"];
+    return ['Format cepat: kopi 18, dinner 120 3p, atau tambah "kemarin" di belakang.'];
   }
 
   return [];

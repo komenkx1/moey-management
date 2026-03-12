@@ -246,4 +246,35 @@ describe("parseQuickAdd", () => {
       expect(result.warnings?.some((warning) => warning.code === "AMOUNT_SUMMED")).not.toBe(true);
     }
   });
+
+  it("supports delayed logging with trailing kemarin", () => {
+    const result = parseQuickAdd("makan 25k kemarin", new Date("2026-03-12T20:00:00"));
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.text).toBe("makan");
+      expect(result.value.amount).toBe(25_000);
+      expect(result.value.date).toBe("2026-03-11");
+    }
+  });
+
+  it("supports delayed logging before split token", () => {
+    const result = parseQuickAdd("patungan 60k kemarin 3p", new Date("2026-03-12T20:00:00"));
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.text).toBe("patungan");
+      expect(result.value.amount).toBe(60_000);
+      expect(result.value.splitCount).toBe(3);
+      expect(result.value.date).toBe("2026-03-11");
+    }
+  });
+
+  it("supports explicit hari ini suffix without polluting text", () => {
+    const result = parseQuickAdd("kopi 18 hari ini", new Date("2026-03-12T08:30:00"));
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.text).toBe("kopi");
+      expect(result.value.amount).toBe(18_000);
+      expect(result.value.date).toBe("2026-03-12");
+    }
+  });
 });

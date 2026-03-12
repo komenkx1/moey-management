@@ -488,8 +488,8 @@ export function getSmartEmptyState(entries: Entry[], now: Date = new Date()): Sm
   const hasYesterdayEntry = entries.some((entry) => entry.date === yesterdayKey);
   if (hasYesterdayEntry) {
     return {
-      title: "Hari ini kamu nggak keluar uang 🎉",
-      subtitle: "Dompet istirahat hari ini"
+      title: "Belum ada pengeluaran yang dicatat hari ini",
+      subtitle: "Kalau ada transaksi yang tertunda, kamu bisa catat sekarang atau pakai tanggal kemarin."
     };
   }
 
@@ -503,8 +503,8 @@ export function getSmartEmptyState(entries: Entry[], now: Date = new Date()): Sm
 
   if (activeDays.size >= 4) {
     return {
-      title: "Belum ada catatan hari ini",
-      subtitle: "Ada yang kelupaan?"
+      title: "Belum ada pengeluaran yang dicatat hari ini",
+      subtitle: "Ada transaksi yang belum masuk?"
     };
   }
 
@@ -516,8 +516,8 @@ export function getSmartEmptyState(entries: Entry[], now: Date = new Date()): Sm
   }
 
   return {
-    title: "Belum ada catatan hari ini",
-    subtitle: "Ada yang kelupaan?"
+    title: "Belum ada pengeluaran yang dicatat hari ini",
+    subtitle: "Kalau ada yang belum sempat dicatat, kamu bisa isi belakangan."
   };
 }
 
@@ -541,35 +541,35 @@ export function getSummaryStats(params: {
   const topCategories = getTopCategoryBreakdown(filteredEntries);
 
   if (preset === "today") {
-    const status = getSpendingStatus({
-      todayTotal: totalAmount,
-      sevenDayAverage,
-      trackedDays
-    });
     const emptyState = filteredEntries.length === 0 ? getSmartEmptyState(allEntries, now) : null;
-    
-    // Generate comparison text based on today vs average
+    let status: SpendingStatus;
     let compareText: string;
-    if (trackedDays < 3) {
-      compareText = `Baru ${trackedDays} hari data, insight masih awal.`;
-    } else if (trackedDays < 7) {
-      compareText = `Masih belajar dari ${trackedDays} hari catatan.`;
+
+    if (filteredEntries.length === 0) {
+      status = { label: "Belum tercatat", tone: "normal" };
+      compareText =
+        trackedDays >= 7
+          ? "Belum ada pengeluaran yang dicatat hari ini. Biasanya catatan tambahan masih masuk malam hari."
+          : "Belum ada pengeluaran yang dicatat hari ini.";
+    } else if (trackedDays < 3) {
+      status = { label: "Masih sementara", tone: "normal" };
+      compareText = `Baru ${trackedDays} hari data, jadi ringkasan hari ini masih awal.`;
+    } else if (trackedDays < 7 || sevenDayAverage <= 0) {
+      status = { label: "Masih sementara", tone: "normal" };
+      compareText = "Catatan hari ini sudah mulai masuk, tapi pola kebiasaanmu belum stabil.";
     } else {
-      // Calculate difference from average
       const difference = totalAmount - sevenDayAverage;
       const absDiff = Math.abs(difference);
-      
-      if (totalAmount === 0) {
-        compareText = `Hemat! Rata-rata harian biasanya Rp${formatAmountIDR(Math.round(sevenDayAverage))}`;
-      } else if (Math.abs(difference) < sevenDayAverage * 0.1) {
-        // Within 10% of average - considered same
-        compareText = `Sama dengan rata-rata harian (Rp${formatAmountIDR(Math.round(sevenDayAverage))})`;
+
+      if (Math.abs(difference) < sevenDayAverage * 0.1) {
+        status = { label: "Masih on track", tone: "normal" };
+        compareText = `Sementara masih dekat dengan rata-rata harianmu (Rp${formatAmountIDR(Math.round(sevenDayAverage))}).`;
       } else if (difference < 0) {
-        // Today is lower than average
-        compareText = `Hemat Rp${formatAmountIDR(Math.round(absDiff))} dari rata-rata harian`;
+        status = { label: "Sementara lebih ringan", tone: "aman" };
+        compareText = `Saat ini Rp${formatAmountIDR(Math.round(absDiff))} lebih rendah dari rata-rata harian. Catatan bisa bertambah kalau kamu input nanti malam.`;
       } else {
-        // Today is higher than average
-        compareText = `Rp${formatAmountIDR(Math.round(absDiff))} lebih tinggi dari rata-rata harian`;
+        status = { label: "Sementara lebih tinggi", tone: "lumayan" };
+        compareText = `Saat ini Rp${formatAmountIDR(Math.round(absDiff))} di atas rata-rata harian. Cek lagi apakah ada transaksi besar hari ini.`;
       }
     }
 

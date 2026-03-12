@@ -373,16 +373,6 @@ export function deriveInsightWhyCards(insight: InsightSevenDaySummary): InsightW
     });
   }
 
-  if (insight.topTimeSlot) {
-    rows.push({
-      key: "time",
-      label: "Waktu paling aktif",
-      value: `${insight.topTimeSlot.label} (${insight.topTimeSlot.percentage}%)`,
-      detail: `${insight.topTimeSlot.count} catatan`,
-      isCurrencyDetail: false
-    });
-  }
-
   if (insight.topWeekday) {
     rows.push({
       key: "weekday",
@@ -402,12 +392,15 @@ export function deriveInsightCoachCopy(insight: InsightSevenDaySummary): Insight
   if (!insight.hasData) {
     const title =
       insight.periodLabel === "Hari ini"
-        ? "Belum ada catatan hari ini"
+        ? "Belum ada pengeluaran yang dicatat hari ini"
         : `Belum ada catatan ${periodLabelLower}`;
 
     return {
       title,
-      subtitle: "Mulai catat lagi supaya insight bisa kasih pola yang lebih akurat.",
+      subtitle:
+        insight.periodLabel === "Hari ini"
+          ? "Kalau ada transaksi yang belum sempat masuk, catat sekarang atau pilih tanggal kemarin."
+          : "Mulai catat lagi supaya insight bisa kasih pola yang lebih akurat.",
       primaryLabel: "Mulai catat",
       secondaryLabel: "Lihat catatan"
     };
