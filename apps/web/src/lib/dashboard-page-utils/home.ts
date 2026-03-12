@@ -163,14 +163,6 @@ export function getQuickInputPlaceholder(params: {
   recallInputPrimed: boolean;
   now?: Date;
 }): string {
-  if (params.hasSmartRecallPrompt || params.recallInputPrimed) {
-    return "Barusan apa?";
-  }
-
-  const hour = (params.now ?? new Date()).getHours();
-  if (hour >= 19 && hour <= 23) {
-    return "Keluar apa hari ini?";
-  }
-
-  return "Misal: 25k makan";
+  void params;
+  return "misal : nasgor 24k kemarin";
 }
