@@ -1,5 +1,23 @@
 const pkg = require("./package.json");
 const { withSentryConfig } = require("@sentry/nextjs");
+const fs = require("node:fs");
+const path = require("node:path");
+
+function readScriptHashes() {
+  const hashesPath = path.join(__dirname, "csp-hashes.json");
+
+  if (!fs.existsSync(hashesPath)) {
+    return [];
+  }
+
+  try {
+    const raw = fs.readFileSync(hashesPath, "utf8");
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed?.scriptHashes) ? parsed.scriptHashes : [];
+  } catch {
+    return [];
+  }
+}
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -22,12 +40,15 @@ const nextConfig = {
   // Security headers with environment-aware CSP
   async headers() {
     const isProduction = process.env.NODE_ENV === 'production';
+    const scriptHashes = readScriptHashes();
     
-    // Production CSP: Strict, no unsafe-inline/unsafe-eval
+    // Production CSP for static export:
+    // Inline scripts are whitelisted with build-generated hashes; inline styles remain
+    // temporarily allowed because the current UI still uses style attributes/style props.
     const productionCSP = [
       "default-src 'self'",
-      "script-src 'self'",
-      "style-src 'self'",
+      `script-src 'self' ${scriptHashes.join(" ")}`.trim(),
+      "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
       "connect-src 'self' https://*.supabase.co https://*.sentry.io wss://*.supabase.co",
