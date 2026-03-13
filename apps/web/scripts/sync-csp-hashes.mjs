@@ -41,7 +41,7 @@ function toSha256(body) {
 }
 
 function buildVercelConfig(scriptHashes) {
-  const scriptSrc = ["'self'", ...scriptHashes].join(" ");
+  const scriptSrc = ["'self'", ...scriptHashes.map((hash) => `'${hash}'`)].join(" ");
   const contentSecurityPolicy = [
     "default-src 'self'",
     `script-src ${scriptSrc}`,

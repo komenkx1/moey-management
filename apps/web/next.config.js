@@ -41,13 +41,14 @@ const nextConfig = {
   async headers() {
     const isProduction = process.env.NODE_ENV === 'production';
     const scriptHashes = readScriptHashes();
+    const quotedScriptHashes = scriptHashes.map((hash) => `'${hash}'`);
     
     // Production CSP for static export:
     // Inline scripts are whitelisted with build-generated hashes; inline styles remain
     // temporarily allowed because the current UI still uses style attributes/style props.
     const productionCSP = [
       "default-src 'self'",
-      `script-src 'self' ${scriptHashes.join(" ")}`.trim(),
+      `script-src 'self' ${quotedScriptHashes.join(" ")}`.trim(),
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
