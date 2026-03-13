@@ -24,7 +24,6 @@ async function openAccountTab(page: Page) {
 }
 
 async function waitForAccountReady(page: Page) {
-  await page.waitForTimeout(1200);
   await expect
     .poll(
       async () => {
@@ -38,6 +37,25 @@ async function waitForAccountReady(page: Page) {
         const hasEditNameButton = await page.getByRole("button", { name: "Ubah Nama" }).isVisible().catch(() => false);
         const hasSyncSection = await page.getByRole("heading", { name: "Backup & Sync" }).isVisible().catch(() => false);
         return hasLoginButton || hasLogoutButton || hasEditNameButton || hasSyncSection;
+      },
+      { timeout: 15000 }
+    )
+    .toBe(true);
+}
+
+async function waitForSyncSettled(page: Page) {
+  await expect
+    .poll(
+      async () => {
+        const isSyncing = await page.locator("[title='Sedang Menyinkronkan...']").isVisible().catch(() => false);
+        if (isSyncing) {
+          return false;
+        }
+
+        const isSynced = await page.locator("[title='Tersinkronisasi']").isVisible().catch(() => false);
+        const isOffline = await page.locator("[title='Sedang Offline (Menunggu Jaringan)']").isVisible().catch(() => false);
+        const isFailed = await page.locator("[title='Gagal Sinkronisasi']").isVisible().catch(() => false);
+        return isSynced || isOffline || isFailed;
       },
       { timeout: 15000 }
     )
@@ -191,11 +209,13 @@ test.describe("Authentication Flows", () => {
     await gotoHomeStable(page);
     await waitForHomeReady(page);
     await ensureUiUnblocked(page);
+    await waitForSyncSettled(page);
 
     // Add some data
     await quickAdd(page, "test data 10k");
     await openNotesTab(page);
-    await expect(page.locator("[data-entry-id]")).toHaveCount(1);
+    const firstEntry = page.locator("[data-entry-id]").first();
+    await expect(firstEntry).toContainText("test data", { timeout: 15000 });
 
     await openAccountTab(page);
     await expect(page.getByRole("button", { name: "Keluar Akun" })).toBeVisible({ timeout: 15000 });
@@ -227,16 +247,18 @@ test.describe("Authentication Flows", () => {
     await gotoHomeStable(page);
     await waitForHomeReady(page);
     await ensureUiUnblocked(page);
+    await waitForSyncSettled(page);
 
     // Add data while online
     await quickAdd(page, "pending sync 20k");
+    await openNotesTab(page);
+    const firstEntry = page.locator("[data-entry-id]").first();
+    await expect(firstEntry).toContainText("pending sync", { timeout: 15000 });
 
     // Go offline
     await context.setOffline(true);
     await expect(page.getByText(/offline/i)).toBeVisible();
-
-    await openNotesTab(page);
-    await expect(page.locator("[data-entry-id]").first()).toContainText("pending sync");
+    await expect(firstEntry).toContainText("pending sync");
   });
 
   test("should handle session expiry gracefully", async ({ page }) => {

@@ -2,6 +2,22 @@
 
 KeMana sekarang mendukung deployment sebagai aplikasi native Android dan iOS menggunakan Capacitor!
 
+## Deployment Target Naming
+
+Untuk menghindari rancu antara target web dan native, repo ini sekarang memakai istilah berikut:
+
+- `web-static-export`
+  Browser build saat ini yang dihasilkan oleh `output: "export"` dan juga di-deploy ke Vercel.
+- `native-capacitor`
+  Shell Android/iOS yang memakai bundle hasil `web-static-export` dari folder `out/`.
+- `web-server`
+  Target web masa depan jika nanti KeMana dipisah dari static export untuk kebutuhan security/auth yang lebih kuat.
+
+Status saat ini:
+
+- yang aktif di repo ini adalah `web-static-export` + `native-capacitor`
+- `web-server` belum diimplementasikan
+
 ## 🎯 Apa yang Berubah?
 
 ### Sebelum (PWA Only)
@@ -32,13 +48,13 @@ npm install
 npm run dev
 ```
 
-### Build untuk Native
+### Build untuk Native (`native-capacitor`)
 
 ```bash
-# 1. Build static export
+# 1. Build web-static-export
 npm run build
 
-# 2. Sync ke native platforms
+# 2. Sync hasil export ke native-capacitor
 npm run cap:sync
 
 # 3. Run di Android
@@ -52,7 +68,7 @@ npm run cap:run:ios
 
 | Platform | Status | Notes |
 |----------|--------|-------|
-| Web (PWA) | ✅ Production | Tetap berfungsi seperti biasa |
+| Web (`web-static-export`) | ✅ Production | Browser deploy saat ini, juga jadi source untuk Capacitor |
 | Android | ✅ Ready | Minimal Android 5.0 (API 21) |
 | iOS | ✅ Ready | Minimal iOS 13.0 |
 
@@ -99,8 +115,8 @@ Otomatis disembunyikan setelah app ready.
 ```
 apps/web/
 ├── capacitor.config.ts       # Capacitor configuration
-├── next.config.js            # Updated untuk static export
-├── out/                      # Static build output (webDir)
+├── next.config.js            # Config untuk current web-static-export target
+├── out/                      # Output dari web-static-export (dipakai Capacitor)
 ├── android/                  # Android project (git-ignored)
 ├── ios/                      # iOS project (git-ignored)
 └── src/
@@ -137,7 +153,7 @@ npm run test:e2e
 
 ## 📦 Deployment
 
-### Web (Vercel) - Tidak Berubah
+### Web (`web-static-export` di Vercel) - Tidak Berubah
 
 ```bash
 vercel deploy
@@ -237,6 +253,7 @@ Saat contribute code:
 2. Test di native: `npm run build:mobile && npm run cap:run:android`
 3. Pastikan tidak ada breaking changes untuk PWA
 4. Document platform-specific code
+5. Jangan asumsi `web-static-export` adalah final security posture untuk future `web-server`
 
 ## 📞 Support
 
@@ -246,4 +263,4 @@ Issues atau questions? Check documentation:
 
 ---
 
-**Note**: Aplikasi web (PWA) tetap berfungsi normal. Capacitor hanya menambahkan kemampuan native tanpa menghilangkan functionality yang sudah ada.
+**Note**: Aplikasi web saat ini berjalan sebagai `web-static-export`. Capacitor hanya memakai output yang sama untuk target `native-capacitor`, tanpa menghilangkan functionality yang sudah ada.

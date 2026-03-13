@@ -1,15 +1,27 @@
 # Web Security Threat Model
 
-This document captures the current browser-facing security posture for KeMana's web target. It is meant to be updated when storage keys, auth flows, redirect behavior, or import surfaces change.
+This document captures the current browser-facing security posture for KeMana's current `web-static-export` target. It is meant to be updated when storage keys, auth flows, redirect behavior, or import surfaces change.
+
+## Target Naming
+
+- `web-static-export`
+  The current browser deployment produced by `output: "export"`. This is also the bundle consumed by Capacitor.
+- `native-capacitor`
+  Android/iOS shells that load the `web-static-export` artifact.
+- `web-server`
+  A future non-export browser deployment target if stronger CSP/auth controls are needed.
+
+This document is about `web-static-export`, not a future `web-server` design.
 
 ## Current Deployment Posture
 
-- Web and Capacitor currently share the same `Next.js` app.
-- The app uses `output: "export"` for static export compatibility with Capacitor.
-- Because of that export model, production CSP is currently compatibility-oriented and allows:
+- `web-static-export` and `native-capacitor` currently share the same `Next.js` app.
+- The app uses `output: "export"` because the current exported bundle must serve both the browser deploy and Capacitor.
+- Because of that export model, production CSP for `web-static-export` is currently compatibility-oriented and allows:
   - `script-src 'self' 'unsafe-inline'`
   - `style-src 'self' 'unsafe-inline'`
-- This means CSP is not the primary XSS boundary for the current web deployment. Safe rendering and sink avoidance are more important.
+- This means CSP is not the primary XSS boundary for the current `web-static-export` deployment. Safe rendering and sink avoidance are more important.
+- A future `web-server` target should not inherit this CSP tradeoff by default.
 
 ## Auth Persistence
 
@@ -26,7 +38,7 @@ This document captures the current browser-facing security posture for KeMana's 
 Threat model implications:
 
 - Browser-resident auth/session material should be treated as sensitive.
-- A successful XSS in the web target would be materially valuable because the app is SPA-style and auth is client-managed.
+- A successful XSS in `web-static-export` would be materially valuable because the app is SPA-style and auth is client-managed.
 - Fixed callback and home redirects reduce open-redirect style risk, but they do not mitigate XSS.
 
 ## Browser Storage Inventory

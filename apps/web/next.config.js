@@ -24,9 +24,14 @@ const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@kemana/core", "@kemana/storage"],
   outputFileTracingRoot: __dirname,
-  // Static export untuk Capacitor
+  // Current deployment target naming:
+  // - web-static-export: current browser deployment on Vercel and the artifact consumed by Capacitor
+  // - native-capacitor: Android/iOS shells that load the exported `out/` bundle
+  // - web-server: future non-export web target if we later need stronger CSP/auth controls
+  //
+  // This repo currently builds the `web-static-export` target.
   output: "export",
-  // Unoptimized images untuk static export
+  // Static export cannot rely on the Next.js image optimizer.
   images: {
     unoptimized: true
   },
@@ -37,13 +42,15 @@ const nextConfig = {
   },
   // Ensure assets are served from the correct port in all environments
   assetPrefix: process.env.ASSET_PREFIX || undefined,
-  // Security headers with environment-aware CSP
+  // Security headers for the current `web-static-export` target.
+  // Important: this is not the desired long-term posture for a future `web-server` target.
   async headers() {
     const isProduction = process.env.NODE_ENV === 'production';
-    // Production CSP for static export:
+    // Production CSP for `web-static-export`:
     // Vercel reads headers config before its remote build finishes, so inline-script hashes
     // generated from a local/exported build are not reliable for deployed HTML. Keep the
     // stricter directives elsewhere, but allow inline scripts/styles for this export target.
+    // A future `web-server` target should move to nonce-based CSP instead of copying this.
     const productionCSP = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline'",
@@ -61,7 +68,7 @@ const nextConfig = {
       "upgrade-insecure-requests",
     ].join("; ");
     
-    // Development CSP: Relaxed for HMR and dev tools
+    // Development CSP: relaxed for HMR and dev tools only.
     const developmentCSP = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'",

@@ -2,12 +2,12 @@
 
 ## Executive Summary
 
-Scope reviewed: `apps/web` and supporting packages for the KeMana web app, focusing on XSS/input rendering, browser storage, authentication/session handling, and deployment posture for the current `Next.js + React + static export + Capacitor` architecture.
+Scope reviewed: `apps/web` and supporting packages for the KeMana web app, focusing on XSS/input rendering, browser storage, authentication/session handling, and deployment posture for the current `Next.js + React + web-static-export + native-capacitor` architecture.
 
 Summary:
 
 - No obvious high-risk DOM XSS sinks were found in the current UI code. I did **not** find `dangerouslySetInnerHTML`, `innerHTML`, `insertAdjacentHTML`, `eval`, or `new Function` in the reviewed app code.
-- The most important current security tradeoff is architectural: the deployed static-export web app now relies on `script-src 'unsafe-inline'` and `style-src 'unsafe-inline'` for compatibility. This weakens CSP as a defense-in-depth layer, but does not by itself mean the app is compromised.
+- The most important current security tradeoff is architectural: the deployed `web-static-export` target now relies on `script-src 'unsafe-inline'` and `style-src 'unsafe-inline'` for compatibility. This weakens CSP as a defense-in-depth layer, but does not by itself mean the app is compromised.
 - The most important code-level risk is browser storage handling: the app currently describes local encryption as protection against XSS, but the encryption key is derived from a value stored in the same browser storage, so it should be treated as obfuscation rather than a meaningful XSS boundary.
 - Authentication appears to rely on the browser-side Supabase client with default persistence behavior. In the presence of an XSS bug, this increases the value of browser storage as a target.
 
@@ -23,7 +23,7 @@ No high findings were identified during this review.
 
 ## Medium Findings
 
-### SEC-001: CSP is intentionally weakened for the current static-export deployment
+### SEC-001: CSP is intentionally weakened for the current `web-static-export` deployment
 
 - Severity: Medium
 - Location:
@@ -44,10 +44,10 @@ const productionCSP = [
 ```
 
 - Impact: CSP is no longer a strong mitigation for inline-script XSS payloads in web production. If a script injection bug is introduced elsewhere, CSP will provide much less resistance than a nonce- or hash-based policy.
-- Why this exists: the current architecture uses `Next.js` with `output: "export"` and client/runtime inline scripts that are not stable enough to safely whitelist with deploy-time hashes on Vercel.
+- Why this exists: the current architecture uses `Next.js` with `output: "export"` so one exported bundle can serve both `web-static-export` and `native-capacitor`, and the client/runtime inline scripts are not stable enough to safely whitelist with deploy-time hashes on Vercel.
 - Fix:
-  - Short term: keep this compromise documented and treat CSP as compatibility-oriented for the static/export target.
-  - Long term: split the web production deployment from the Capacitor/static-export deployment and move the web target to a nonce-based CSP.
+  - Short term: keep this compromise documented and treat CSP as compatibility-oriented for the `web-static-export` target.
+  - Long term: split the future `web-server` deployment from the `native-capacitor` / `web-static-export` pipeline and move the `web-server` target to a nonce-based CSP.
 - Mitigation:
   - Keep dangerous DOM sinks out of the codebase.
   - Add lint/CI checks that block `dangerouslySetInnerHTML`, `innerHTML`, `insertAdjacentHTML`, `eval`, `new Function`, and `javascript:` URLs.
@@ -116,7 +116,7 @@ const { data: { session }, error } = await supabase.auth.getSession();
 } = supabase.auth.onAuthStateChange(async (event, session) => {
 ```
 
-- Impact: the web app is using the browser-side Supabase client for session handling. This is normal for many SPA-style apps, but combined with the weakened CSP posture it means a successful XSS would be materially more valuable.
+- Impact: the current `web-static-export` target is using the browser-side Supabase client for session handling. This is normal for many SPA-style apps, but combined with the weakened CSP posture it means a successful XSS would be materially more valuable.
 - Fix:
   - Verify current Supabase persistence behavior explicitly and document it.
   - Long term, consider a stronger web-only auth strategy when the web deployment is split from static export.
@@ -186,9 +186,9 @@ localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 
 ## Prioritized Security Roadmap
 
-### Priority 0: keep the current static-export app safe enough to ship
+### Priority 0: keep the current `web-static-export` app safe enough to ship
 
-- [ ] Document that `unsafe-inline` is a temporary compatibility tradeoff for the web static-export target.
+- [ ] Document that `unsafe-inline` is a temporary compatibility tradeoff for the `web-static-export` target.
 - [ ] Stop describing local browser encryption as XSS protection.
 - [ ] Add a small “security guardrails” check in CI for:
   - [ ] `dangerouslySetInnerHTML`
@@ -213,12 +213,12 @@ localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 - [ ] Separate low-sensitivity UX state from anything identity-related.
 - [ ] Review auth callback and sign-in flows for logging, token handling, and failure behavior.
 
-### Priority 3: split web vs Capacitor security posture
+### Priority 3: split `web-server` vs `native-capacitor` security posture
 
-- [ ] Treat Capacitor/static export and web production as separate deployment/security targets.
-- [ ] Keep the static/export target compatibility-oriented.
-- [ ] Move the web target to a non-export Next deployment when feasible.
-- [ ] Implement nonce-based CSP for the web target after that split.
+- [ ] Treat `web-static-export`, `native-capacitor`, and future `web-server` as separate deployment/security targets.
+- [ ] Keep the `web-static-export` target compatibility-oriented.
+- [ ] Move the future `web-server` target to a non-export Next deployment when feasible.
+- [ ] Implement nonce-based CSP for the `web-server` target after that split.
 
 ## Recommended Immediate Actions
 
@@ -227,7 +227,7 @@ localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
    - `apps/web/src/lib/crypto.ts`
 2. Add a repository-level guardrail check for dangerous DOM/XSS sinks.
 3. Audit JSON/CSV import code next.
-4. Decide whether the production web app will remain a static export or get its own deployment path.
+4. Decide whether the current `web-static-export` browser deployment will remain as-is or whether a separate `web-server` target will be introduced.
 
 ## Follow-Up Artifacts
 
