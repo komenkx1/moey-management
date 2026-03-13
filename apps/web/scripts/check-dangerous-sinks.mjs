@@ -61,6 +61,31 @@ const forbiddenPatterns = [
     id: "string setInterval",
     regex: /\bsetInterval\s*\(\s*["'`]/g,
     guidance: "Pass a function to setInterval instead of a string."
+  },
+  {
+    id: "window.open",
+    regex: /\bwindow\.open\s*\(/g,
+    guidance: "Review popup navigation carefully and prefer reviewed internal navigation helpers."
+  },
+  {
+    id: "postMessage wildcard targetOrigin",
+    regex: /\bpostMessage\s*\([^,]+,\s*["']\*["']/g,
+    guidance: "Do not use '*' as targetOrigin; pin postMessage to a reviewed origin."
+  },
+  {
+    id: "unsafe router navigation",
+    regex: /\brouter\.(?:push|replace)\s*\(\s*(?!["'`](?:\/|#))/g,
+    guidance: "Only navigate to reviewed internal literal paths or a centralized safe helper."
+  },
+  {
+    id: "unsafe location assignment",
+    regex: /(?:window\.)?location(?:\.href)?\s*=\s*(?!["'`](?:\/|https?:\/\/))/g,
+    guidance: "Avoid assigning unreviewed URLs directly to location."
+  },
+  {
+    id: "unsafe location assign/replace",
+    regex: /(?:window\.)?location\.(?:assign|replace)\s*\(\s*(?!["'`](?:\/|https?:\/\/))/g,
+    guidance: "Only redirect to reviewed literal paths or explicit same-origin URLs."
   }
 ];
 
@@ -79,6 +104,28 @@ function shouldSkipPath(filePath) {
     /\.spec\.[jt]sx?$/.test(relative) ||
     relative.endsWith(".d.ts")
   );
+}
+
+function isAllowedMatch(filePath, ruleId, content, index) {
+  const relative = path.relative(repoRoot, filePath);
+
+  if (
+    ruleId === "window.open" &&
+    relative.endsWith(path.join("packages", "storage", "index.ts"))
+  ) {
+    return true;
+  }
+
+  if (
+    (ruleId === "unsafe router navigation" || ruleId === "unsafe location assignment") &&
+    /security-reviewed:\s*safe-internal-navigation/.test(
+      content.slice(Math.max(0, index - 120), Math.min(content.length, index + 120))
+    )
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 async function collectFiles(dir) {
@@ -124,6 +171,9 @@ async function main() {
 
     for (const rule of forbiddenPatterns) {
       for (const match of content.matchAll(rule.regex)) {
+        if (isAllowedMatch(filePath, rule.id, content, match.index ?? 0)) {
+          continue;
+        }
         findings.push({
           filePath: path.relative(repoRoot, filePath),
           line: getLineNumber(content, match.index ?? 0),

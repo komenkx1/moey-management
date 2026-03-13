@@ -12,6 +12,10 @@ const CURRENT_STORAGE_VERSION = "1";
 const MAX_IMPORT_ENTRIES = 10_000;
 const MAX_IMPORTED_TEXT_LENGTH = 500;
 const MAX_IMPORTED_RAW_INPUT_LENGTH = 1_000;
+const MAX_IMPORTED_AMOUNT = 1_000_000_000_000;
+const MAX_IMPORTED_SPLIT_SHARES = 12;
+const MAX_IMPORTED_SHARE_NAME_LENGTH = 60;
+const IMPORTED_ENTRY_ID_PATTERN = /^[A-Za-z0-9:_-]{1,80}$/;
 
 type ImportMode = "merge" | "replace";
 
@@ -68,6 +72,52 @@ function isValidDateKey(value: string): boolean {
   );
 }
 
+function normalizeImportedEntryId(value: string): string | null {
+  const trimmed = value.trim();
+  if (!IMPORTED_ENTRY_ID_PATTERN.test(trimmed)) {
+    return null;
+  }
+  return trimmed;
+}
+
+function normalizeImportedSplit(raw: unknown): Entry["split"] | undefined {
+  if (!isRecord(raw)) {
+    return undefined;
+  }
+
+  const mode = raw.mode;
+  const payer = typeof raw.payer === "string" ? sanitizeImportedString(raw.payer, MAX_IMPORTED_SHARE_NAME_LENGTH) : "Kamu";
+  const rawShares = raw.shares;
+
+  if ((mode !== "equal" && mode !== "custom") || !Array.isArray(rawShares)) {
+    return undefined;
+  }
+
+  const shares = rawShares
+    .filter((share): share is Record<string, unknown> => isRecord(share))
+    .map((share) => {
+      const person = typeof share.person === "string"
+        ? sanitizeImportedString(share.person, MAX_IMPORTED_SHARE_NAME_LENGTH)
+        : "";
+      const amount = typeof share.amount === "number" ? share.amount : Number.NaN;
+      if (!person || !Number.isFinite(amount) || amount <= 0 || amount > MAX_IMPORTED_AMOUNT) {
+        return null;
+      }
+      return { person, amount: Math.round(amount) };
+    })
+    .filter((share): share is NonNullable<typeof share> => Boolean(share));
+
+  if (shares.length < 2 || shares.length > MAX_IMPORTED_SPLIT_SHARES) {
+    return undefined;
+  }
+
+  return {
+    mode,
+    payer: payer || "Kamu",
+    shares
+  };
+}
+
 export function normalizeEntry(raw: unknown): Entry | null {
   if (!isRecord(raw)) {
     return null;
@@ -87,6 +137,8 @@ export function normalizeEntry(raw: unknown): Entry | null {
     typeof text !== "string" ||
     typeof amount !== "number" ||
     !Number.isFinite(amount) ||
+    amount <= 0 ||
+    amount > MAX_IMPORTED_AMOUNT ||
     typeof date !== "string" ||
     typeof category !== "string" ||
     typeof createdAt !== "string" ||
@@ -96,6 +148,11 @@ export function normalizeEntry(raw: unknown): Entry | null {
   }
 
   if (!isValidDateKey(date) || !Number.isFinite(Date.parse(createdAt)) || !Number.isFinite(Date.parse(updatedAt))) {
+    return null;
+  }
+
+  const normalizedId = normalizeImportedEntryId(id);
+  if (!normalizedId) {
     return null;
   }
 
@@ -127,7 +184,7 @@ export function normalizeEntry(raw: unknown): Entry | null {
       : undefined;
 
   return {
-    id,
+    id: normalizedId,
     text: normalizedText,
     amount,
     rawInput:
@@ -139,7 +196,7 @@ export function normalizeEntry(raw: unknown): Entry | null {
     source,
     paymentMethod,
     parseWarnings: Array.isArray(raw.parseWarnings) ? (raw.parseWarnings as Entry["parseWarnings"]) : undefined,
-    split: isRecord(raw.split) ? (raw.split as unknown as Entry["split"]) : undefined,
+    split: normalizeImportedSplit(raw.split),
     createdAt,
     updatedAt
   };

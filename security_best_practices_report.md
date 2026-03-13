@@ -229,6 +229,11 @@ localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 3. Audit JSON/CSV import code next.
 4. Decide whether the production web app will remain a static export or get its own deployment path.
 
+## Follow-Up Artifacts
+
+- Web threat model and storage/navigation audit:
+  - `apps/web/WEB_SECURITY_THREAT_MODEL.md`
+
 ## Notes on Scope
 
 - This report is evidence-based from the code visible in this repo.

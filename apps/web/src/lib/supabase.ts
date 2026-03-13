@@ -18,7 +18,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
     }
 }
 
-// Create a single supabase client for interacting with your database
+// Browser auth persistence is intentional for the current SPA/static-export target.
+// Treat the browser as a sensitive surface and avoid storing extra identity/session
+// metadata outside Supabase-managed persistence unless strictly needed.
 export const supabase = createClient(
     supabaseUrl || 'https://placeholder.supabase.co',
     supabaseAnonKey || 'placeholder'

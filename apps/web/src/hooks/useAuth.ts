@@ -8,6 +8,7 @@ import { isNativeAndroid, isNativePlatform } from '@/lib/capacitor';
 import { Network } from '@capacitor/network';
 import { checkRateLimit } from '@/lib/rate-limiter';
 import { logInvalidAuth, logUnauthorizedAccess } from '@/lib/security-monitoring';
+import { buildAuthCallbackUrl } from '@/lib/navigation-safety';
 
 import CryptoJS from 'crypto-js';
 
@@ -265,7 +266,7 @@ export function useAuth() {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: "google",
                 options: {
-                    redirectTo: `${window.location.origin}/auth/callback`,
+                    redirectTo: buildAuthCallbackUrl(window.location.origin),
                 },
             });
             if (error) throw error;

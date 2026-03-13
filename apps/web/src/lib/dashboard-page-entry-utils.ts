@@ -4,6 +4,20 @@ import { normalizeDateInput, splitDisplayText, toDateKey } from "@/lib/kemana-ut
 import { createEntryId, escapeCsvCell, sortEntriesNewestFirst, toParserAmountToken, triggerDownloadFromText } from "@/lib/dashboard-page-helpers";
 import { sanitizeTransactionText } from "@/lib/security";
 
+const MAX_CSV_TEXT_LENGTH = 160;
+const MAX_CSV_RAW_INPUT_LENGTH = 320;
+const MAX_CSV_SPLIT_SHARES = 12;
+const MAX_CSV_SPLIT_SHARE_AMOUNT = 1_000_000_000;
+const IMPORT_ENTRY_ID_PATTERN = /^[A-Za-z0-9:_-]{1,80}$/;
+
+function normalizeImportedEntryId(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed || !IMPORT_ENTRY_ID_PATTERN.test(trimmed)) {
+    return null;
+  }
+  return trimmed;
+}
+
 export function mergeEntriesById(currentEntries: Entry[], incomingEntries: Entry[]): Entry[] {
   const map = new Map<string, Entry>();
   for (const entry of currentEntries) {
@@ -138,14 +152,14 @@ function parseSplitFromCsv(modeRaw: string, detailRaw: string): Entry["split"] |
       }
       const person = sanitizeTransactionText(part.slice(0, separator).trim()).slice(0, 60);
       const amount = Number.parseInt(part.slice(separator + 1).replace(/[^\d]/g, ""), 10);
-      if (!person || !Number.isFinite(amount) || amount < 0) {
+      if (!person || !Number.isFinite(amount) || amount <= 0 || amount > MAX_CSV_SPLIT_SHARE_AMOUNT) {
         return null;
       }
       return { person, amount };
     })
     .filter((share): share is { person: string; amount: number } => Boolean(share));
 
-  if (shares.length < 2) {
+  if (shares.length < 2 || shares.length > MAX_CSV_SPLIT_SHARES) {
     return undefined;
   }
 
@@ -271,15 +285,15 @@ export function importEntriesFromCsv(params: {
     const matchedCategory = CATEGORIES.find((category) => category.toLowerCase() === categoryRaw.toLowerCase());
     const normalizedCategory = matchedCategory ?? "Lainnya";
     const split = parseSplitFromCsv(splitModeRaw, splitDetailRaw);
-    const fallbackText = sanitizeTransactionText(noteRaw) || normalizedCategory;
+    const fallbackText = sanitizeTransactionText(noteRaw).slice(0, MAX_CSV_TEXT_LENGTH) || normalizedCategory;
     const splitCount = split?.shares.length ?? 0;
     const splitToken = splitCount > 1 ? ` ${splitCount}p` : "";
     const fallbackRawInput = `${fallbackText} ${toParserAmountToken(parsedAmount)}${splitToken}`.trim();
-    const sanitizedRawInput = sanitizeTransactionText(rawInputRaw);
+    const sanitizedRawInput = sanitizeTransactionText(rawInputRaw).slice(0, MAX_CSV_RAW_INPUT_LENGTH);
     const idRaw = getCell(row, ["id"]).trim();
 
     parsedEntries.push({
-      id: idRaw || createEntryId(),
+      id: normalizeImportedEntryId(idRaw) ?? createEntryId(),
       text: fallbackText,
       amount: parsedAmount,
       rawInput: sanitizedRawInput || fallbackRawInput,

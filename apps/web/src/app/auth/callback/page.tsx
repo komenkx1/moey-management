@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/hooks/useTheme";
+import { APP_HOME_PATH } from "@/lib/navigation-safety";
 
 type CallbackState = "loading" | "success" | "error";
 
@@ -60,7 +61,8 @@ export default function AuthCallbackPage() {
 
         // Brief delay for the animation to feel complete
         await new Promise((resolve) => setTimeout(resolve, 600));
-        router.push("/");
+        // security-reviewed: safe-internal-navigation
+        router.push(APP_HOME_PATH);
       } catch (error) {
         console.error("Unexpected auth callback error:", error);
         setState("error");
@@ -76,7 +78,8 @@ export default function AuthCallbackPage() {
   }, [router]);
 
   const handleRetry = () => {
-    window.location.href = "/";
+    // security-reviewed: safe-internal-navigation
+    window.location.href = APP_HOME_PATH;
   };
 
   return (
