@@ -2,6 +2,7 @@ import { CATEGORIES, PAYMENT_METHODS, type Entry } from "@kemana/core/types";
 import type { TransactionItem } from "@/components/kemana-ui/TransactionCard";
 import { normalizeDateInput, splitDisplayText, toDateKey } from "@/lib/kemana-utils";
 import { createEntryId, escapeCsvCell, sortEntriesNewestFirst, toParserAmountToken, triggerDownloadFromText } from "@/lib/dashboard-page-helpers";
+import { sanitizeTransactionText } from "@/lib/security";
 
 export function mergeEntriesById(currentEntries: Entry[], incomingEntries: Entry[]): Entry[] {
   const map = new Map<string, Entry>();
@@ -135,7 +136,7 @@ function parseSplitFromCsv(modeRaw: string, detailRaw: string): Entry["split"] |
       if (separator <= 0) {
         return null;
       }
-      const person = part.slice(0, separator).trim();
+      const person = sanitizeTransactionText(part.slice(0, separator).trim()).slice(0, 60);
       const amount = Number.parseInt(part.slice(separator + 1).replace(/[^\d]/g, ""), 10);
       if (!person || !Number.isFinite(amount) || amount < 0) {
         return null;
@@ -270,17 +271,18 @@ export function importEntriesFromCsv(params: {
     const matchedCategory = CATEGORIES.find((category) => category.toLowerCase() === categoryRaw.toLowerCase());
     const normalizedCategory = matchedCategory ?? "Lainnya";
     const split = parseSplitFromCsv(splitModeRaw, splitDetailRaw);
-    const fallbackText = noteRaw || normalizedCategory;
+    const fallbackText = sanitizeTransactionText(noteRaw) || normalizedCategory;
     const splitCount = split?.shares.length ?? 0;
     const splitToken = splitCount > 1 ? ` ${splitCount}p` : "";
     const fallbackRawInput = `${fallbackText} ${toParserAmountToken(parsedAmount)}${splitToken}`.trim();
+    const sanitizedRawInput = sanitizeTransactionText(rawInputRaw);
     const idRaw = getCell(row, ["id"]).trim();
 
     parsedEntries.push({
       id: idRaw || createEntryId(),
       text: fallbackText,
       amount: parsedAmount,
-      rawInput: rawInputRaw || fallbackRawInput,
+      rawInput: sanitizedRawInput || fallbackRawInput,
       date: normalizedDate,
       category: normalizedCategory,
       paymentMethod: parsePaymentMethodFromCsv(paymentRaw),

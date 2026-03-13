@@ -18,7 +18,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     isLoading: true,
     isInitialized: false,
     setSession: (session) => {
-        // Store user ID in localStorage for encryption key derivation
+        // Store the user ID so persisted UI state can be obfuscated consistently.
+        // This is browser-readable metadata, not a secret.
         if (typeof window !== 'undefined') {
             if (session?.user?.id) {
                 localStorage.setItem('kemana.auth.userId', session.user.id);

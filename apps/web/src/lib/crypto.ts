@@ -4,10 +4,14 @@ import CryptoJS from 'crypto-js';
  * Encryption Utilities for Secure localStorage
  * 
  * Security Rationale:
- * - Protects user data from XSS attacks that can read localStorage
+ * - Reduces casual inspection of browser-stored UI state
  * - Uses AES-256 encryption (industry standard symmetric encryption)
  * - Key derivation from user ID ensures consistency across sessions
  * - Anonymous users get basic obfuscation with default key
+ *
+ * Important limitation:
+ * - This is not a meaningful defense against active XSS, because the key is
+ *   deterministically derived from data the browser can also read.
  * 
  * Implementation Notes:
  * - Encryption key is deterministic (same user = same key)
@@ -22,7 +26,7 @@ import CryptoJS from 'crypto-js';
  * Key Derivation Strategy:
  * - Uses SHA-256 to create deterministic key from user ID
  * - Same user always gets same key across sessions and devices
- * - No need to store the key separately (derived on-demand)
+ * - No separate key storage is needed (derived on-demand)
  * - Anonymous users get default key for basic obfuscation
  * 
  * @param userId - The user ID to derive the key from

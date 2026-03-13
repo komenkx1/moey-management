@@ -2,6 +2,7 @@
   "name": "kemana-monorepo",
   "private": true,
   "scripts": {
+    "security:check": "npm --prefix apps/web run security:check",
     "db:push": "npx supabase db push",
     "db:pull": "npx supabase db pull",
     "db:new": "npx supabase migration new",

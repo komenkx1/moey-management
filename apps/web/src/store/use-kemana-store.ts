@@ -15,10 +15,14 @@ import { encrypt, decrypt, getEncryptionKey } from "@/lib/crypto";
  * Security Implementation:
  * - Encrypts all data before writing to localStorage (AES-256)
  * - Decrypts when reading, providing transparent encryption layer
- * - Protects against XSS attacks that can read localStorage
+ * - Adds basic obfuscation for browser-stored UI state
  * - Maintains same API as standard localStorage (drop-in replacement)
  * - Graceful fallback for encryption failures (better than data loss)
  * - Size limit check prevents CryptoJS memory issues (5MB threshold)
+ *
+ * Important limitation:
+ * - This does NOT protect against active XSS in the browser, because the key
+ *   material is also derived from browser-accessible state.
  * 
  * Performance Considerations:
  * - Encryption overhead < 5ms for typical store operations

@@ -620,6 +620,14 @@ export default function DashboardPage() {
   const handleImportFile = useCallback(
     async (file: File) => {
       try {
+        const MAX_IMPORT_FILE_SIZE = 10 * 1024 * 1024;
+        if (file.size > MAX_IMPORT_FILE_SIZE) {
+          const message = "File terlalu besar. Maksimal 10MB.";
+          setBackupMessage(message);
+          toast.error(message);
+          return;
+        }
+
         const rawText = await file.text();
         const raw = rawText.replace(/^\uFEFF/, "");
         const importMode = replaceOnImport ? "replace" : "merge";

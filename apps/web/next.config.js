@@ -40,15 +40,13 @@ const nextConfig = {
   // Security headers with environment-aware CSP
   async headers() {
     const isProduction = process.env.NODE_ENV === 'production';
-    const scriptHashes = readScriptHashes();
-    const quotedScriptHashes = scriptHashes.map((hash) => `'${hash}'`);
-    
     // Production CSP for static export:
-    // Inline scripts are whitelisted with build-generated hashes; inline styles remain
-    // temporarily allowed because the current UI still uses style attributes/style props.
+    // Vercel reads headers config before its remote build finishes, so inline-script hashes
+    // generated from a local/exported build are not reliable for deployed HTML. Keep the
+    // stricter directives elsewhere, but allow inline scripts/styles for this export target.
     const productionCSP = [
       "default-src 'self'",
-      `script-src 'self' ${quotedScriptHashes.join(" ")}`.trim(),
+      "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",

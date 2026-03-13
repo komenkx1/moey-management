@@ -9,6 +9,9 @@ import { db } from "./db";
 import { migrateFromLocalStorage } from "./migrate-localstorage";
 
 const CURRENT_STORAGE_VERSION = "1";
+const MAX_IMPORT_ENTRIES = 10_000;
+const MAX_IMPORTED_TEXT_LENGTH = 500;
+const MAX_IMPORTED_RAW_INPUT_LENGTH = 1_000;
 
 type ImportMode = "merge" | "replace";
 
@@ -42,6 +45,29 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+function sanitizeImportedString(value: string, maxLength: number): string {
+  const cleaned = value.replace(/[\x00-\x1F\x7F-\x9F]/g, "").trim();
+  return cleaned.length > maxLength ? cleaned.slice(0, maxLength) : cleaned;
+}
+
+function isValidDateKey(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) {
+    return false;
+  }
+
+  const year = Number.parseInt(match[1], 10);
+  const month = Number.parseInt(match[2], 10);
+  const day = Number.parseInt(match[3], 10);
+  const parsed = new Date(year, month - 1, day);
+
+  return (
+    parsed.getFullYear() === year &&
+    parsed.getMonth() === month - 1 &&
+    parsed.getDate() === day
+  );
+}
+
 export function normalizeEntry(raw: unknown): Entry | null {
   if (!isRecord(raw)) {
     return null;
@@ -69,9 +95,17 @@ export function normalizeEntry(raw: unknown): Entry | null {
     return null;
   }
 
+  if (!isValidDateKey(date) || !Number.isFinite(Date.parse(createdAt)) || !Number.isFinite(Date.parse(updatedAt))) {
+    return null;
+  }
+
   const normalizedCategory = CATEGORIES.includes(category as (typeof CATEGORIES)[number])
     ? (category as Entry["category"])
     : "Lainnya";
+  const normalizedText = sanitizeImportedString(text, MAX_IMPORTED_TEXT_LENGTH);
+  if (!normalizedText) {
+    return null;
+  }
 
   const sourceValue = raw.source;
   const source: Entry["source"] =
@@ -94,9 +128,12 @@ export function normalizeEntry(raw: unknown): Entry | null {
 
   return {
     id,
-    text,
+    text: normalizedText,
     amount,
-    rawInput: typeof rawInput === "string" ? rawInput : undefined,
+    rawInput:
+      typeof rawInput === "string"
+        ? sanitizeImportedString(rawInput, MAX_IMPORTED_RAW_INPUT_LENGTH) || undefined
+        : undefined,
     date,
     category: normalizedCategory,
     source,
@@ -331,6 +368,17 @@ export function importBackupFromText(params: {
     return {
       ok: false,
       message: "Format backup tidak sesuai.",
+      entries: currentEntries,
+      rules: currentRules,
+      importedEntries: 0,
+      ignoredEntries: 0
+    };
+  }
+
+  if (parsed.entries.length > MAX_IMPORT_ENTRIES) {
+    return {
+      ok: false,
+      message: `File backup terlalu besar. Maksimal ${MAX_IMPORT_ENTRIES.toLocaleString("id-ID")} transaksi.`,
       entries: currentEntries,
       rules: currentRules,
       importedEntries: 0,
