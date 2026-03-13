@@ -4,7 +4,8 @@ import crypto from "node:crypto";
 
 const rootDir = process.cwd();
 const outDir = path.join(rootDir, "out");
-const targetPath = path.join(rootDir, "csp-hashes.json");
+const hashesPath = path.join(rootDir, "csp-hashes.json");
+const vercelConfigPath = path.join(rootDir, "vercel.json");
 
 async function collectHtmlFiles(dir) {
   const entries = await readdir(dir, { withFileTypes: true });
@@ -26,9 +27,9 @@ function extractInlineScriptBodies(html) {
   const bodies = [];
 
   for (const match of matches) {
-    const body = match[1]?.trim();
-    if (body) {
-      bodies.push(body);
+    const rawBody = match[1] ?? "";
+    if (rawBody.trim()) {
+      bodies.push(rawBody);
     }
   }
 
@@ -37,6 +38,76 @@ function extractInlineScriptBodies(html) {
 
 function toSha256(body) {
   return `sha256-${crypto.createHash("sha256").update(body).digest("base64")}`;
+}
+
+function buildVercelConfig(scriptHashes) {
+  const scriptSrc = ["'self'", ...scriptHashes].join(" ");
+  const contentSecurityPolicy = [
+    "default-src 'self'",
+    `script-src ${scriptSrc}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https:",
+    "font-src 'self' data:",
+    "connect-src 'self' https://*.supabase.co https://*.sentry.io wss://*.supabase.co",
+    "frame-src 'self' https://*.supabase.co",
+    "media-src 'self' blob:",
+    "worker-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "upgrade-insecure-requests"
+  ].join("; ");
+
+  return {
+    headers: [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: contentSecurityPolicy
+          },
+          {
+            key: "X-Content-Type-Options",
+            value: "nosniff"
+          },
+          {
+            key: "X-Frame-Options",
+            value: "DENY"
+          },
+          {
+            key: "X-XSS-Protection",
+            value: "1; mode=block"
+          },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin"
+          },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()"
+          },
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains; preload"
+          },
+          {
+            key: "Cross-Origin-Embedder-Policy",
+            value: "credentialless"
+          },
+          {
+            key: "Cross-Origin-Opener-Policy",
+            value: "same-origin"
+          },
+          {
+            key: "Cross-Origin-Resource-Policy",
+            value: "same-origin"
+          }
+        ]
+      }
+    ]
+  };
 }
 
 async function main() {
@@ -63,8 +134,14 @@ async function main() {
     scriptHashes: [...hashes].sort()
   };
 
-  await writeFile(targetPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
-  console.log(`Wrote ${payload.scriptHashes.length} script hashes to ${targetPath}`);
+  await writeFile(hashesPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  await writeFile(
+    vercelConfigPath,
+    `${JSON.stringify(buildVercelConfig(payload.scriptHashes), null, 2)}\n`,
+    "utf8"
+  );
+  console.log(`Wrote ${payload.scriptHashes.length} script hashes to ${hashesPath}`);
+  console.log(`Wrote Vercel headers to ${vercelConfigPath}`);
 }
 
 main().catch((error) => {
