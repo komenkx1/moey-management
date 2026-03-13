@@ -126,8 +126,8 @@ describe("getSmartRecallPrompt", () => {
       });
 
       expect(result?.kind).toBe("gap");
-      expect(result?.title).toBe("Terakhir mencatat 4 jam lalu - Ingat ada pengeluaran setelah itu?");
-      expect(result?.subtitle).toBeUndefined();
+      expect(result?.title).toBe("Sudah 4 jam lalu sejak catatan terakhir");
+      expect(result?.subtitle).toBe("Cek lagi, mungkin ada pengeluaran setelah 12.00 yang belum masuk.");
     });
 
     it("uses new wording for first_today recall", () => {
@@ -145,8 +145,8 @@ describe("getSmartRecallPrompt", () => {
       });
 
       expect(result?.kind).toBe("first_today");
-      expect(result?.title).toBe("Belum ada catatan hari ini - Ada transaksi yang belum dicatat?");
-      expect(result?.subtitle).toBe("Barusan bayar apa?");
+      expect(result?.title).toBe("Belum ada catatan hari ini");
+      expect(result?.subtitle).toBe("Ada pengeluaran yang belum masuk? Catat sekarang atau pakai tanggal kemarin.");
     });
 
     it("uses new wording for comeback recall", () => {
@@ -164,8 +164,8 @@ describe("getSmartRecallPrompt", () => {
       });
 
       expect(result?.kind).toBe("comeback");
-      expect(result?.title).toBe("Kamu sempat keluar tadi? - Ada pengeluaran yang belum dicatat?");
-      expect(result?.subtitle).toBeUndefined();
+      expect(result?.title).toBe("Balik lagi setelah beberapa jam");
+      expect(result?.subtitle).toBe("Kalau sempat keluar tadi, cek apakah ada transaksi yang belum kamu catat.");
     });
 
     it("gap recall uses formatRelativeTime with different time ranges", () => {
@@ -201,7 +201,7 @@ describe("getSmartRecallPrompt", () => {
       });
 
       expect(result2?.kind).toBe("gap");
-      expect(result2?.title).toBe("Terakhir mencatat 5 jam lalu - Ingat ada pengeluaran setelah itu?");
+      expect(result2?.title).toBe("Sudah 5 jam lalu sejak catatan terakhir");
 
       // Test with yesterday - use morning time (before noon) to avoid first_today condition
       const morningNow = new Date(2026, 1, 20, 10, 0, 0).getTime(); // 10 AM
@@ -218,7 +218,7 @@ describe("getSmartRecallPrompt", () => {
       });
 
       expect(result3?.kind).toBe("gap");
-      expect(result3?.title).toBe("Terakhir mencatat kemarin - Ingat ada pengeluaran setelah itu?");
+      expect(result3?.title).toBe("Sudah kemarin sejak catatan terakhir");
     });
   });
 });

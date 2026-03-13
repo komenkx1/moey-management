@@ -360,7 +360,8 @@ describe("base utils", () => {
       ];
       
       const result = getSmartEmptyState(entries, now);
-      expect(result.title).toContain("nggak keluar uang");
+      expect(result.title).toBe("Belum ada pengeluaran yang dicatat hari ini");
+      expect(result.subtitle).toContain("catat sekarang");
     });
   });
 

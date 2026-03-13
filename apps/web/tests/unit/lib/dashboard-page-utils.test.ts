@@ -164,12 +164,10 @@ describe("dashboard-page-utils", () => {
     const whyCards = deriveInsightWhyCards(summary);
     const coach = deriveInsightCoachCopy(summary);
     const trend = deriveInsightTrendBadge(summary);
-    const timeCard = whyCards.find((card) => card.key === "time");
-    const moneyCards = whyCards.filter((card) => card.key !== "time");
 
     expect(whyCards.length).toBeGreaterThan(0);
-    expect(timeCard?.isCurrencyDetail).toBe(false);
-    expect(moneyCards.every((card) => card.isCurrencyDetail)).toBe(true);
+    expect(whyCards.some((card) => card.key === "time")).toBe(false);
+    expect(whyCards.every((card) => card.isCurrencyDetail)).toBe(true);
     expect(coach.primaryLabel).toBe("Catat sekarang");
     expect(trend.tone).toBe("up");
     expect(trend.label).toContain("%");
@@ -412,7 +410,7 @@ describe("dashboard-page-utils", () => {
         recallInputPrimed: false,
         now: new Date("2026-02-22T09:00:00")
       })
-    ).toBe("Barusan apa?");
+    ).toBe("misal : nasgor 24k kemarin");
 
     expect(
       getQuickInputPlaceholder({
@@ -420,7 +418,7 @@ describe("dashboard-page-utils", () => {
         recallInputPrimed: true,
         now: new Date("2026-02-22T09:00:00")
       })
-    ).toBe("Barusan apa?");
+    ).toBe("misal : nasgor 24k kemarin");
 
     expect(
       getQuickInputPlaceholder({
@@ -428,7 +426,7 @@ describe("dashboard-page-utils", () => {
         recallInputPrimed: false,
         now: new Date("2026-02-22T20:00:00")
       })
-    ).toBe("Keluar apa hari ini?");
+    ).toBe("misal : nasgor 24k kemarin");
   });
 
   it("virtualization plan aktif saat item > 1000 dan window awal 220", () => {

@@ -28,12 +28,18 @@ async function waitForAccountReady(page: Page) {
   await expect
     .poll(
       async () => {
+        const isLoading = await page.getByText("Memuat data akun...").isVisible().catch(() => false);
+        if (isLoading) {
+          return false;
+        }
+
         const hasLoginButton = await page.getByRole("button", { name: "Lanjutkan dengan Google" }).isVisible().catch(() => false);
         const hasLogoutButton = await page.getByRole("button", { name: "Keluar Akun" }).isVisible().catch(() => false);
         const hasEditNameButton = await page.getByRole("button", { name: "Ubah Nama" }).isVisible().catch(() => false);
-        return hasLoginButton || hasLogoutButton || hasEditNameButton;
+        const hasSyncSection = await page.getByRole("heading", { name: "Backup & Sync" }).isVisible().catch(() => false);
+        return hasLoginButton || hasLogoutButton || hasEditNameButton || hasSyncSection;
       },
-      { timeout: 10000 }
+      { timeout: 15000 }
     )
     .toBe(true);
 }

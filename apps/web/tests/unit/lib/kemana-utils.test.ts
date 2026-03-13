@@ -237,7 +237,7 @@ describe("getSummaryStats", () => {
         });
 
         expect(stats.totalAmount).toBe(150000);
-        expect(stats.compareText).toContain("Rata-rata 3 hari");
+        expect(stats.compareText).toContain("Rata-rata periode ini");
     });
 
     it("summary today memakai baseline rolling 7 hari untuk sevenDayAverage", () => {

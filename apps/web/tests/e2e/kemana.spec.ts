@@ -549,7 +549,7 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     await expect(page.getByRole("heading", { name: "Kenapa segitu?" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Dari mana paling banyak keluar" })).toBeVisible();
 
-    await expect(page.getByRole("heading", { name: /^Ritme/i })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: /^(Tren|Catatan|Ritme)/i })).toBeVisible({ timeout: 10000 });
     await expect(page.getByRole("heading", { name: /Transaksi terbesar/i })).toBeVisible();
 
     await page.getByRole("button", { name: "Lihat detail catatan" }).click();
@@ -570,13 +570,15 @@ test.describe("KeMana UI flow (new UI selectors)", () => {
     await expect(thirtyDayFilter).toHaveAttribute("aria-pressed", "true");
 
     // Verify trend chart is visible
-    await expect(page.getByRole("heading", { name: /^Ritme/i })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: /^(Tren|Catatan|Ritme)/i })).toBeVisible({ timeout: 10000 });
 
     // Verify "Pekan ini" label exists in the chart
     await expect(page.getByText("Pekan ini")).toBeVisible();
 
     // The chart should show weekly buckets
-    const trendSection = page.locator("section").filter({ hasText: /^Ritme/i }).first();
+    const trendSection = page.locator("section").filter({
+      has: page.getByRole("heading", { name: /^(Tren|Catatan|Ritme)/i })
+    }).first();
     await expect(trendSection).toBeVisible();
   });
 

@@ -10,8 +10,8 @@ import type { Entry } from "@kemana/core/types";
 describe("Trend Chart Utils", () => {
     const baseNow = new Date("2026-02-18T12:00:00Z");
 
-    it("should determine hour granularity for today", () => {
-        expect(getTrendGranularity("today", null, baseNow)).toBe("hour");
+    it("should determine day granularity for today", () => {
+        expect(getTrendGranularity("today", null, baseNow)).toBe("day");
     });
 
     it("should determine day granularity for 7d", () => {
@@ -27,13 +27,13 @@ describe("Trend Chart Utils", () => {
     });
 
     it("should return correct subtitles", () => {
-        expect(getTrendSubtitle("hour")).toBe("Biar kelihatan jam paling sering keluar uang.");
+        expect(getTrendSubtitle("hour")).toBe("Dipakai kalau kamu sudah mencatat waktu transaksi dengan akurat.");
         expect(getTrendSubtitle("week")).toBe("Lihat naik-turun dari pekan ke pekan.");
     });
 
     it("should output correct titles based on granularity", () => {
-        expect(getTrendTitle("today", "hour", null, baseNow)).toBe("Ritme pengeluaran hari ini");
-        expect(getTrendTitle("7d", "day", null, baseNow)).toBe("Ritme 7 hari terakhir");
+        expect(getTrendTitle("today", "day", null, baseNow)).toBe("Catatan hari ini");
+        expect(getTrendTitle("7d", "day", null, baseNow)).toBe("Tren 7 hari terakhir");
     });
 
     it("should generate buckets correctly for week (30d)", () => {
@@ -110,7 +110,7 @@ describe("Trend Chart Utils", () => {
         expect(lastWeekBucket?.total).toBe(140000); // 40k + 100k
     });
 
-    it("maps local hour into Pagi/Siang/Sore/Malam correctly", () => {
+    it("uses transaction date buckets for today instead of hour slots", () => {
         const entries: Entry[] = [
             {
                 id: "pagi",
@@ -155,14 +155,10 @@ describe("Trend Chart Utils", () => {
         ];
 
         const buckets = generateTrendSeries(entries, "today", null, new Date("2026-02-18T23:00:00"));
-        expect(buckets).toHaveLength(4);
-        expect(buckets[0]).toEqual({ label: "Pagi", total: 10000 });
-        expect(buckets[1]).toEqual({ label: "Siang", total: 20000 });
-        expect(buckets[2]).toEqual({ label: "Sore", total: 30000 });
-        expect(buckets[3]).toEqual({ label: "Malam", total: 40000 });
+        expect(buckets).toEqual([{ label: "Hari ini", total: 100000 }]);
     });
 
-    it("does not leak non-today entries into today rhythm buckets", () => {
+    it("does not leak non-today entries into today bucket", () => {
         const entries: Entry[] = [
             {
                 id: "old-malam",
@@ -177,11 +173,6 @@ describe("Trend Chart Utils", () => {
         ];
 
         const buckets = generateTrendSeries(entries, "today", null, new Date("2026-02-18T11:25:00"));
-        expect(buckets).toEqual([
-            { label: "Pagi", total: 0 },
-            { label: "Siang", total: 0 },
-            { label: "Sore", total: 0 },
-            { label: "Malam", total: 0 }
-        ]);
+        expect(buckets).toEqual([{ label: "Hari ini", total: 0 }]);
     });
 });
