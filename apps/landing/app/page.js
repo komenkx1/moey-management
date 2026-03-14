@@ -79,12 +79,14 @@ export default async function HomePage() {
         <main id="main-content">
           <section className="hero container" id="top">
             <div className="hero-copy-block">
-              <p className="eyebrow">Expense tracking yang terasa ringan</p>
-              <h1 className="hero-title">Catat pengeluaran secepat kamu mengingatnya.</h1>
+              <p className="eyebrow">Aplikasi catat pengeluaran yang terasa ringan</p>
+              <h1 className="hero-title">Catat pengeluaran harian secepat kamu mengingatnya.</h1>
               <p className="hero-copy">
-                KeMana membantu kamu tahu uangmu ke mana dengan quick add natural
-                language, local-first experience, insight yang tenang, smart recall,
-                dan ritual Night Close yang tidak bikin capek.
+                KeMana adalah aplikasi catat pengeluaran harian untuk kamu yang ingin
+                tahu uangmu ke mana tanpa alur ribet. Quick add natural language,
+                pengalaman local-first, insight yang tenang, smart recall, dan
+                ritual Night Close dibuat supaya expense tracker ini benar-benar
+                kepakai setiap hari.
               </p>
 
               <div className="hero-actions">
@@ -97,10 +99,11 @@ export default async function HomePage() {
               </div>
 
               <ul className="hero-pills" aria-label="Nilai utama KeMana">
+                <li>Aplikasi catat uang keluar</li>
                 <li>Quick add natural language</li>
                 <li>Local-first dan siap sync</li>
                 <li>Night Close ritual</li>
-                <li>PWA yang ringkas</li>
+                <li>PWA expense tracker yang ringkas</li>
               </ul>
 
               <div className="glass-panel proof-strip">
@@ -187,14 +190,15 @@ export default async function HomePage() {
 
           <section className="section container" id="fitur" aria-labelledby="fitur-title">
             <div className="section-copy">
-              <p className="eyebrow">Dirancang dari kebiasaan nyata</p>
+              <p className="eyebrow">Dirancang dari kebiasaan pencatatan nyata</p>
               <h2 id="fitur-title" className="section-title">
-                Bukan aplikasi keuangan yang sibuk minta perhatianmu.
+                Bukan aplikasi keuangan pribadi yang sibuk minta perhatianmu.
               </h2>
               <p className="section-lead">
                 KeMana fokus ke beberapa momen yang benar-benar penting: saat kamu
-                mencatat, saat membaca pola, dan saat menutup hari. Sisanya dibuat
-                sehalus mungkin.
+                mencatat pengeluaran, saat membaca pola, dan saat menutup hari.
+                Sisanya dibuat sehalus mungkin supaya aplikasi pencatatan
+                pengeluaran ini terasa ringan dipakai.
               </p>
             </div>
 
@@ -216,8 +220,8 @@ export default async function HomePage() {
                 Tiga langkah sederhana untuk tahu uangmu ke mana.
               </h2>
               <p className="section-lead">
-                Bukan spreadsheet yang menunggu dibuka akhir bulan, tapi kebiasaan
-                ringan yang bisa kamu jalankan di sela aktivitas.
+                Bukan spreadsheet yang menunggu dibuka akhir bulan, tapi aplikasi
+                catat pengeluaran yang mendukung kebiasaan ringan di sela aktivitas.
               </p>
             </div>
 
@@ -236,9 +240,9 @@ export default async function HomePage() {
 
           <section className="section container" aria-labelledby="experience-title">
             <div className="section-copy compact">
-              <p className="eyebrow">Kenapa KeMana terasa berbeda</p>
+              <p className="eyebrow">Cocok untuk pencarian yang paling sering muncul</p>
               <h2 id="experience-title" className="section-title">
-                Tetap ringkas, tapi tidak terasa tipis.
+                Kalau kamu mencari aplikasi catat pengeluaran yang ringan, mulai dari sini.
               </h2>
             </div>
 
@@ -254,9 +258,9 @@ export default async function HomePage() {
 
           <section className="section container" id="faq" aria-labelledby="faq-title">
             <div className="section-copy compact">
-              <p className="eyebrow">FAQ</p>
+              <p className="eyebrow">FAQ dan search intent</p>
               <h2 id="faq-title" className="section-title">
-                Pertanyaan yang biasanya muncul sebelum mencoba.
+                Pertanyaan yang biasanya muncul sebelum mencoba aplikasi ini.
               </h2>
             </div>
 
@@ -274,10 +278,14 @@ export default async function HomePage() {
             <div className="cta-panel glass-panel">
               <div>
                 <p className="eyebrow">Siap mulai?</p>
-                <h2 className="section-title">Buka KeMana dan rasakan alur mencatat yang lebih ringan.</h2>
+                <h2 className="section-title">
+                  Buka KeMana dan rasakan aplikasi catat pengeluaran yang lebih ringan.
+                </h2>
                 <p className="section-lead">
                   Landing page ini dibuat ringan, server-first, dan siap dipasang di
-                  Vercel. Aplikasi utamanya tinggal kamu arahkan lewat environment CTA.
+                  Vercel. Aplikasi utamanya tinggal kamu arahkan lewat environment CTA
+                  untuk membantu orang menemukan expense tracker KeMana dengan lebih
+                  mudah.
                 </p>
               </div>
 
