@@ -279,22 +279,23 @@ export default async function HomePage() {
               <div>
                 <p className="eyebrow">Siap mulai?</p>
                 <h2 className="section-title">
-                  Buka KeMana dan rasakan aplikasi catat pengeluaran yang lebih ringan.
+                  Coba KeMana, aplikasi catat pengeluaran harian yang terasa ringan
+                  dipakai.
                 </h2>
                 <p className="section-lead">
-                  Landing page ini dibuat ringan, server-first, dan siap dipasang di
-                  Vercel. Aplikasi utamanya tinggal kamu arahkan lewat environment CTA
-                  untuk membantu orang menemukan expense tracker KeMana dengan lebih
-                  mudah.
+                  Cocok buat kamu yang ingin mencatat uang keluar dengan cepat,
+                  membaca pola pengeluaran tanpa noise, dan tetap punya ritme review
+                  harian yang sederhana. Kalau pendekatannya terasa pas, langsung
+                  buka KeMana dan mulai dari catatan pertama.
                 </p>
               </div>
 
               <div className="cta-actions">
                 <a className="button button-primary" href={appUrl}>
-                  Buka aplikasi
+                  Buka KeMana
                 </a>
                 <a className="button button-secondary" href="#top">
-                  Kembali ke atas
+                  Lihat dari awal
                 </a>
               </div>
             </div>

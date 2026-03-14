@@ -27,16 +27,16 @@ export const siteConfig = {
   ],
   proofPoints: [
     {
-      value: "4 rentang waktu",
-      label: "Hari ini, 7 hari, 30 hari, dan custom range untuk membaca pola."
+      value: "Catat tanpa mikir lama",
+      label: "Tulis pengeluaran seperti kamu biasa ngomong, lalu KeMana bantu merapikan detail pentingnya."
     },
     {
-      value: "3 pemicu recall",
-      label: "Gap, first today, dan comeback prompt untuk bantu mengingat transaksi."
+      value: "Lihat pola yang relevan",
+      label: "Fokus ke total, tren, dan kategori dominan supaya evaluasi pengeluaran terasa lebih jelas."
     },
     {
-      value: "JSON + CSV",
-      label: "Import dan export tersedia supaya data tetap mudah dibawa ke alur lain."
+      value: "Jaga ritme tetap jalan",
+      label: "Recall halus dan Night Close bantu kamu tetap konsisten tanpa merasa terus diingatkan."
     }
   ],
   featureCards: [
